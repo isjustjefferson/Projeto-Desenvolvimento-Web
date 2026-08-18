@@ -32,6 +32,7 @@ A plataforma busca resolver o problema do acompanhamento fragmentado — criando
 * Backend / API: -- 
 * Banco de Dados: PostgreSQL.
 * Infraestrutura Local: Docker.
+* Testes / QA: Automação End-to-End (E2E) com Playwright e validação de API com Postman.
   
 ---
 
