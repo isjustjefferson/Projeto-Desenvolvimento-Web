@@ -29,7 +29,7 @@ A plataforma busca resolver o problema do acompanhamento fragmentado — criando
 ## Insights de Arquitetura e Decisões Iniciais
 * Arquitetura: --
 * Frontend: --
-* Backend / API: --
+* Backend / API: -- 
 * Banco de Dados: PostgreSQL.
 * Infraestrutura Local: Docker.
   
