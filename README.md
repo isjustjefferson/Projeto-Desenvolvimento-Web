@@ -27,8 +27,8 @@ A plataforma busca resolver o problema do acompanhamento fragmentado — criando
 ---
 
 ## Insights de Arquitetura e Decisões Iniciais
-* Arquitetura: --
-* Frontend: React, Vite, TypeScript, Tailwind CSS, TanStack Query, Recharts, React Router.
+* Arquitetura: Microsserviços.
+* Frontend: React, Vite, TypeScript, Tailwind CSS.
 * Backend / API: -- 
 * Banco de Dados: PostgreSQL.
 * Infraestrutura Local: Docker.
