@@ -37,7 +37,7 @@ O fluxo de vida do chamado segue uma esteira clara:
 ## Insights de Arquitetura e Decisões Iniciais
 * Arquitetura: Microsserviços.
 * Frontend: React, Vite, TypeScript, Tailwind CSS.
-* Backend / API: -- 
+* Backend / API: Node.js, TypeScript, NestJS
 * Banco de Dados: PostgreSQL.
 * Infraestrutura Local: Docker.
 * Testes / QA: Testes manuais exploratórios, Automação End-to-End (E2E) com Playwright e validação de API com Postman.
