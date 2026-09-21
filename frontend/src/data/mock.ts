@@ -144,7 +144,7 @@ export const chamadosMock: Chamado[] = [
     criadoEm: new Date(agora - 8 * hora).toISOString(),
     atualizadoEm: new Date(agora - 8 * hora).toISOString(),
     historico: [
-      baseHistorico(8, 1, 'AGUARDANDO_APROVACAO', -2),
+      baseHistorico(8, 1, 'AGUARDANDO_APROVACAO', 8),
     ],
   },
   {
@@ -178,6 +178,6 @@ export const chamadosMock: Chamado[] = [
     tecnicoId: null,
     criadoEm: new Date(agora - 5 * hora).toISOString(),
     atualizadoEm: new Date(agora - 5 * hora).toISOString(),
-    historico: [baseHistorico(11, 1, 'AGUARDANDO_APROVACAO', -1)],
+    historico: [baseHistorico(11, 1, 'AGUARDANDO_APROVACAO', 5)],
   },
 ];

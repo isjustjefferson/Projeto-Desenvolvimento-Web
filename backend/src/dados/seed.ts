@@ -136,7 +136,7 @@ export const chamadosSeed: Chamado[] = [
     tecnicoId: null,
     criadoEm: new Date(agora - 8 * hora).toISOString(),
     atualizadoEm: new Date(agora - 8 * hora).toISOString(),
-    historico: [baseHistorico(8, 1, 'AGUARDANDO_APROVACAO', -2)],
+    historico: [baseHistorico(8, 1, 'AGUARDANDO_APROVACAO', 8)],
   },
   {
     id: 4,
@@ -169,6 +169,6 @@ export const chamadosSeed: Chamado[] = [
     tecnicoId: null,
     criadoEm: new Date(agora - 5 * hora).toISOString(),
     atualizadoEm: new Date(agora - 5 * hora).toISOString(),
-    historico: [baseHistorico(11, 1, 'AGUARDANDO_APROVACAO', -1)],
+    historico: [baseHistorico(11, 1, 'AGUARDANDO_APROVACAO', 5)],
   },
 ];
