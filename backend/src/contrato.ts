@@ -38,6 +38,15 @@ export interface UsuarioPublico {
   criadoEm?: string;
 }
 
+// Resumo exposto a qualquer usuário autenticado: suficiente para exibir nomes
+// e montar a lista de técnicos, sem dados sensíveis (e-mail, setor, etc.).
+export interface UsuarioResumo {
+  id: number;
+  nome: string;
+  role: Role;
+  especialidade?: string;
+}
+
 export interface Solucao {
   descricao: string;
   materiais: string;

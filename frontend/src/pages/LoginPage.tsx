@@ -11,11 +11,14 @@ export function LoginPage() {
   const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
-  const entrar = (e: React.FormEvent) => {
+  const entrar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
-    const res = login(email, senha);
+    setEnviando(true);
+    const res = await login(email, senha);
+    setEnviando(false);
     if (!res.ok) {
       setErro(res.erro || 'Não foi possível entrar.');
       return;
@@ -91,8 +94,8 @@ export function LoginPage() {
           </Link>
         </div>
 
-        <button type="submit" className="btn-primary w-full">
-          <LogIn className="h-4 w-4" /> Entrar
+        <button type="submit" className="btn-primary w-full" disabled={enviando}>
+          <LogIn className="h-4 w-4" /> {enviando ? 'Entrando…' : 'Entrar'}
         </button>
 
         <p className="text-center text-sm text-gray-600">

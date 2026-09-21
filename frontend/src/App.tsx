@@ -12,9 +12,18 @@ import { NovoChamado } from './pages/NovoChamado';
 import { ChamadoDetalhe } from './pages/ChamadoDetalhe';
 import { Usuarios } from './pages/Usuarios';
 
+function Carregando() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 text-gray-500">
+      Carregando…
+    </div>
+  );
+}
+
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { usuario } = useAuth();
+  const { usuario, carregando } = useAuth();
   const location = useLocation();
+  if (carregando) return <Carregando />;
   if (!usuario) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
@@ -22,7 +31,8 @@ function RequireAuth({ children }: { children: ReactNode }) {
 }
 
 function PublicOnly({ children }: { children: ReactNode }) {
-  const { usuario } = useAuth();
+  const { usuario, carregando } = useAuth();
+  if (carregando) return <Carregando />;
   if (usuario) {
     return <Navigate to="/" replace />;
   }

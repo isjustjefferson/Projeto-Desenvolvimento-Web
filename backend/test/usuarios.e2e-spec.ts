@@ -40,6 +40,26 @@ describe('Usuários (admin) (e2e)', () => {
     expect(res.body.usuarios[0]).not.toHaveProperty('senhaHash');
   });
 
+  it('GET /usuarios/resumo sem header retorna 401', async () => {
+    await request(app.getHttpServer()).get('/api/usuarios/resumo').expect(401);
+  });
+
+  it('GET /usuarios/resumo para não-admin retorna resumo sem dados sensíveis', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/usuarios/resumo')
+      .set('x-usuario-id', '1')
+      .expect(200);
+    expect(res.body.usuarios).toHaveLength(6);
+    expect(res.body.usuarios[0]).not.toHaveProperty('email');
+    expect(res.body.usuarios[0]).not.toHaveProperty('senha');
+    expect(res.body.usuarios[0]).not.toHaveProperty('setor');
+    expect(res.body.usuarios[0]).toMatchObject({
+      id: 1,
+      nome: 'Ana Souza',
+      role: 'SOLICITANTE',
+    });
+  });
+
   it('POST cria TECNICO com especialidade e login com senha padrão', async () => {
     const criar = await request(app.getHttpServer())
       .post('/api/usuarios')

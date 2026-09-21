@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChamados } from '../context/ChamadosContext';
-import { usuariosMock } from '../data/mock';
+import { useDiretorio } from '../context/DiretorioContext';
 import { pode, statusVisiveisPorRole } from '../rbac';
 import {
   categoriaLabel,
@@ -16,7 +16,8 @@ import type { Status } from '../types';
 
 export function ChamadosLista() {
   const { usuario } = useAuth();
-  const { chamados } = useChamados();
+  const { chamados, carregando, erro } = useChamados();
+  const { nomeUsuario } = useDiretorio();
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroPrioridade, setFiltroPrioridade] = useState('');
   const [busca, setBusca] = useState('');
@@ -59,9 +60,6 @@ export function ChamadosLista() {
       })
       .sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime());
   }, [chamados, usuario, aba, filtroStatus, filtroPrioridade, busca]);
-
-  const nomeUsuario = (id: number) =>
-    usuariosMock.find((u) => u.id === id)?.nome || '—';
 
   const podeCriar = usuario ? pode(usuario.role, 'criar') : false;
 
@@ -141,7 +139,13 @@ export function ChamadosLista() {
         </select>
       </div>
 
-      {visiveis.length === 0 ? (
+      {carregando ? (
+        <div className="card py-12 text-center text-gray-500">
+          Carregando chamados…
+        </div>
+      ) : erro ? (
+        <div className="card py-12 text-center text-red-500">{erro}</div>
+      ) : visiveis.length === 0 ? (
         <div className="card py-12 text-center text-gray-500">
           Nenhum chamado encontrado para este perfil.
         </div>

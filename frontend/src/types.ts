@@ -20,7 +20,6 @@ export interface Usuario {
   id: number;
   nome: string;
   email: string;
-  senha: string;
   role: Role;
   unidade?: string;
   especialidade?: string; // para técnicos
@@ -28,6 +27,13 @@ export interface Usuario {
   ativo: boolean;
   foto?: string;
   criadoEm?: string;
+}
+
+export interface UsuarioResumo {
+  id: number;
+  nome: string;
+  role: Role;
+  especialidade?: string;
 }
 
 export interface Chamado {
@@ -61,21 +67,15 @@ export interface Chamado {
   } | null;
 }
 
-export interface PerfilDemonstracao {
-  id: number;
-  nome: string;
-  role: Role;
-}
-
 export interface AuthState {
   usuario: Usuario | null;
-  contasRegistradas: Usuario[];
-  versao: number;
-  login: (email: string, senha: string) => AuthResult;
-  registrar: (dados: NovoCadastro) => AuthResult;
-  redefinirSenha: (email: string, novaSenha: string) => AuthResult;
-  atualizarConta: (dados: { nome?: string; foto?: string }) => void;
-  excluirConta: () => void;
+  carregando: boolean;
+  login: (email: string, senha: string) => Promise<AuthResult>;
+  registrar: (dados: NovoCadastro) => Promise<AuthResult>;
+  esqueciSenha: (email: string) => Promise<AuthResult>;
+  redefinirSenha: (token: string, novaSenha: string) => Promise<AuthResult>;
+  atualizarConta: (dados: { nome?: string; foto?: string }) => Promise<AuthResult>;
+  excluirConta: () => Promise<AuthResult>;
   criarUsuario: (dados: {
     nome: string;
     email: string;
@@ -83,10 +83,10 @@ export interface AuthState {
     role: Role;
     especialidade?: string;
     setor?: string;
-  }) => AuthResult;
-  definirCargo: (id: number, role: Role) => void;
-  removerCargo: (id: number) => void;
-  excluirContaPorId: (id: number) => void;
+  }) => Promise<AuthResult>;
+  definirCargo: (id: number, role: Role) => Promise<AuthResult>;
+  removerCargo: (id: number) => Promise<AuthResult>;
+  excluirContaPorId: (id: number) => Promise<AuthResult>;
   sair: () => void;
 }
 
@@ -100,4 +100,5 @@ export interface NovoCadastro {
 export interface AuthResult {
   ok: boolean;
   erro?: string;
+  token?: string;
 }

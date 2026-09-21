@@ -1,26 +1,14 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
+import { configurarApp } from './app.config.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
-  // Todos os endpoints ficam sob /api
-  app.setGlobalPrefix('api');
-
-  // Libera o frontend (Vite) consumir a API durante o desenvolvimento
-  app.enableCors({
-    origin: ['http://localhost:5173'],
-    credentials: true,
+  // bodyParser: false para registrar o parser com limite maior em configurarApp
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
   });
-
-  // Validação global dos DTOs das requisições
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-    }),
-  );
+  configurarApp(app);
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);

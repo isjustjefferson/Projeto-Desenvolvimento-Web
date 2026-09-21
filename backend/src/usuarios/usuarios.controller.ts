@@ -28,6 +28,13 @@ export class UsuariosController {
     return this.usuarios.listar();
   }
 
+  // Qualquer usuário autenticado pode ver o resumo (nomes/técnicos).
+  @Get('resumo')
+  @Roles('SOLICITANTE', 'TECNICO', 'GESTOR', 'ADMINISTRADOR')
+  listarResumo() {
+    return this.usuarios.listarResumo();
+  }
+
   @Post()
   criar(@Body() dto: CriarUsuarioDto) {
     return this.usuarios.criar(dto);

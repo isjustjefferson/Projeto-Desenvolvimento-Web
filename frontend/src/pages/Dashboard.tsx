@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useChamados } from '../context/ChamadosContext';
 import { useAuth } from '../context/AuthContext';
-import { usuariosMock } from '../data/mock';
+import { useDiretorio } from '../context/DiretorioContext';
 import { pode } from '../rbac';
 import {
   categoriaLabel,
@@ -42,11 +42,9 @@ const prioridadeIconeCor: Record<Prioridade, string> = {
 export function Dashboard() {
   const { chamados } = useChamados();
   const { usuario } = useAuth();
+  const { nomeUsuario } = useDiretorio();
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroPrioridade, setFiltroPrioridade] = useState('');
-
-  const nomeUsuario = (id: number) =>
-    usuariosMock.find((u) => u.id === id)?.nome || '—';
 
   const dados = useMemo(() => {
     if (!usuario) {

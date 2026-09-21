@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ImagePlus, X } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { useChamados } from '../context/ChamadosContext';
+import { ApiError } from '../api/client';
+import { comprimirImagem } from '../imagem';
 import { categoriaLabel } from '../helpers';
 import type { Categoria } from '../types';
 
@@ -10,7 +11,6 @@ const categorias = Object.keys(categoriaLabel) as Categoria[];
 
 export function NovoChamado() {
   const navigate = useNavigate();
-  const { usuario } = useAuth();
   const { criarChamado } = useChamados();
 
   const [titulo, setTitulo] = useState('');
@@ -22,30 +22,35 @@ export function NovoChamado() {
   const [foto, setFoto] = useState('');
   const [fotoNome, setFotoNome] = useState('');
   const [erro, setErro] = useState('');
-
-  if (!usuario) return null;
-  const user = usuario;
+  const [enviando, setEnviando] = useState(false);
 
   // RN do solicitante: ele NÃO define prioridade (o gestor define na aprovação)
 
-  function onArquivo(e: React.ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0];
+  async function onArquivo(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.target;
+    const arquivo = input.files?.[0];
     if (!arquivo) return;
     setFotoNome(arquivo.name);
-    const reader = new FileReader();
-    reader.onload = () => setFoto(String(reader.result || ''));
-    reader.readAsDataURL(arquivo);
+    setErro('');
+    try {
+      setFoto(await comprimirImagem(arquivo));
+    } catch {
+      setErro('Não foi possível processar a imagem selecionada.');
+    } finally {
+      input.value = '';
+    }
   }
 
-  function enviar(e: React.FormEvent) {
+  async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setErro('');
     if (!titulo.trim() || !descricao.trim() || !predio.trim()) {
       setErro('Preencha título, descrição e prédio.');
       return;
     }
-    const chamado = criarChamado(
-      {
+    setEnviando(true);
+    try {
+      const chamado = await criarChamado({
         titulo: titulo.trim(),
         descricao: descricao.trim(),
         categoria,
@@ -55,10 +60,14 @@ export function NovoChamado() {
           sala: sala.trim() || undefined,
         },
         foto: foto || undefined,
-      },
-      user,
-    );
-    navigate(`/chamados/${chamado.id}`);
+      });
+      navigate(`/chamados/${chamado.id}`);
+    } catch (err) {
+      setErro(
+        err instanceof ApiError ? err.message : 'Não foi possível abrir o chamado.',
+      );
+      setEnviando(false);
+    }
   }
 
   return (
@@ -152,7 +161,7 @@ export function NovoChamado() {
                 Clique para anexar uma foto
               </span>
               <span className="text-xs text-gray-400">
-                JPG ou PNG (simulado — não é enviado a nenhum servidor)
+                JPG ou PNG (armazenado no servidor da demonstração)
               </span>
               <input
                 type="file"
@@ -196,8 +205,8 @@ export function NovoChamado() {
           >
             Cancelar
           </button>
-          <button type="submit" className="btn-primary">
-            Abrir chamado
+          <button type="submit" className="btn-primary" disabled={enviando}>
+            {enviando ? 'Abrindo…' : 'Abrir chamado'}
           </button>
         </div>
       </form>

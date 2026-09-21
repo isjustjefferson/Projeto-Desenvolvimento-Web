@@ -14,15 +14,18 @@ export function RegisterPage() {
   const [confirmar, setConfirmar] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
-  const enviar = (e: React.FormEvent) => {
+  const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
     if (senha !== confirmar) {
       setErro('As senhas não coincidem.');
       return;
     }
-    const res = registrar({ nome, email, unidade, senha });
+    setEnviando(true);
+    const res = await registrar({ nome, email, unidade, senha });
+    setEnviando(false);
     if (!res.ok) {
       setErro(res.erro || 'Não foi possível criar a conta.');
       return;
@@ -140,8 +143,8 @@ export function RegisterPage() {
           </div>
         </div>
 
-        <button type="submit" className="btn-primary w-full">
-          Criar conta
+        <button type="submit" className="btn-primary w-full" disabled={enviando}>
+          {enviando ? 'Criando conta…' : 'Criar conta'}
         </button>
 
         <p className="text-center text-sm text-gray-600">

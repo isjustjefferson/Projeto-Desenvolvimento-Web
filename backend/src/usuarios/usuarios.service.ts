@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import bcrypt from 'bcrypt';
-import type { UsuarioPublico } from '../contrato.js';
+import type { UsuarioPublico, UsuarioResumo } from '../contrato.js';
 import { StoreService } from '../dados/store.service.js';
 import { senhaPadrao } from '../dados/seed.js';
 import type { UsuarioInterno } from '../dados/seed.js';
@@ -19,6 +19,18 @@ export class UsuariosService {
 
   listar(): { ok: true; usuarios: UsuarioPublico[] } {
     return { ok: true, usuarios: this.store.getUsuariosPublicos() };
+  }
+
+  listarResumo(): { ok: true; usuarios: UsuarioResumo[] } {
+    return {
+      ok: true,
+      usuarios: this.store.getUsuariosPublicos().map((usuario) => ({
+        id: usuario.id,
+        nome: usuario.nome,
+        role: usuario.role,
+        especialidade: usuario.especialidade,
+      })),
+    };
   }
 
   criar(dados: CriarUsuarioDto): { ok: true; usuario: UsuarioPublico } {

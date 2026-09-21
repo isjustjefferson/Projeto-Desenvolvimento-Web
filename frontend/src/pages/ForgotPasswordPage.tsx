@@ -1,21 +1,32 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Send, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { AuthShell } from '../components/AuthShell';
 
 export function ForgotPasswordPage() {
+  const { esqueciSenha } = useAuth();
   const [email, setEmail] = useState('');
   const [enviado, setEnviado] = useState(false);
   const [erro, setErro] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
-  const enviar = (e: React.FormEvent) => {
+  const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setErro('Informe um e-mail válido.');
       return;
     }
-    // Simulação de envio do link de recuperação (sem backend)
+    setEnviando(true);
+    const res = await esqueciSenha(email.trim());
+    setEnviando(false);
+    if (!res.ok) {
+      setErro(res.erro || 'Não foi possível solicitar a redefinição.');
+      return;
+    }
+    // Demo: o backend devolve o token na resposta (não há envio de e-mail).
+    sessionStorage.setItem('predial.resetToken', res.token || '');
     sessionStorage.setItem('predial.resetEmail', email.trim());
     setEnviado(true);
   };
@@ -76,8 +87,8 @@ export function ForgotPasswordPage() {
               />
             </div>
           </div>
-          <button type="submit" className="btn-primary w-full">
-            <Send className="h-4 w-4" /> Enviar solicitação
+          <button type="submit" className="btn-primary w-full" disabled={enviando}>
+            <Send className="h-4 w-4" /> {enviando ? 'Enviando…' : 'Enviar solicitação'}
           </button>
           <Link
             to="/login"

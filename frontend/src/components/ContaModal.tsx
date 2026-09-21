@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ImagePlus, Trash2, X, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from './Modal';
+import { comprimirImagem } from '../imagem';
 import { roleLabel, iniciais, avatarCor } from '../helpers';
 
 export function ContaModal({
@@ -16,6 +17,7 @@ export function ContaModal({
   const [foto, setFoto] = useState('');
   const [confirmar, setConfirmar] = useState(false);
   const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     if (open && usuario) {
@@ -28,22 +30,49 @@ export function ContaModal({
 
   if (!usuario) return null;
 
-  const onArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const arquivo = e.target.files?.[0];
+  const onArquivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const arquivo = input.files?.[0];
     if (!arquivo) return;
-    const reader = new FileReader();
-    reader.onload = () => setFoto(String(reader.result || ''));
-    reader.readAsDataURL(arquivo);
+    setErro('');
+    try {
+      setFoto(await comprimirImagem(arquivo));
+    } catch {
+      setErro('Não foi possível processar a imagem selecionada.');
+    } finally {
+      input.value = '';
+    }
   };
 
-  const salvar = (e: React.FormEvent) => {
+  const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
     if (!nome.trim()) {
       setErro('Informe um nome válido.');
       return;
     }
-    atualizarConta({ nome: nome.trim(), foto: foto || undefined });
+    setSalvando(true);
+    const res = await atualizarConta({
+      nome: nome.trim(),
+      foto: foto || undefined,
+    });
+    setSalvando(false);
+    if (!res.ok) {
+      setErro(res.erro || 'Não foi possível salvar as alterações.');
+      return;
+    }
+    onClose();
+  };
+
+  const apagar = async () => {
+    setErro('');
+    setSalvando(true);
+    const res = await excluirConta();
+    setSalvando(false);
+    if (!res.ok) {
+      setErro(res.erro || 'Não foi possível apagar a conta.');
+      return;
+    }
     onClose();
   };
 
@@ -115,8 +144,8 @@ export function ContaModal({
           <button type="button" onClick={onClose} className="btn-secondary">
             Cancelar
           </button>
-          <button type="submit" className="btn-primary">
-            Salvar
+          <button type="submit" className="btn-primary" disabled={salvando}>
+            {salvando ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
       </form>
@@ -147,7 +176,8 @@ export function ContaModal({
               </button>
               <button
                 type="button"
-                onClick={excluirConta}
+                onClick={() => void apagar()}
+                disabled={salvando}
                 className="btn bg-red-600 text-white hover:bg-red-700"
               >
                 Apagar definitivamente

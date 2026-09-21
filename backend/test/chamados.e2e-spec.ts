@@ -86,6 +86,22 @@ describe('Chamados (e2e)', () => {
     expect(res.body.chamado.historico).toHaveLength(1);
   });
 
+  it('POST /chamados aceita foto em base64 acima do limite padrão', async () => {
+    const foto = `data:image/jpeg;base64,${'A'.repeat(500 * 1024)}`;
+    const res = await request(app.getHttpServer())
+      .post('/api/chamados')
+      .set('x-usuario-id', '1')
+      .send({
+        titulo: 'Com foto grande',
+        descricao: 'Foto em base64 de aproximadamente 500kb',
+        categoria: 'OUTROS',
+        local: { predio: 'Bloco B' },
+        foto,
+      })
+      .expect(201);
+    expect(res.body.chamado.foto).toBe(foto);
+  });
+
   it('POST /chamados bloqueia gestor e técnico', async () => {
     await request(app.getHttpServer())
       .post('/api/chamados')

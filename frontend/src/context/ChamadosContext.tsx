@@ -1,183 +1,116 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from 'react';
-import type { Chamado, Prioridade, Status, Usuario } from '../types';
-import { chamadosMock } from '../data/mock';
-
-const STORAGE_KEY = 'predial.chamados';
-
-export interface NovoChamadoInput {
-  titulo: string;
-  descricao: string;
-  categoria: Chamado['categoria'];
-  local: Chamado['local'];
-  foto?: string;
-}
-
-export interface SolucaoInput {
-  descricao: string;
-  materiais: string;
-}
+import type { Chamado, Prioridade } from '../types';
+import { useAuth } from './AuthContext';
+import { ApiError } from '../api/client';
+import * as chamadosApi from '../api/chamados';
+import type { NovoChamadoInput, SolucaoInput } from '../api/chamados';
 
 interface ChamadosContextValue {
   chamados: Chamado[];
-  criarChamado: (input: NovoChamadoInput, usuario: Usuario) => Chamado;
+  carregando: boolean;
+  erro: string;
+  recarregar: () => Promise<void>;
+  getChamado: (id: number) => Chamado | undefined;
+  obterChamado: (id: number) => Promise<Chamado>;
+  criarChamado: (input: NovoChamadoInput) => Promise<Chamado>;
   aprovarChamado: (
     id: number,
     prioridade: Prioridade,
     tecnicoId: number,
-    usuario: Usuario,
-  ) => Chamado;
-  iniciarChamado: (id: number, usuario: Usuario) => Chamado;
-  concluirChamado: (id: number, solucao: SolucaoInput, usuario: Usuario) => Chamado;
-  getChamado: (id: number) => Chamado | undefined;
+  ) => Promise<Chamado>;
+  iniciarChamado: (id: number) => Promise<Chamado>;
+  concluirChamado: (id: number, solucao: SolucaoInput) => Promise<Chamado>;
 }
 
 const ChamadosContext = createContext<ChamadosContextValue | undefined>(
   undefined,
 );
 
-function carregarChamados(): Chamado[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as Chamado[];
-  } catch {
-    // ignora e usa o mock
-  }
-  return chamadosMock;
+function mensagemErro(erro: unknown): string {
+  if (erro instanceof ApiError) return erro.message;
+  return 'Não foi possível carregar os chamados.';
 }
 
 export function ChamadosProvider({ children }: { children: React.ReactNode }) {
-  const [chamados, setChamados] = useState<Chamado[]>(carregarChamados);
+  const { usuario } = useAuth();
+  const [chamados, setChamados] = useState<Chamado[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+
+  const recarregar = useCallback(async () => {
+    setCarregando(true);
+    setErro('');
+    try {
+      setChamados(await chamadosApi.listar());
+    } catch (e) {
+      setErro(mensagemErro(e));
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(chamados));
-  }, [chamados]);
+    if (!usuario) {
+      setChamados([]);
+      setCarregando(false);
+      setErro('');
+      return;
+    }
+    void recarregar();
+  }, [usuario, recarregar]);
 
-  const getChamado = (id: number) => chamados.find((c) => c.id === id);
-
-  const value = useMemo<ChamadosContextValue>(() => {
-    const adicionarHistorico = (
-      chamado: Chamado,
-      usuario: Usuario,
-      de: Status | null,
-      para: Status,
-      observacao?: string,
-    ): Chamado => ({
-      ...chamado,
-      status: para,
-      atualizadoEm: new Date().toISOString(),
-      historico: [
-        {
-          id: Date.now(),
-          usuarioId: usuario.id,
-          de,
-          para,
-          dataHora: new Date().toISOString(),
-          observacao,
-        },
-        ...chamado.historico,
-      ],
-    });
-
-    const criarChamado = (input: NovoChamadoInput, usuario: Usuario): Chamado => {
-      const now = new Date().toISOString();
-      const novo: Chamado = {
-        id: Date.now(),
-        titulo: input.titulo,
-        descricao: input.descricao,
-        categoria: input.categoria,
-        local: input.local,
-        status: 'AGUARDANDO_APROVACAO',
-        prioridade: null,
-        foto: input.foto ?? null,
-        criadoPorId: usuario.id,
-        tecnicoId: null,
-        criadoEm: now,
-        atualizadoEm: now,
-        historico: [
-          {
-            id: Date.now() + 1,
-            usuarioId: usuario.id,
-            de: null,
-            para: 'AGUARDANDO_APROVACAO',
-            dataHora: now,
-          },
-        ],
-      };
-      setChamados((prev) => [novo, ...prev]);
-      return novo;
-    };
-
-    const aprovarChamado = (
-      id: number,
-      prioridade: Prioridade,
-      tecnicoId: number,
-      usuario: Usuario,
-    ): Chamado => {
-      const atual = getChamado(id);
-      if (!atual) throw new Error('Chamado não encontrado');
-      const atualizado = adicionarHistorico(
-        { ...atual, prioridade, tecnicoId },
-        usuario,
-        atual.status,
-        'REVISADO',
-        `Aprovado com prioridade ${prioridade} e atribuído ao técnico`,
-      );
-      setChamados((prev) =>
-        prev.map((c) => (c.id === id ? atualizado : c)),
-      );
-      return atualizado;
-    };
-
-    const iniciarChamado = (id: number, usuario: Usuario): Chamado => {
-      const atual = getChamado(id);
-      if (!atual) throw new Error('Chamado não encontrado');
-      const atualizado = adicionarHistorico(
-        atual,
-        usuario,
-        atual.status,
-        'EM_ANDAMENTO',
-      );
-      setChamados((prev) =>
-        prev.map((c) => (c.id === id ? atualizado : c)),
-      );
-      return atualizado;
-    };
-
-    const concluirChamado = (
-      id: number,
-      solucao: SolucaoInput,
-      usuario: Usuario,
-    ): Chamado => {
-      const atual = getChamado(id);
-      if (!atual) throw new Error('Chamado não encontrado');
-      const atualizado = adicionarHistorico(
-        { ...atual, solucao },
-        usuario,
-        atual.status,
-        'CONCLUIDO',
-      );
-      setChamados((prev) =>
-        prev.map((c) => (c.id === id ? atualizado : c)),
-      );
-      return atualizado;
-    };
-
-    return {
+  const value = useMemo<ChamadosContextValue>(
+    () => ({
       chamados,
-      criarChamado,
-      aprovarChamado,
-      iniciarChamado,
-      concluirChamado,
-      getChamado,
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chamados]);
+      carregando,
+      erro,
+      recarregar,
+      getChamado: (id) => chamados.find((c) => c.id === id),
+      obterChamado: async (id) => {
+        const encontrado = await chamadosApi.obter(id);
+        setChamados((prev) =>
+          prev.some((c) => c.id === id)
+            ? prev.map((c) => (c.id === id ? encontrado : c))
+            : [encontrado, ...prev],
+        );
+        return encontrado;
+      },
+      criarChamado: async (input) => {
+        const novo = await chamadosApi.criar(input);
+        setChamados((prev) => [novo, ...prev]);
+        return novo;
+      },
+      aprovarChamado: async (id, prioridade, tecnicoId) => {
+        const atualizado = await chamadosApi.aprovar(id, prioridade, tecnicoId);
+        setChamados((prev) =>
+          prev.map((c) => (c.id === id ? atualizado : c)),
+        );
+        return atualizado;
+      },
+      iniciarChamado: async (id) => {
+        const atualizado = await chamadosApi.iniciar(id);
+        setChamados((prev) =>
+          prev.map((c) => (c.id === id ? atualizado : c)),
+        );
+        return atualizado;
+      },
+      concluirChamado: async (id, solucao) => {
+        const atualizado = await chamadosApi.concluir(id, solucao);
+        setChamados((prev) =>
+          prev.map((c) => (c.id === id ? atualizado : c)),
+        );
+        return atualizado;
+      },
+    }),
+    [chamados, carregando, erro, recarregar],
+  );
 
   return (
     <ChamadosContext.Provider value={value}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChamados } from '../context/ChamadosContext';
-import { usuariosMock } from '../data/mock';
+import { useDiretorio } from '../context/DiretorioContext';
+import { ApiError } from '../api/client';
 import { categoriaLabel, formatarData, prioridadeLabel, statusLabel } from '../helpers';
 import { PrioridadeBadge, StatusBadge } from '../components/Badge';
 import { Modal } from '../components/Modal';
@@ -22,8 +23,15 @@ export function ChamadoDetalhe() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { usuario } = useAuth();
-  const { getChamado, aprovarChamado, iniciarChamado, concluirChamado } =
-    useChamados();
+  const {
+    getChamado,
+    obterChamado,
+    carregando,
+    aprovarChamado,
+    iniciarChamado,
+    concluirChamado,
+  } = useChamados();
+  const { tecnicos, nomeUsuario } = useDiretorio();
 
   const [modalAprovar, setModalAprovar] = useState(false);
   const [modalConcluir, setModalConcluir] = useState(false);
@@ -31,13 +39,40 @@ export function ChamadoDetalhe() {
   const [tecnicoSel, setTecnicoSel] = useState('');
   const [solDesc, setSolDesc] = useState('');
   const [solMat, setSolMat] = useState('');
+  const [erroAcao, setErroAcao] = useState('');
+  const [buscando, setBuscando] = useState(false);
+  const [naoEncontrado, setNaoEncontrado] = useState(false);
 
-  const chamado = id ? getChamado(Number(id)) : undefined;
-  const tecnicos = usuariosMock.filter((u) => u.role === 'TECNICO');
-  const nomeUsuario = (uid: number) =>
-    usuariosMock.find((u) => u.id === uid)?.nome || '—';
+  const alvoId = id ? Number(id) : undefined;
+  const chamado = alvoId !== undefined ? getChamado(alvoId) : undefined;
 
-  if (!usuario || !chamado) {
+  // Se o chamado não estiver na listagem (acesso direto pela URL ou status fora
+  // do escopo da lista), busca pelo endpoint de detalhe.
+  useEffect(() => {
+    if (carregando || alvoId === undefined || chamado) return;
+    let ativo = true;
+    setBuscando(true);
+    obterChamado(alvoId)
+      .catch(() => {
+        if (ativo) setNaoEncontrado(true);
+      })
+      .finally(() => {
+        if (ativo) setBuscando(false);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [carregando, alvoId, chamado, obterChamado]);
+
+  if (carregando || buscando) {
+    return (
+      <div className="card py-12 text-center text-gray-500">
+        Carregando chamado…
+      </div>
+    );
+  }
+
+  if (!usuario || !chamado || naoEncontrado) {
     return (
       <div className="card py-12 text-center text-gray-500">
         Chamado não encontrado.{' '}
@@ -73,27 +108,46 @@ export function ChamadoDetalhe() {
     chamado.status === 'EM_ANDAMENTO' &&
     (usuario.role === 'ADMINISTRADOR' || chamado.tecnicoId === usuario.id);
 
-  function aprovar() {
-    if (!tecnicoSel || !usuario) return;
-    aprovarChamado(c.id, prioridadeSel, Number(tecnicoSel), usuario);
-    setModalAprovar(false);
+  async function aprovar() {
+    if (!tecnicoSel) return;
+    setErroAcao('');
+    try {
+      await aprovarChamado(c.id, prioridadeSel, Number(tecnicoSel));
+      setModalAprovar(false);
+    } catch (err) {
+      setErroAcao(
+        err instanceof ApiError ? err.message : 'Não foi possível aprovar.',
+      );
+    }
   }
 
-  function iniciar() {
-    if (!usuario) return;
-    iniciarChamado(c.id, usuario);
+  async function iniciar() {
+    setErroAcao('');
+    try {
+      await iniciarChamado(c.id);
+    } catch (err) {
+      setErroAcao(
+        err instanceof ApiError ? err.message : 'Não foi possível iniciar.',
+      );
+    }
   }
 
-  function concluir() {
-    if (!solDesc.trim() || !solMat.trim() || !usuario) return;
-    concluirChamado(
-      c.id,
-      { descricao: solDesc.trim(), materiais: solMat.trim() },
-      usuario,
-    );
-    setModalConcluir(false);
-    setSolDesc('');
-    setSolMat('');
+  async function concluir() {
+    if (!solDesc.trim() || !solMat.trim()) return;
+    setErroAcao('');
+    try {
+      await concluirChamado(c.id, {
+        descricao: solDesc.trim(),
+        materiais: solMat.trim(),
+      });
+      setModalConcluir(false);
+      setSolDesc('');
+      setSolMat('');
+    } catch (err) {
+      setErroAcao(
+        err instanceof ApiError ? err.message : 'Não foi possível concluir.',
+      );
+    }
   }
 
   if (!podeVer) {
@@ -180,6 +234,12 @@ export function ChamadoDetalhe() {
             <p className="mt-2 text-xs font-medium text-white">
               Materiais: {chamado.solucao.materiais}
             </p>
+          </div>
+        )}
+
+        {erroAcao && (
+          <div className="mt-4 rounded-lg bg-red-500 px-3 py-2 text-sm text-white">
+            {erroAcao}
           </div>
         )}
 

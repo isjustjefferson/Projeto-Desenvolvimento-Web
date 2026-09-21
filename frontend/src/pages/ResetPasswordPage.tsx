@@ -7,22 +7,24 @@ import { AuthShell } from '../components/AuthShell';
 export function ResetPasswordPage() {
   const { redefinirSenha } = useAuth();
   const navigate = useNavigate();
+  const [token] = useState<string>(
+    () => sessionStorage.getItem('predial.resetToken') || '',
+  );
   const [email] = useState<string>(
     () => sessionStorage.getItem('predial.resetEmail') || '',
   );
 
-  if (!email) {
+  if (!token) {
     return <Navigate to="/forgot-password" replace />;
   }
 
   return (
     <ResetForm
       email={email}
-      onConfirm={(novaSenha) => {
-        const res = redefinirSenha(email, novaSenha);
-        if (!res.ok) return res;
+      onConfirm={(novaSenha) => redefinirSenha(token, novaSenha)}
+      onSuccess={() => {
+        sessionStorage.removeItem('predial.resetToken');
         sessionStorage.removeItem('predial.resetEmail');
-        return res;
       }}
       onDone={() => navigate('/login', { replace: true })}
     />
@@ -32,10 +34,12 @@ export function ResetPasswordPage() {
 function ResetForm({
   email,
   onConfirm,
+  onSuccess,
   onDone,
 }: {
   email: string;
-  onConfirm: (novaSenha: string) => { ok: boolean; erro?: string };
+  onConfirm: (novaSenha: string) => Promise<{ ok: boolean; erro?: string }>;
+  onSuccess: () => void;
   onDone: () => void;
 }) {
   const [senha, setSenha] = useState('');
@@ -43,8 +47,9 @@ function ResetForm({
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [concluido, setConcluido] = useState(false);
   const [erro, setErro] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
-  const enviar = (e: React.FormEvent) => {
+  const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
     if (senha.length < 6) {
@@ -55,11 +60,14 @@ function ResetForm({
       setErro('As senhas não coincidem.');
       return;
     }
-    const res = onConfirm(senha);
+    setEnviando(true);
+    const res = await onConfirm(senha);
+    setEnviando(false);
     if (!res.ok) {
       setErro(res.erro || 'Não foi possível redefinir a senha.');
       return;
     }
+    onSuccess();
     setConcluido(true);
     setTimeout(onDone, 2000);
   };
@@ -86,9 +94,11 @@ function ResetForm({
       subtitulo="Defina uma nova senha para sua conta"
     >
       <form onSubmit={enviar} className="space-y-4">
-        <p className="text-sm text-gray-600">
-          Redefinindo a senha de <strong>{email}</strong>.
-        </p>
+        {email && (
+          <p className="text-sm text-gray-600">
+            Redefinindo a senha de <strong>{email}</strong>.
+          </p>
+        )}
         {erro && (
           <div className="rounded-lg bg-red-500 px-3 py-2 text-sm text-white">
             {erro}
@@ -143,8 +153,8 @@ function ResetForm({
           </div>
         </div>
 
-        <button type="submit" className="btn-primary w-full">
-          Confirmar nova senha
+        <button type="submit" className="btn-primary w-full" disabled={enviando}>
+          {enviando ? 'Redefinindo…' : 'Confirmar nova senha'}
         </button>
       </form>
     </AuthShell>
