@@ -96,6 +96,10 @@ export class StoreService {
     return this.chamados.get(id);
   }
 
+  salvarChamado(chamado: Chamado): void {
+    this.chamados.set(chamado.id, chamado);
+  }
+
   getProximoIdChamado(): number {
     return this.proximoIdChamado;
   }
