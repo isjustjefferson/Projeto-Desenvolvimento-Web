@@ -18,7 +18,7 @@ descreve *como estruturar* e o físico descreve *como o SGBD armazena*.
 
 ## 1. Minimundo
 
-Uma administradora de condomínio_predial atende solicitações de manutenção de seus
+Uma administradora de condomínio atende solicitações de manutenção de seus
 moradores e de suas áreas comuns.
 
 O fluxo é o seguinte:
@@ -81,7 +81,7 @@ erDiagram
         int id PK
         string nome
         string email UK
-        papel role "enum: 4 valores"
+        papel papel "enum: 4 valores"
         string localizacao "unidade OU setor (A1)"
         string especialidade "apenas TECNICO"
         bool ativo
