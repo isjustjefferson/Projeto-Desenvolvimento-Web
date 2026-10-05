@@ -1,8 +1,7 @@
 import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
-import type { App } from 'supertest/types';
-import { criarApp } from './helpers.js';
+import { criarApp, type App } from './helpers.js';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication<App>;
