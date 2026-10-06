@@ -457,14 +457,27 @@ ALTER TABLE chamados
         CHECK (
             status <> 'CONCLUIDO'
             OR (
-                btrim(solucao_descricao) <> ''
+                solucao_descricao IS NOT NULL
+                AND solucao_materiais IS NOT NULL
+                AND btrim(solucao_descricao) <> ''
                 AND btrim(solucao_materiais) <> ''
             )
         );
 ```
 
-`btrim(...) <> ''` e não `IS NOT NULL`, porque o problema não é só o campo vazio:
-é o campo ausente **ou** composto apenas de espaços.
+Os `IS NOT NULL` são indispensáveis, e a razão é um comportamento do SQL que não é
+óbvio. **Uma restrição `CHECK` é satisfeita quando a expressão resulta em `TRUE`
+*ou* em `NULL`** — só `FALSE` reprova.
+
+Se a condição dependesse apenas de `btrim(...) <> ''`, um chamado `CONCLUIDO` com
+solução `NULL` produziria `btrim(NULL) <> ''` → `NULL`, e a restrição **passaria**.
+Este não é um detalhe teórico: a primeira versão deste CHECK foi escrita assim e
+aceitou três chamados concluídos sem solução na validação descrita em 4.7. Com os
+`IS NOT NULL`, a expressão nunca chega a `NULL` quando o status é `CONCLUIDO`, e
+qualquer ausência é tratada como `FALSE`, que reprova.
+
+O `btrim` continua necessário para o outro caso: campo preenchido apenas com
+espaços, que `IS NOT NULL` não pegaria.
 
 Isso **impede** uma inconsistência que hoje é possível: um chamado `CONCLUIDO` sem
 solução registrada. Ver `store.service.ts`, onde a solução é gravada num `Map`
@@ -508,22 +521,209 @@ Hoje `contrato.ts` as declara como `string` ISO, e o seed as produz com
 está garantido. `timestamptz` normaliza para UTC e ordena corretamente por
 comparação nativa.
 
+Um efeito colateral importante: `timestamptz` **armazena em UTC, mas exibe no fuso
+da sessão**. Validado em 4.7: um valor gravado como `2026-03-15T18:30:00Z` voltou
+como `2026-03-15 15:30:00-03` com `TimeZone = America/Sao_Paulo`. O dado está
+correto; a apresentação é que depende do fuso configurado. Por isso a conexão deve
+fixar o fuso explicitamente (ver 6.3), para que o mesmo dado não apareça com
+horários diferentes em máquinas diferentes.
+
 ### 4.6 Carga inicial (seed)
 
-A carga usa `IDENTITY`, então as sequências precisam ser advanceadas ao final para
-que a próxima inserção não colida com os ids do seed:
+Como as colunas são `GENERATED ALWAYS AS IDENTITY`, o seed que precisa preservar os
+ids do mock (`1–6` usuários, `1–5` chamados) **precisa de `OVERRIDING SYSTEM
+VALUE`** a cada inserção com id explícito:
+
+```sql
+INSERT INTO usuarios (id, nome, email, papel, senha_hash)
+OVERRIDING SYSTEM VALUE
+VALUES (1, 'Ana Souza', 'ana@predial.com', 'SOLICITANTE', '...');
+```
+
+Sem essa cláusula, o PostgreSQL recusa com `cannot insert a non-DEFAULT value into
+column "id"`.
+
+Depois da carga, as sequências precisam ser advanceadas, senão a próxima inserção
+pela aplicação colide com os ids do seed:
 
 ```sql
 SELECT setval(pg_get_serial_sequence('usuarios', 'id'),
               (SELECT MAX(id) FROM usuarios));
 ```
 
-O mesmo para `locais`, `chamados` e `historicos`. Sem isso, o primeiro usuário
-criado pela aplicação tentaria `id = 1` e receberia violação de unicidade.
+O mesmo para `locais`, `chamados` e `historicos`. Validado em 4.7: sem o `setval`, a
+primeira inserção automática falhou com `duplicate key value violates unique
+constraint "chamados_pkey"`. Após o `setval`, o próximo id foi `max + 1` (7, com
+máximo anterior 6), como esperado.
+
+### 4.7 Validação do DDL
+
+O DDL desta fase foi executado em um PostgreSQL 18 real, e não apenas escrito.
+Resultados:
+
+| Verificação | Resultado |
+|---|---|
+| 5 tabelas, 4 ENUM, 10 índices, 5 FKs, 1 CHECK criados | Aplicado sem erro |
+| `CONCLUIDO` com solução `NULL` | Rejeitado pelo CHECK |
+| `CONCLUIDO` com solução só de espaços | Rejeitado pelo CHECK |
+| `CONCLUIDO` com solução preenchida | Aceito |
+| Não-`CONCLUIDO` sem solução | Aceito |
+| Excluir usuário autor de chamado (`RESTRICT`) | Rejeitado |
+| Excluir técnico do chamado (`SET NULL`) | Aceito, `tecnico_id` virou `NULL` |
+| Excluir solicitante com chamado | Bloqueado pelo `RESTRICT` |
+| Excluir local com chamado (`RESTRICT`) | Rejeitado |
+| `bytea` de 8 bytes | Round-trip exato (`89504e470d0a1a0a`) |
+| `categoria = 'INVALIDA'` | Rejeitado pelo ENUM |
+| `setval` e próximo id automático | `max + 1`, correto |
+
+O teste do CHECK é o que revelou o defeito corrigido em 4.3: a versão anterior aceitou
+três chamados `CONCLUIDO` com solução `NULL` ou em branco.
 
 ---
 
-## 5. Correspondência com o código atual
+## 5. Implantação do banco
+
+Procedimento para provisionar um banco PostgreSQL com este modelo. Nenhum passo
+depende de Docker; serve para uma instância local, um servidor de staging ou um
+serviço gerenciado (RDS, Cloud SQL, Neon).
+
+### 5.1 Pré-requisitos
+
+- **PostgreSQL 14 ou superior.** O modelo usa `GENERATED ALWAYS AS IDENTITY`
+  (10+), `pg_get_serial_sequence` e ENUM nativo. Desenvolvido e validado em 18.
+- **Node.js 24.11 ou superior** — exigência do `typeorm@1.1.1` já instalado.
+- Um banco recém-criado e vazio.
+
+### 5.2 Criar o banco e o papel de acesso
+
+```sql
+CREATE ROLE predial LOGIN PASSWORD 'troque-esta-senha';
+CREATE DATABASE predial OWNER predial ENCODING 'UTF8';
+```
+
+`OWNER` (e não um papel separado) porque a aplicação precisa criar objetos no
+schema público durante as migrations. Se o provedor oferecer role separada para
+migração e para runtime, prefira isso: o papel de runtime não precisa de `CREATE`.
+
+Para encoding, use `UTF8` explicitamente. O padrão depende da locale do servidor e
+pode ser `SQL_ASCII` em instalações não configuradas, o que quebra a acentuação dos
+nomes e descrições.
+
+### 5.3 Conexão da aplicação
+
+A conexão lê `process.env` no módulo de dados (sem `@nestjs/config`, por decisão de
+escopo). Variáveis:
+
+| Variável | Exemplo | Observação |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://predial:senha@localhost:5432/predial` | Formato de URL de conexão padrão do `pg`. |
+| `DB_TZ` | `UTC` | Fuso da sessão. Ver 4.5. |
+| `DB_SSL` | `require` | Só para conexões remotas. |
+
+Configuração equivalente do TypeORM, para quem preferir campos separados:
+
+```ts
+{
+  type: 'postgres',
+  host: process.env.DB_HOST ?? 'localhost',
+  port: Number(process.env.DB_PORT ?? 5432),
+  username: process.env.DB_USER ?? 'predial',
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME ?? 'predial',
+  ssl: process.env.DB_SSL ? { rejectUnauthorized: false } : false,
+}
+```
+
+Sobre o fuso: fixar `UTC` na sessão é o que garante que o mesmo registro não seja
+exibido com horários diferentes em máquinas diferentes. Sem isso, a exibição herda
+o fuso de cada cliente.
+
+### 5.4 Aplicar o schema
+
+O DDL completo está nas seções 3.1, 4.1, 4.2, 4.3 e 4.4, e **deve ser aplicado nesta
+ordem**, que respeita as dependências:
+
+1. **4.1** — os 4 tipos ENUM (nenhum pré-requisito).
+2. **3.1** — as 5 tabelas, sem as FKs.
+3. **4.2** — as 5 chaves estrangeiras (dependem das tabelas).
+4. **4.3** — o CHECK do RN04.
+5. **4.4** — os 10 índices (dependem das FKs, para não reescrever tabela).
+
+Em um banco vazio:
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f schema.sql
+```
+
+`-v ON_ERROR_STOP=1` é importante: sem ele, o `psql` **continua após um erro** e
+devolve código de saída 0, dando a impressão de sucesso num script parcialmente
+aplicado. Foi exatamente esse comportamento que escondeu a falha do CHECK na
+validação inicial.
+
+Uma ressalva sobre idempotência: `CREATE TYPE` **não aceita `IF NOT EXISTS`** no
+PostgreSQL. Reexecutar o script num banco já populado falha com
+`type "status" already exists`. Num banco vazio não há problema; para
+reaplicação, use migrations versionadas.
+
+### 5.5 Carregar os dados iniciais
+
+A carga usa `OVERRIDING SYSTEM VALUE` e termina com os quatro `setval` (ver 4.6).
+Ponto de atenção: o seed precisa de **os dois** — sem `OVERRIDING SYSTEM VALUE` o
+`id` explícito é recusado, e sem `setval` a primeira inserção automática colide.
+
+### 5.6 Verificar a implantação
+
+```sql
+-- 5 tabelas
+SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';
+
+-- 10 índices + 1 unique + 5 PK
+SELECT count(*) FROM pg_indexes WHERE schemaname = 'public';
+
+-- ON DELETE de cada FK
+SELECT conname, pg_get_constraintdef(oid)
+FROM pg_constraint WHERE contype = 'f' ORDER BY conname;
+```
+
+Esperado: `5`, `16`, e 5 constraints cujas definições contenham `RESTRICT` (três),
+`SET NULL` (uma) e `CASCADE` (duas).
+
+### 5.7 Checklist de produção
+
+- [ ] `ssl` habilitado — as fotos e hashes trafegam pela conexão.
+- [ ] Senha do papel em variável de ambiente, nunca no código.
+- [ ] `search_path` fixado, para não depender do padrão do usuário do banco.
+- [ ] Backup automático configurado. Como as fotos estão em `bytea`, o dump
+      inclui os binários: dimensionar o backup considerando o volume de imagens.
+- [ ] `pg_hba.conf` restringindo origem das conexões.
+- [ ] Monitoramento de conexão — o pool do `pg` tem limite padrão; em teste de
+      carga, verificar se não esgota as conexões disponíveis.
+
+**Sobre `bytea` e volume.** Guardar as fotos na própria tabela é adequado ao
+escopo, mas vale registrar o efeito: cada linha de `chamados` carrega a imagem, e
+consultas de listagem que usam `SELECT *` puxam os bytes junto. Duas saídas se o
+volume crescer — `ALTER TABLE ... SET STORAGE EXTERNAL` para o `TOAST` mandar os
+bytes para arquivo, ou mover as fotos para object storage e guardar só a
+referência. Ambas mudam o modelo; a decisão depende de volume real, que ainda não
+existe.
+
+### 5.8 Ambientes de teste
+
+Para os testes automatizados, um banco dedicado por execução evita interferência
+entre suítes. Duas abordagens:
+
+- **Banco descartável por execução** — mais simples e mais próximo de produção.
+- **Schema isolado por worker** — mais rápido, sem servidor extra. Exige que a
+  aplicação aceite `search_path` por conexão, e que as migrations sejam aplicadas
+  por schema.
+
+Recomenda-se o banco descartável para a suíte e2e: o ganho de velocidade do schema
+não compensa a complexidade de `search_path` enquanto a conexão ainda está em
+memória, e a suíte é pequena (42 testes).
+
+---
+
+## 6. Correspondência com o código atual
 
 | Elemento do modelo | Onde está hoje | Situação |
 |---|---|---|
