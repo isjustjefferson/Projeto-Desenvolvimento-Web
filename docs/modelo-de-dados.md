@@ -563,7 +563,8 @@ Resultados:
 
 | Verificação | Resultado |
 |---|---|
-| 5 tabelas, 4 ENUM, 10 índices, 5 FKs, 1 CHECK criados | Aplicado sem erro |
+| 5 tabelas, 4 ENUM, 16 índices, 6 FKs, 1 CHECK criados | Aplicado sem erro |
+| Reexecução dos 5 arquivos | Sem erro (idempotente) |
 | `CONCLUIDO` com solução `NULL` | Rejeitado pelo CHECK |
 | `CONCLUIDO` com solução só de espaços | Rejeitado pelo CHECK |
 | `CONCLUIDO` com solução preenchida | Aceito |
@@ -575,9 +576,13 @@ Resultados:
 | `bytea` de 8 bytes | Round-trip exato (`89504e470d0a1a0a`) |
 | `categoria = 'INVALIDA'` | Rejeitado pelo ENUM |
 | `setval` e próximo id automático | `max + 1`, correto |
+| Índice composto do histórico | `(chamado_id, data_hora DESC, id DESC)` |
 
 O teste do CHECK é o que revelou o defeito corrigido em 4.3: a versão anterior aceitou
 três chamados `CONCLUIDO` com solução `NULL` ou em branco.
+
+A execução também corrigiu um erro de contagem: são **6** FKs, não 5, porque
+`chamados` tem três (seção 5.6).
 
 ---
 
@@ -640,30 +645,48 @@ o fuso de cada cliente.
 
 ### 5.4 Aplicar o schema
 
-O DDL completo está nas seções 3.1, 4.1, 4.2, 4.3 e 4.4, e **deve ser aplicado nesta
-ordem**, que respeita as dependências:
+O DDL completo está nos arquivos da pasta `db/`, e o script
+`scripts/iniciar-banco.ps1` aplica tudo na ordem correta:
 
-1. **4.1** — os 4 tipos ENUM (nenhum pré-requisito).
-2. **3.1** — as 5 tabelas, sem as FKs.
-3. **4.2** — as 5 chaves estrangeiras (dependem das tabelas).
-4. **4.3** — o CHECK do RN04.
-5. **4.4** — os 10 índices (dependem das FKs, para não reescrever tabela).
+```powershell
+.\scripts\iniciar-banco.ps1
+```
 
-Em um banco vazio:
+O script cria o papel e o banco, aplica os cinco arquivos e imprime a verificação.
+Para outro banco, com recriação do schema:
+
+```powershell
+.\scripts\iniciar-banco.ps1 -NomeBanco predial_dev -Recriar
+```
+
+Para instalar só o schema num banco que já existe:
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f schema.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/01_tipos.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/02_tabelas.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/03_chaves_estrangeiras.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/04_check_rn04.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/05_indices.sql
 ```
+
+A ordem é obrigatória, e cada arquivo declara o porquê no cabeçalho:
+
+| Ordem | Arquivo | Depende de |
+|---|---|---|
+| 1 | `01_tipos.sql` | nada |
+| 2 | `02_tabelas.sql` | dos tipos ENUM |
+| 3 | `03_chaves_estrangeiras.sql` | das tabelas |
+| 4 | `04_check_rn04.sql` | de `chamados` existir |
+| 5 | `05_indices.sql` | das FKs, para não reescrever tabela |
 
 `-v ON_ERROR_STOP=1` é importante: sem ele, o `psql` **continua após um erro** e
 devolve código de saída 0, dando a impressão de sucesso num script parcialmente
 aplicado. Foi exatamente esse comportamento que escondeu a falha do CHECK na
 validação inicial.
 
-Uma ressalva sobre idempotência: `CREATE TYPE` **não aceita `IF NOT EXISTS`** no
-PostgreSQL. Reexecutar o script num banco já populado falha com
-`type "status" already exists`. Num banco vazio não há problema; para
-reaplicação, use migrations versionadas.
+Os arquivos são **reexecutáveis**. `CREATE TYPE` não aceita `IF NOT EXISTS`, então
+cada criação de tipo e de constraint é envolvida num bloco `DO` que consulta o
+catálogo antes de criar — ver 4.7.
 
 ### 5.5 Carregar os dados iniciais
 
@@ -671,22 +694,33 @@ A carga usa `OVERRIDING SYSTEM VALUE` e termina com os quatro `setval` (ver 4.6)
 Ponto de atenção: o seed precisa de **os dois** — sem `OVERRIDING SYSTEM VALUE` o
 `id` explícito é recusado, e sem `setval` a primeira inserção automática colide.
 
+Os dados de demonstração são carregados pelo seed da aplicação, e não por
+`iniciar-banco.ps1`: o seed depende de `bcrypt` para gerar os hashes, então roda
+em Node, não em SQL.
+
 ### 5.6 Verificar a implantação
 
 ```sql
 -- 5 tabelas
 SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';
 
--- 10 índices + 1 unique + 5 PK
+-- 16 índices: 10 explícitos + 1 UNIQUE de e-mail + 5 chaves primárias
 SELECT count(*) FROM pg_indexes WHERE schemaname = 'public';
+
+-- 6 chaves estrangeiras
+SELECT count(*) FROM pg_constraint WHERE contype = 'f';
 
 -- ON DELETE de cada FK
 SELECT conname, pg_get_constraintdef(oid)
 FROM pg_constraint WHERE contype = 'f' ORDER BY conname;
 ```
 
-Esperado: `5`, `16`, e 5 constraints cujas definições contenham `RESTRICT` (três),
+Esperado: `5`, `16`, `6`, e seis constraints distribuídas em `RESTRICT` (três),
 `SET NULL` (uma) e `CASCADE` (duas).
+
+São **seis** FKs e não cinco: `chamados` tem três (`local_id`, `criado_por_id` e
+`tecnico_id`), e não uma. `iniciar-banco.ps1` verifica esse número e falha se
+divergir, o que evitou que a contagem errada passasse despercebida.
 
 ### 5.7 Checklist de produção
 
