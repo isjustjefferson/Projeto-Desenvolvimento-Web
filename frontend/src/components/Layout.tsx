@@ -29,7 +29,7 @@ export function Layout() {
       to: '/',
       label: 'Dashboard',
       icon: LayoutDashboard,
-      visivel: pode(usuario.role, 'dashboard'),
+      visivel: true,
       end: true,
     },
     {

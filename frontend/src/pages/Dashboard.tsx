@@ -11,7 +11,13 @@ import {
 import { useChamados } from '../context/ChamadosContext';
 import { useAuth } from '../context/AuthContext';
 import { useDiretorio } from '../context/DiretorioContext';
-import { pode } from '../rbac';
+import {
+  chamadosVisiveis,
+  especialidadeParaCategoria,
+  pode,
+  statusVisiveisPorRole,
+  tecnicoSemEspecialidade,
+} from '../rbac';
 import {
   categoriaLabel,
   formatarData,
@@ -46,6 +52,12 @@ export function Dashboard() {
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroPrioridade, setFiltroPrioridade] = useState('');
 
+  // Chamados que o perfil pode enxergar (recorte por papel/especialidade)
+  const visiveis = useMemo(
+    () => (usuario ? chamadosVisiveis(chamados, usuario) : []),
+    [chamados, usuario],
+  );
+
   const dados = useMemo(() => {
     if (!usuario) {
       return {
@@ -58,17 +70,17 @@ export function Dashboard() {
         criticasPendentes: 0,
       };
     }
-    const porStatus = chamados.reduce<Record<string, number>>((acc, c) => {
+    const porStatus = visiveis.reduce<Record<string, number>>((acc, c) => {
       acc[c.status] = (acc[c.status] || 0) + 1;
       return acc;
     }, {});
-    const porCategoria = chamados.reduce<Record<string, number>>((acc, c) => {
+    const porCategoria = visiveis.reduce<Record<string, number>>((acc, c) => {
       acc[c.categoria] = (acc[c.categoria] || 0) + 1;
       return acc;
     }, {});
     const porPrioridadeAtiva = prioridades.reduce(
       (acc, p) => {
-        acc[p] = chamados.filter(
+        acc[p] = visiveis.filter(
           (c) => c.prioridade === p && c.status !== 'CONCLUIDO',
         ).length;
         return acc;
@@ -76,34 +88,34 @@ export function Dashboard() {
       {} as Record<Prioridade, number>,
     );
     return {
-      abertos: chamados.filter((c) => c.status !== 'CONCLUIDO').length,
-      concluidos: chamados.filter((c) => c.status === 'CONCLUIDO').length,
+      abertos: visiveis.filter((c) => c.status !== 'CONCLUIDO').length,
+      concluidos: visiveis.filter((c) => c.status === 'CONCLUIDO').length,
       triagem: porStatus['AGUARDANDO_APROVACAO'] || 0,
       porStatus,
       porCategoria,
       porPrioridadeAtiva,
       criticasPendentes: porPrioridadeAtiva['CRITICA'],
     };
-  }, [chamados, usuario]);
+  }, [visiveis, usuario]);
 
   const podeVerTriagem = usuario ? pode(usuario.role, 'triar') : false;
 
-  const filtrados = useMemo(() => {
-    if (!usuario) return [];
-    return chamados
-      .filter((c) => {
-        if (usuario.role === 'SOLICITANTE' && c.criadoPorId !== usuario.id) {
-          return false;
-        }
-        if (filtroStatus && c.status !== filtroStatus) return false;
-        if (filtroPrioridade && c.prioridade !== filtroPrioridade) return false;
-        return true;
-      })
-      .sort(
-        (a, b) =>
-          new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime(),
-      );
-  }, [chamados, usuario, filtroStatus, filtroPrioridade]);
+  const filtrados = useMemo(
+    () =>
+      visiveis
+        .filter((c) => {
+          if (filtroStatus && c.status !== filtroStatus) return false;
+          if (filtroPrioridade && c.prioridade !== filtroPrioridade) return false;
+          return true;
+        })
+        .sort(
+          (a, b) =>
+            new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime(),
+        ),
+    [visiveis, filtroStatus, filtroPrioridade],
+  );
+
+  const semEspecialidade = usuario ? tecnicoSemEspecialidade(usuario) : false;
 
   const listaChamados = filtrados.slice(0, 8);
 
@@ -161,6 +173,24 @@ export function Dashboard() {
 
   const maxCategoria = Math.max(1, ...Object.values(dados.porCategoria));
 
+  // Só oferece filtro/linha de status que o perfil realmente enxerga
+  const statusDoPerfil = statuses.filter((s) =>
+    statusVisiveisPorRole[usuario.role].includes(s),
+  );
+
+  const escopoLabel = (() => {
+    if (usuario.role === 'SOLICITANTE') {
+      return 'Exibindo apenas os chamados abertos por você.';
+    }
+    if (usuario.role === 'TECNICO') {
+      const cat = especialidadeParaCategoria(usuario.especialidade);
+      return cat
+        ? `Exibindo os chamados de ${categoriaLabel[cat]} e os atribuídos a você.`
+        : 'Exibindo apenas os chamados atribuídos a você.';
+    }
+    return 'Visão geral de todos os chamados.';
+  })();
+
   return (
     <div className="space-y-6">
       <div>
@@ -168,7 +198,15 @@ export function Dashboard() {
         <p className="text-sm text-gray-500">
           Painel do sistema · {usuario.nome} ({usuario.role})
         </p>
+        <p className="mt-0.5 text-xs text-gray-400">{escopoLabel}</p>
       </div>
+
+      {semEspecialidade && (
+        <div className="card border-amber-200 bg-amber-50 text-sm text-amber-800">
+          Sua especialidade não está definida. Você está vendo apenas os chamados
+          atribuídos a você — fale com o gestor para definir sua especialidade.
+        </div>
+      )}
 
       {/* Indicadores rápidos */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -227,7 +265,7 @@ export function Dashboard() {
             Chamados por status
           </h2>
           <div className="space-y-2">
-            {statuses.map((s) => (
+            {statusDoPerfil.map((s) => (
               <div
                 key={s}
                 className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
@@ -328,7 +366,7 @@ export function Dashboard() {
               Lista e Filtro de Chamados
             </h2>
             <p className="text-xs text-gray-500">
-              {filtrados.length} de {chamados.length} chamados
+              {filtrados.length} de {visiveis.length} chamados
             </p>
           </div>
           <Link to="/chamados" className="btn-secondary">
@@ -344,7 +382,7 @@ export function Dashboard() {
             aria-label="Filtrar por status"
           >
             <option value="">Status: todos</option>
-            {statuses.map((s) => (
+            {statusDoPerfil.map((s) => (
               <option key={s} value={s}>
                 {statusLabel[s]}
               </option>

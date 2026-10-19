@@ -1,10 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChamados } from '../context/ChamadosContext';
 import { useDiretorio } from '../context/DiretorioContext';
-import { pode, statusVisiveisPorRole } from '../rbac';
+import {
+  chamadosVisiveis,
+  pode,
+  statusVisiveisPorRole,
+  tecnicoSemEspecialidade,
+} from '../rbac';
 import {
   categoriaLabel,
   prioridadeLabel,
@@ -25,21 +30,13 @@ export function ChamadosLista() {
 
   const visiveis = useMemo(() => {
     if (!usuario) return [];
-    return chamados
+    return chamadosVisiveis(chamados, usuario)
       .filter((c) => {
-        // Perfil determina quais status aparecem
-        const statusPermitidos = statusVisiveisPorRole[usuario.role];
-        if (!statusPermitidos.includes(c.status)) return false;
-
-        // Solicitante só enxerga os próprios chamados
-        if (usuario.role === 'SOLICITANTE' && c.criadoPorId !== usuario.id) {
-          return false;
-        }
-
-        // Técnico: aba de disponíveis (revisados sem técnico) ou de meus atribuídos
+        // Técnico: aba de disponíveis (da especialidade dele, ainda sem técnico)
+        // ou de meus atribuídos
         if (usuario.role === 'TECNICO') {
           if (aba === 'disponiveis') {
-            if (c.status !== 'REVISADO' || c.tecnicoId) return false;
+            if (c.tecnicoId) return false;
           } else {
             if (c.tecnicoId !== usuario.id) return false;
           }
@@ -62,15 +59,27 @@ export function ChamadosLista() {
   }, [chamados, usuario, aba, filtroStatus, filtroPrioridade, busca]);
 
   const podeCriar = usuario ? pode(usuario.role, 'criar') : false;
+  const semEspecialidade = usuario ? tecnicoSemEspecialidade(usuario) : false;
+  const statusDoPerfil = usuario
+    ? (Object.keys(statusLabel) as Status[]).filter((s) =>
+        statusVisiveisPorRole[usuario.role].includes(s),
+      )
+    : [];
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
+          <Link
+            to="/"
+            className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-brand-700"
+          >
+            <ArrowLeft className="h-4 w-4" /> Voltar ao Dashboard
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Chamados</h1>
           <p className="text-sm text-gray-500">
             {usuario?.role === 'SOLICITANTE' && 'Seus chamados de manutenção'}
-            {usuario?.role === 'TECNICO' && 'Chamados disponíveis e atribuídos a você'}
+            {usuario?.role === 'TECNICO' && 'Chamados da sua especialidade e atribuídos a você'}
             {usuario?.role === 'GESTOR' && 'Fila de triagem e chamados da edificação'}
             {usuario?.role === 'ADMINISTRADOR' && 'Gestão completa de chamados'}
           </p>
@@ -107,6 +116,13 @@ export function ChamadosLista() {
         </div>
       )}
 
+      {semEspecialidade && (
+        <div className="card border-amber-200 bg-amber-50 text-sm text-amber-800">
+          Sua especialidade não está definida. Você está vendo apenas os chamados
+          atribuídos a você — fale com o gestor para definir sua especialidade.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div className="relative sm:col-span-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -123,7 +139,7 @@ export function ChamadosLista() {
           onChange={(e) => setFiltroStatus(e.target.value)}
         >
           <option value="">Status: todos</option>
-          {(Object.keys(statusLabel) as Status[]).map((s) => (
+          {statusDoPerfil.map((s) => (
             <option key={s} value={s}>{statusLabel[s]}</option>
           ))}
         </select>
@@ -147,7 +163,9 @@ export function ChamadosLista() {
         <div className="card py-12 text-center text-red-500">{erro}</div>
       ) : visiveis.length === 0 ? (
         <div className="card py-12 text-center text-gray-500">
-          Nenhum chamado encontrado para este perfil.
+          {usuario?.role === 'TECNICO' && aba === 'disponiveis'
+            ? 'Nenhum chamado disponível na sua especialidade no momento.'
+            : 'Nenhum chamado encontrado para este perfil.'}
         </div>
       ) : (
         <div className="space-y-3">
