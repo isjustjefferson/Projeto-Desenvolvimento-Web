@@ -11,7 +11,6 @@ import { useAuth } from './AuthContext';
 import * as usuariosApi from '../api/usuarios';
 
 interface DiretorioContextValue {
-  usuarios: UsuarioResumo[];
   tecnicos: UsuarioResumo[];
   nomeUsuario: (id: number | null | undefined) => string;
   recarregar: () => Promise<void>;
@@ -43,7 +42,6 @@ export function DiretorioProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<DiretorioContextValue>(
     () => ({
-      usuarios,
       tecnicos: usuarios.filter((u) => u.role === 'TECNICO'),
       nomeUsuario: (id) =>
         id ? usuarios.find((u) => u.id === id)?.nome || '—' : '—',

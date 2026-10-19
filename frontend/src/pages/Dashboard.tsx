@@ -35,12 +35,12 @@ const prioridades: Prioridade[] = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'];
 const prioridadeIconeCor: Record<Prioridade, string> = {
   CRITICA: 'bg-red-500 text-white',
   ALTA: 'bg-orange-500 text-white',
-  MEDIA: 'bg-yellow-500 text-white',
+  MEDIA: 'bg-yellow-400 text-gray-900',
   BAIXA: 'bg-emerald-500 text-white',
 };
 
 export function Dashboard() {
-  const { chamados } = useChamados();
+  const { chamados, carregando, erro, recarregar } = useChamados();
   const { usuario } = useAuth();
   const { nomeUsuario } = useDiretorio();
   const [filtroStatus, setFiltroStatus] = useState('');
@@ -87,7 +87,46 @@ export function Dashboard() {
   }, [chamados, usuario]);
 
   const podeVerTriagem = usuario ? pode(usuario.role, 'triar') : false;
+
+  const filtrados = useMemo(() => {
+    if (!usuario) return [];
+    return chamados
+      .filter((c) => {
+        if (usuario.role === 'SOLICITANTE' && c.criadoPorId !== usuario.id) {
+          return false;
+        }
+        if (filtroStatus && c.status !== filtroStatus) return false;
+        if (filtroPrioridade && c.prioridade !== filtroPrioridade) return false;
+        return true;
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime(),
+      );
+  }, [chamados, usuario, filtroStatus, filtroPrioridade]);
+
+  const listaChamados = filtrados.slice(0, 8);
+
   if (!usuario) return null;
+
+  if (carregando) {
+    return (
+      <div className="card py-12 text-center text-gray-500">
+        Carregando indicadores…
+      </div>
+    );
+  }
+
+  if (erro) {
+    return (
+      <div className="card flex flex-col items-center gap-2 py-12 text-center">
+        <p className="text-red-500">{erro}</p>
+        <button onClick={() => void recarregar()} className="btn-secondary">
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   const cards = [
     {
@@ -119,23 +158,6 @@ export function Dashboard() {
       cor: 'bg-red-500 text-white',
     },
   ];
-
-  const listaChamados = useMemo(() => {
-    return chamados
-      .filter((c) => {
-        if (usuario.role === 'SOLICITANTE' && c.criadoPorId !== usuario.id) {
-          return false;
-        }
-        if (filtroStatus && c.status !== filtroStatus) return false;
-        if (filtroPrioridade && c.prioridade !== filtroPrioridade) return false;
-        return true;
-      })
-      .sort(
-        (a, b) =>
-          new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime(),
-      )
-      .slice(0, 8);
-  }, [chamados, usuario, filtroStatus, filtroPrioridade]);
 
   const maxCategoria = Math.max(1, ...Object.values(dados.porCategoria));
 
@@ -246,19 +268,23 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="card flex flex-col items-center justify-center text-center">
-          <span className="mb-2 inline-flex rounded-lg bg-brand-500 p-3 text-white">
-            <Users className="h-6 w-6" />
-          </span>
-          <h2 className="text-sm font-semibold text-gray-700">
-            Fila de Triagem do Gestor
-          </h2>
-          <p className="mt-1 text-3xl font-bold text-gray-900">
-            {dados.triagem}
-          </p>
-          <p className="text-xs text-gray-500">chamados aguardando aprovação</p>
-        </div>
+      <div className={`grid gap-6 ${podeVerTriagem ? 'lg:grid-cols-2' : ''}`}>
+        {podeVerTriagem && (
+          <div className="card flex flex-col items-center justify-center text-center">
+            <span className="mb-2 inline-flex rounded-lg bg-brand-500 p-3 text-white">
+              <Users className="h-6 w-6" />
+            </span>
+            <h2 className="text-sm font-semibold text-gray-700">
+              Fila de Triagem do Gestor
+            </h2>
+            <p className="mt-1 text-3xl font-bold text-gray-900">
+              {dados.triagem}
+            </p>
+            <p className="text-xs text-gray-500">
+              chamados aguardando aprovação
+            </p>
+          </div>
+        )}
 
         <div className="card">
           <h2 className="mb-3 font-semibold text-gray-800">
@@ -302,7 +328,7 @@ export function Dashboard() {
               Lista e Filtro de Chamados
             </h2>
             <p className="text-xs text-gray-500">
-              {listaChamados.length} de {chamados.length} chamados
+              {filtrados.length} de {chamados.length} chamados
             </p>
           </div>
           <Link to="/chamados" className="btn-secondary">

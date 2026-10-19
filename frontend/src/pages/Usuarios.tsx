@@ -38,8 +38,32 @@ function LinhaMorador({
   removerCargo: (id: number) => void;
   excluir: (id: number) => void;
 }) {
-  const [novoCargo, setNovoCargo] = useState<Role>('TECNICO');
+  const [novoCargo, setNovoCargo] = useState<Role>(
+    m.role === 'SOLICITANTE' ? 'TECNICO' : m.role,
+  );
   const promovido = m.role !== 'SOLICITANTE';
+
+  const atribuir = () => {
+    if (novoCargo === m.role) return;
+    const confirmado = window.confirm(
+      `Alterar o perfil de ${m.nome} de "${roleLabel[m.role]}" para "${roleLabel[novoCargo]}"?`,
+    );
+    if (confirmado) definirCargo(m.id, novoCargo);
+  };
+
+  const remover = () => {
+    const confirmado = window.confirm(
+      `Remover o cargo de ${m.nome}? O perfil voltará a ser "Solicitante".`,
+    );
+    if (confirmado) removerCargo(m.id);
+  };
+
+  const apagar = () => {
+    const confirmado = window.confirm(
+      `Excluir a conta de ${m.nome}? Esta ação não pode ser desfeita.`,
+    );
+    if (confirmado) excluir(m.id);
+  };
 
   return (
     <tr className="hover:bg-gray-50">
@@ -100,8 +124,9 @@ function LinhaMorador({
               ))}
             </select>
             <button
-              onClick={() => definirCargo(m.id, novoCargo)}
-              className="flex items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-500 hover:text-white hover:border-emerald-500"
+              onClick={atribuir}
+              disabled={novoCargo === m.role}
+              className="flex items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-500 hover:text-white hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
               title="Atribuir cargo"
             >
               <ShieldCheck className="h-3.5 w-3.5" /> Atribuir
@@ -109,7 +134,7 @@ function LinhaMorador({
           </div>
           {promovido && (
             <button
-              onClick={() => removerCargo(m.id)}
+              onClick={remover}
               className="flex items-center gap-1.5 rounded-lg border border-amber-300 px-2.5 py-1.5 text-xs font-semibold text-amber-600 transition hover:bg-amber-500 hover:text-white hover:border-amber-500"
               title="Remover cargo (volta a Solicitante)"
             >
@@ -117,7 +142,7 @@ function LinhaMorador({
             </button>
           )}
           <button
-            onClick={() => excluir(m.id)}
+            onClick={apagar}
             className="flex items-center gap-1.5 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-500 hover:text-white hover:border-red-500"
             title="Excluir conta"
           >

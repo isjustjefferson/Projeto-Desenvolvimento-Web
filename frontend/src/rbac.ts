@@ -21,6 +21,3 @@ export const pode = (role: Role, acao: string): boolean => {
   if (acoesPorRole[role].includes('tudo')) return true;
   return acoesPorRole[role].includes(acao);
 };
-
-// Prioridades que o Gestor pode definir ao aprovar
-export const prioridadesParaAprovacao = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'] as const;

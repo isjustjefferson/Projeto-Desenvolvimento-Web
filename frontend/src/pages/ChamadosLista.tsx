@@ -36,10 +36,10 @@ export function ChamadosLista() {
           return false;
         }
 
-        // Técnico: aba de disponíveis (revisados) ou de meus atribuídos
+        // Técnico: aba de disponíveis (revisados sem técnico) ou de meus atribuídos
         if (usuario.role === 'TECNICO') {
           if (aba === 'disponiveis') {
-            if (c.status !== 'REVISADO') return false;
+            if (c.status !== 'REVISADO' || c.tecnicoId) return false;
           } else {
             if (c.tecnicoId !== usuario.id) return false;
           }

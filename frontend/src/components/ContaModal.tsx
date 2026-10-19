@@ -47,14 +47,15 @@ export function ContaModal({
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
-    if (!nome.trim()) {
-      setErro('Informe um nome válido.');
+    if (nome.trim().length < 2) {
+      setErro('Informe um nome com pelo menos 2 caracteres.');
       return;
     }
     setSalvando(true);
     const res = await atualizarConta({
       nome: nome.trim(),
-      foto: foto || undefined,
+      // Enviar string vazia remove a foto; `undefined` seria omitido do JSON.
+      foto,
     });
     setSalvando(false);
     if (!res.ok) {

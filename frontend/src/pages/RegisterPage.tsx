@@ -60,6 +60,7 @@ export function RegisterPage() {
               id="reg-nome"
               className="input pl-9"
               placeholder="Seu nome completo"
+              required
               {...inputProps(nome, setNome)}
             />
           </div>
@@ -77,6 +78,7 @@ export function RegisterPage() {
               autoComplete="email"
               className="input pl-9"
               placeholder="voce@email.com"
+              required
               {...inputProps(email, setEmail)}
             />
           </div>
@@ -92,6 +94,7 @@ export function RegisterPage() {
               id="reg-unidade"
               className="input pl-9"
               placeholder="Ex.: Bloco A, Ap 204"
+              required
               {...inputProps(unidade, setUnidade)}
             />
           </div>
@@ -109,6 +112,8 @@ export function RegisterPage() {
               autoComplete="new-password"
               className="input pl-9 pr-10"
               placeholder="Mínimo 6 caracteres"
+              required
+              minLength={6}
               {...inputProps(senha, setSenha)}
             />
             <button
@@ -138,6 +143,7 @@ export function RegisterPage() {
               autoComplete="new-password"
               className="input pl-9"
               placeholder="Repita a senha"
+              required
               {...inputProps(confirmar, setConfirmar)}
             />
           </div>

@@ -42,9 +42,17 @@ export function ChamadoDetalhe() {
   const [erroAcao, setErroAcao] = useState('');
   const [buscando, setBuscando] = useState(false);
   const [naoEncontrado, setNaoEncontrado] = useState(false);
+  const [erroBusca, setErroBusca] = useState('');
+  const [tentativa, setTentativa] = useState(0);
 
   const alvoId = id ? Number(id) : undefined;
   const chamado = alvoId !== undefined ? getChamado(alvoId) : undefined;
+
+  // Ao trocar de ID, limpa os estados de erro da busca anterior
+  useEffect(() => {
+    setNaoEncontrado(false);
+    setErroBusca('');
+  }, [alvoId]);
 
   // Se o chamado não estiver na listagem (acesso direto pela URL ou status fora
   // do escopo da lista), busca pelo endpoint de detalhe.
@@ -52,9 +60,20 @@ export function ChamadoDetalhe() {
     if (carregando || alvoId === undefined || chamado) return;
     let ativo = true;
     setBuscando(true);
+    setNaoEncontrado(false);
+    setErroBusca('');
     obterChamado(alvoId)
-      .catch(() => {
-        if (ativo) setNaoEncontrado(true);
+      .catch((err: unknown) => {
+        if (!ativo) return;
+        if (err instanceof ApiError && err.status === 404) {
+          setNaoEncontrado(true);
+        } else {
+          setErroBusca(
+            err instanceof ApiError
+              ? err.message
+              : 'Não foi possível carregar o chamado. Verifique sua conexão.',
+          );
+        }
       })
       .finally(() => {
         if (ativo) setBuscando(false);
@@ -62,12 +81,31 @@ export function ChamadoDetalhe() {
     return () => {
       ativo = false;
     };
-  }, [carregando, alvoId, chamado, obterChamado]);
+  }, [carregando, alvoId, chamado, obterChamado, tentativa]);
 
   if (carregando || buscando) {
     return (
       <div className="card py-12 text-center text-gray-500">
         Carregando chamado…
+      </div>
+    );
+  }
+
+  if (erroBusca) {
+    return (
+      <div className="card flex flex-col items-center gap-2 py-12 text-center">
+        <p className="text-red-500">{erroBusca}</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setTentativa((t) => t + 1)}
+            className="btn-secondary"
+          >
+            Tentar novamente
+          </button>
+          <Link to="/chamados" className="btn-secondary">
+            Voltar
+          </Link>
+        </div>
       </div>
     );
   }
@@ -324,7 +362,8 @@ export function ChamadoDetalhe() {
               <option value="">Selecione o técnico</option>
               {tecnicos.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.nome} ({t.especialidade})
+                  {t.nome}
+                  {t.especialidade ? ` (${t.especialidade})` : ''}
                 </option>
               ))}
             </select>

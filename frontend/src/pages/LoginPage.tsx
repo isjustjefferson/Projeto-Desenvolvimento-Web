@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AuthShell } from '../components/AuthShell';
@@ -7,6 +7,7 @@ import { AuthShell } from '../components/AuthShell';
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -23,7 +24,9 @@ export function LoginPage() {
       setErro(res.erro || 'Não foi possível entrar.');
       return;
     }
-    navigate('/', { replace: true });
+    // Volta para a rota que o usuário tentava acessar antes do login
+    const de = location.state as { from?: { pathname?: string } } | null;
+    navigate(de?.from?.pathname || '/', { replace: true });
   };
 
   return (
@@ -48,6 +51,7 @@ export function LoginPage() {
               id="login-email"
               type="email"
               autoComplete="email"
+              required
               className="input pl-9"
               placeholder="voce@predial.com"
               value={email}
@@ -65,6 +69,7 @@ export function LoginPage() {
               id="login-senha"
               type={mostrarSenha ? 'text' : 'password'}
               autoComplete="current-password"
+              required
               className="input pr-10"
               placeholder="••••••"
               value={senha}

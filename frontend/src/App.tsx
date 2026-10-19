@@ -11,6 +11,7 @@ import { ChamadosLista } from './pages/ChamadosLista';
 import { NovoChamado } from './pages/NovoChamado';
 import { ChamadoDetalhe } from './pages/ChamadoDetalhe';
 import { Usuarios } from './pages/Usuarios';
+import type { Role } from './types';
 
 function Carregando() {
   return (
@@ -34,6 +35,22 @@ function PublicOnly({ children }: { children: ReactNode }) {
   const { usuario, carregando } = useAuth();
   if (carregando) return <Carregando />;
   if (usuario) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
+// Restringe uma rota a perfis específicos (espelha as regras de @Roles do backend)
+function RequireRoles({
+  roles,
+  children,
+}: {
+  roles: Role[];
+  children: ReactNode;
+}) {
+  const { usuario, carregando } = useAuth();
+  if (carregando) return <Carregando />;
+  if (!usuario || !roles.includes(usuario.role)) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
@@ -84,9 +101,23 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="chamados" element={<ChamadosLista />} />
-        <Route path="chamados/novo" element={<NovoChamado />} />
+        <Route
+          path="chamados/novo"
+          element={
+            <RequireRoles roles={['SOLICITANTE', 'ADMINISTRADOR']}>
+              <NovoChamado />
+            </RequireRoles>
+          }
+        />
         <Route path="chamados/:id" element={<ChamadoDetalhe />} />
-        <Route path="usuarios" element={<Usuarios />} />
+        <Route
+          path="usuarios"
+          element={
+            <RequireRoles roles={['ADMINISTRADOR']}>
+              <Usuarios />
+            </RequireRoles>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
