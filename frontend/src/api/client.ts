@@ -1,3 +1,5 @@
+import type { ZodType } from 'zod';
+
 const STORAGE_KEY = 'predial.usuarioId';
 
 // Enviado pelo backend (ValidationPipe) quando a validação falha: message pode
@@ -34,9 +36,12 @@ async function extrairMensagem(res: Response): Promise<string> {
   return `Falha na requisição (${res.status}).`;
 }
 
+// Quando `schema` é informado, o corpo é validado antes de virar `T`. Resposta
+// fora do contrato é tratada como falha do servidor (500) — nunca silenciosa.
 async function requisicao<T>(
   caminho: string,
   opcoes: RequestInit = {},
+  schema?: ZodType<T>,
 ): Promise<T> {
   const headers = new Headers(opcoes.headers);
   if (opcoes.body !== undefined && !headers.has('Content-Type')) {
@@ -52,27 +57,56 @@ async function requisicao<T>(
     throw new ApiError(await extrairMensagem(res), res.status);
   }
   if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+
+  const corpo: unknown = await res.json();
+  if (!schema) return corpo as T;
+
+  const resultado = schema.safeParse(corpo);
+  if (!resultado.success) {
+    console.error(
+      `[api] Resposta fora do contrato em "${caminho}":`,
+      resultado.error.issues,
+      corpo,
+    );
+    throw new ApiError('Resposta inesperada do servidor.', 500);
+  }
+  return resultado.data;
 }
 
-export function get<T>(caminho: string): Promise<T> {
-  return requisicao<T>(caminho);
+export function get<T>(caminho: string, schema?: ZodType<T>): Promise<T> {
+  return requisicao<T>(caminho, {}, schema);
 }
 
-export function post<T>(caminho: string, corpo?: unknown): Promise<T> {
-  return requisicao<T>(caminho, {
-    method: 'POST',
-    body: corpo === undefined ? undefined : JSON.stringify(corpo),
-  });
+export function post<T>(
+  caminho: string,
+  corpo?: unknown,
+  schema?: ZodType<T>,
+): Promise<T> {
+  return requisicao<T>(
+    caminho,
+    {
+      method: 'POST',
+      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+    },
+    schema,
+  );
 }
 
-export function patch<T>(caminho: string, corpo?: unknown): Promise<T> {
-  return requisicao<T>(caminho, {
-    method: 'PATCH',
-    body: corpo === undefined ? undefined : JSON.stringify(corpo),
-  });
+export function patch<T>(
+  caminho: string,
+  corpo?: unknown,
+  schema?: ZodType<T>,
+): Promise<T> {
+  return requisicao<T>(
+    caminho,
+    {
+      method: 'PATCH',
+      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+    },
+    schema,
+  );
 }
 
-export function del<T>(caminho: string): Promise<T> {
-  return requisicao<T>(caminho, { method: 'DELETE' });
+export function del<T>(caminho: string, schema?: ZodType<T>): Promise<T> {
+  return requisicao<T>(caminho, { method: 'DELETE' }, schema);
 }

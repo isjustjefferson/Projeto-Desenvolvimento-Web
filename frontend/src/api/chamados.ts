@@ -1,5 +1,6 @@
 import type { Chamado, Prioridade } from '../types';
 import { get, post } from './client';
+import { respostaChamadoSchema, respostaChamadosSchema } from './schemas';
 
 export interface NovoChamadoInput {
   titulo: string;
@@ -14,28 +15,18 @@ export interface SolucaoInput {
   materiais: string;
 }
 
-interface RespostaChamados {
-  ok: true;
-  chamados: Chamado[];
-}
-
-interface RespostaChamado {
-  ok: true;
-  chamado: Chamado;
-}
-
 export async function listar(): Promise<Chamado[]> {
-  const res = await get<RespostaChamados>('/chamados');
+  const res = await get('/chamados', respostaChamadosSchema);
   return res.chamados;
 }
 
 export async function obter(id: number): Promise<Chamado> {
-  const res = await get<RespostaChamado>(`/chamados/${id}`);
+  const res = await get(`/chamados/${id}`, respostaChamadoSchema);
   return res.chamado;
 }
 
 export async function criar(input: NovoChamadoInput): Promise<Chamado> {
-  const res = await post<RespostaChamado>('/chamados', input);
+  const res = await post('/chamados', input, respostaChamadoSchema);
   return res.chamado;
 }
 
@@ -44,15 +35,16 @@ export async function aprovar(
   prioridade: Prioridade,
   tecnicoId: number,
 ): Promise<Chamado> {
-  const res = await post<RespostaChamado>(`/chamados/${id}/aprovar`, {
-    prioridade,
-    tecnicoId,
-  });
+  const res = await post(
+    `/chamados/${id}/aprovar`,
+    { prioridade, tecnicoId },
+    respostaChamadoSchema,
+  );
   return res.chamado;
 }
 
 export async function iniciar(id: number): Promise<Chamado> {
-  const res = await post<RespostaChamado>(`/chamados/${id}/iniciar`);
+  const res = await post(`/chamados/${id}/iniciar`, undefined, respostaChamadoSchema);
   return res.chamado;
 }
 
@@ -60,6 +52,10 @@ export async function concluir(
   id: number,
   solucao: SolucaoInput,
 ): Promise<Chamado> {
-  const res = await post<RespostaChamado>(`/chamados/${id}/concluir`, solucao);
+  const res = await post(
+    `/chamados/${id}/concluir`,
+    solucao,
+    respostaChamadoSchema,
+  );
   return res.chamado;
 }

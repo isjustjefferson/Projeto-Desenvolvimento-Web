@@ -33,8 +33,9 @@ const CATEGORIAS: Categoria[] = [
 
 // A especialidade do técnico é texto livre ("Elétrica", "Hidráulica"), enquanto
 // Chamado.categoria é um enum. Normaliza (sem acento, maiúsculas) para casar.
+// Aceita null porque o payload validado usa nullish() nos campos opcionais.
 export function especialidadeParaCategoria(
-  especialidade?: string,
+  especialidade?: string | null,
 ): Categoria | null {
   if (!especialidade) return null;
   const normalizada = especialidade

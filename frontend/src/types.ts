@@ -1,71 +1,30 @@
-export type Role = 'SOLICITANTE' | 'TECNICO' | 'GESTOR' | 'ADMINISTRADOR';
+import type { z } from 'zod';
+import type {
+  categoriaSchema,
+  chamadoSchema,
+  prioridadeSchema,
+  roleSchema,
+  statusSchema,
+  usuarioResumoSchema,
+  usuarioSchema,
+} from './api/schemas';
 
-export type Status =
-  | 'AGUARDANDO_APROVACAO'
-  | 'REVISADO'
-  | 'EM_ANDAMENTO'
-  | 'CONCLUIDO';
+// Os tipos de payload vêm dos schemas Zod (fonte única da verdade e validação
+// de runtime — ver api/schemas.ts). AuthState/NovoCadastro/AuthResult seguem
+// como interfaces porque não são payloads de resposta da API.
+export type Role = z.infer<typeof roleSchema>;
 
-export type Prioridade = 'BAIXA' | 'MEDIA' | 'ALTA' | 'CRITICA';
+export type Status = z.infer<typeof statusSchema>;
 
-export type Categoria =
-  | 'ELETRICA'
-  | 'HIDRAULICA'
-  | 'CLIMATIZACAO'
-  | 'MOBILIARIO'
-  | 'ESTRUTURAL'
-  | 'OUTROS';
+export type Prioridade = z.infer<typeof prioridadeSchema>;
 
-export interface Usuario {
-  id: number;
-  nome: string;
-  email: string;
-  role: Role;
-  unidade?: string;
-  especialidade?: string; // para técnicos
-  setor?: string; // para gestores / admins
-  ativo: boolean;
-  foto?: string;
-  criadoEm?: string;
-}
+export type Categoria = z.infer<typeof categoriaSchema>;
 
-export interface UsuarioResumo {
-  id: number;
-  nome: string;
-  role: Role;
-  especialidade?: string;
-}
+export type Usuario = z.infer<typeof usuarioSchema>;
 
-export interface Chamado {
-  id: number;
-  titulo: string;
-  descricao: string;
-  categoria: Categoria;
-  local: {
-    predio: string;
-    andar?: string;
-    sala?: string;
-  };
-  status: Status;
-  prioridade: Prioridade | null;
-  foto?: string | null;
-  criadoPorId: number;
-  tecnicoId?: number | null;
-  criadoEm: string;
-  atualizadoEm: string;
-  historico: {
-    id: number;
-    usuarioId: number;
-    de?: Status | null;
-    para: Status;
-    dataHora: string;
-    observacao?: string;
-  }[];
-  solucao?: {
-    descricao: string;
-    materiais: string;
-  } | null;
-}
+export type UsuarioResumo = z.infer<typeof usuarioResumoSchema>;
+
+export type Chamado = z.infer<typeof chamadoSchema>;
 
 export interface AuthState {
   usuario: Usuario | null;
