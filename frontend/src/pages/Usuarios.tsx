@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   BadgeCheck,
   Lock,
@@ -15,12 +16,50 @@ import * as usuariosApi from '../api/usuarios';
 import { ApiError } from '../api/client';
 import { roleColor, roleLabel } from '../helpers';
 import { Modal } from '../components/Modal';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import type { Role, Usuario } from '../types';
 
 const roles: Role[] = ['SOLICITANTE', 'TECNICO', 'GESTOR', 'ADMINISTRADOR'];
 
 // Cargos que o admin pode atribuir a um morador (o base "Solicitante" é o padrão)
 const cargosPromoviveis: Role[] = ['TECNICO', 'GESTOR', 'ADMINISTRADOR'];
+
+type TipoAcao = 'atribuir' | 'remover' | 'excluir';
+
+interface PedidoConfirmacao {
+  tipo: TipoAcao;
+  alvo: Usuario;
+  role?: Role;
+}
+
+function textoConfirmacao(p: PedidoConfirmacao): {
+  titulo: string;
+  mensagem: string;
+  rotulo: string;
+} {
+  switch (p.tipo) {
+    case 'atribuir':
+      return {
+        titulo: 'Alterar perfil',
+        mensagem: `Alterar o perfil de ${p.alvo.nome} de "${
+          roleLabel[p.alvo.role]
+        }" para "${roleLabel[p.role ?? 'SOLICITANTE']}"?`,
+        rotulo: 'Alterar',
+      };
+    case 'remover':
+      return {
+        titulo: 'Remover cargo',
+        mensagem: `Remover o cargo de ${p.alvo.nome}? O perfil voltará a ser "Solicitante".`,
+        rotulo: 'Remover',
+      };
+    default:
+      return {
+        titulo: 'Excluir conta',
+        mensagem: `Excluir a conta de ${p.alvo.nome}? Esta ação não pode ser desfeita.`,
+        rotulo: 'Excluir',
+      };
+  }
+}
 
 function mensagemErro(erro: unknown): string {
   if (erro instanceof ApiError) return erro.message;
@@ -29,14 +68,10 @@ function mensagemErro(erro: unknown): string {
 
 function LinhaMorador({
   m,
-  definirCargo,
-  removerCargo,
-  excluir,
+  pedirConfirmacao,
 }: {
   m: Usuario;
-  definirCargo: (id: number, role: Role) => void;
-  removerCargo: (id: number) => void;
-  excluir: (id: number) => void;
+  pedirConfirmacao: (pedido: PedidoConfirmacao) => void;
 }) {
   const [novoCargo, setNovoCargo] = useState<Role>(
     m.role === 'SOLICITANTE' ? 'TECNICO' : m.role,
@@ -45,24 +80,15 @@ function LinhaMorador({
 
   const atribuir = () => {
     if (novoCargo === m.role) return;
-    const confirmado = window.confirm(
-      `Alterar o perfil de ${m.nome} de "${roleLabel[m.role]}" para "${roleLabel[novoCargo]}"?`,
-    );
-    if (confirmado) definirCargo(m.id, novoCargo);
+    pedirConfirmacao({ tipo: 'atribuir', alvo: m, role: novoCargo });
   };
 
   const remover = () => {
-    const confirmado = window.confirm(
-      `Remover o cargo de ${m.nome}? O perfil voltará a ser "Solicitante".`,
-    );
-    if (confirmado) removerCargo(m.id);
+    pedirConfirmacao({ tipo: 'remover', alvo: m });
   };
 
   const apagar = () => {
-    const confirmado = window.confirm(
-      `Excluir a conta de ${m.nome}? Esta ação não pode ser desfeita.`,
-    );
-    if (confirmado) excluir(m.id);
+    pedirConfirmacao({ tipo: 'excluir', alvo: m });
   };
 
   return (
@@ -172,6 +198,11 @@ export function Usuarios() {
   const [especialidade, setEspecialidade] = useState('');
   const [setor, setSetor] = useState('');
   const [erroCriar, setErroCriar] = useState('');
+  const [criando, setCriando] = useState(false);
+  const [confirmacao, setConfirmacao] = useState<PedidoConfirmacao | null>(
+    null,
+  );
+  const [confirmando, setConfirmando] = useState(false);
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
@@ -193,15 +224,41 @@ export function Usuarios() {
 
   async function executarAcao(
     operacao: () => Promise<{ ok: boolean; erro?: string }>,
-  ) {
+  ): Promise<{ ok: boolean; erro?: string }> {
     setErro('');
     const res = await operacao();
     if (!res.ok) {
-      setErro(res.erro || 'Operação não concluída.');
-      return;
+      toast.error(res.erro || 'Operação não concluída.');
+      return { ok: false, erro: res.erro };
     }
     await recarregar();
     await recarregarDiretorio();
+    return { ok: true };
+  }
+
+  async function executarConfirmacao() {
+    if (!confirmacao) return;
+    setConfirmando(true);
+    const { tipo, alvo, role } = confirmacao;
+    const operacao =
+      tipo === 'atribuir' && role
+        ? () => definirCargo(alvo.id, role)
+        : tipo === 'remover'
+          ? () => removerCargo(alvo.id)
+          : () => excluirContaPorId(alvo.id);
+
+    const res = await executarAcao(operacao);
+    setConfirmando(false);
+    if (!res.ok) return;
+
+    setConfirmacao(null);
+    if (tipo === 'atribuir' && role) {
+      toast.success(`${alvo.nome} agora é ${roleLabel[role]}.`);
+    } else if (tipo === 'remover') {
+      toast.success(`Cargo removido de ${alvo.nome}.`);
+    } else {
+      toast.success(`Conta de ${alvo.nome} excluída.`);
+    }
   }
 
   if (!ehAdmin) {
@@ -222,29 +279,35 @@ export function Usuarios() {
     e.preventDefault();
     if (!nome.trim()) return;
     setErroCriar('');
-    const email = `${nome
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, '.')}@predial.com`;
-    const res = await criarUsuario({
-      nome: nome.trim(),
-      email,
-      senha: '123456',
-      role,
-      especialidade,
-      setor,
-    });
-    if (!res.ok) {
-      setErroCriar(res.erro || 'Não foi possível criar o usuário.');
-      return;
+    setCriando(true);
+    try {
+      const nomeNovo = nome.trim();
+      const email = `${nomeNovo
+        .toLowerCase()
+        .replace(/\s+/g, '.')}@predial.com`;
+      const res = await criarUsuario({
+        nome: nomeNovo,
+        email,
+        senha: '123456',
+        role,
+        especialidade,
+        setor,
+      });
+      if (!res.ok) {
+        setErroCriar(res.erro || 'Não foi possível criar o usuário.');
+        return;
+      }
+      setModal(false);
+      setNome('');
+      setRole('SOLICITANTE');
+      setEspecialidade('');
+      setSetor('');
+      await recarregar();
+      await recarregarDiretorio();
+      toast.success(`${nomeNovo} foi criado como ${roleLabel[role]}.`);
+    } finally {
+      setCriando(false);
     }
-    setModal(false);
-    setNome('');
-    setRole('SOLICITANTE');
-    setEspecialidade('');
-    setSetor('');
-    await recarregar();
-    await recarregarDiretorio();
   }
 
   return (
@@ -293,15 +356,7 @@ export function Usuarios() {
                   <LinhaMorador
                     key={u.id}
                     m={u}
-                    definirCargo={(id, novo) =>
-                      void executarAcao(() => definirCargo(id, novo))
-                    }
-                    removerCargo={(id) =>
-                      void executarAcao(() => removerCargo(id))
-                    }
-                    excluir={(id) =>
-                      void executarAcao(() => excluirContaPorId(id))
-                    }
+                    pedirConfirmacao={(pedido) => setConfirmacao(pedido)}
                   />
                 ))
               )}
@@ -348,6 +403,20 @@ export function Usuarios() {
           </div>
         </div>
       </div>
+
+      {confirmacao && (
+        <ConfirmDialog
+          open
+          titulo={textoConfirmacao(confirmacao).titulo}
+          mensagem={textoConfirmacao(confirmacao).mensagem}
+          rotuloConfirmar={textoConfirmacao(confirmacao).rotulo}
+          carregando={confirmando}
+          aoConfirmar={() => void executarConfirmacao()}
+          aoCancelar={() => {
+            if (!confirmando) setConfirmacao(null);
+          }}
+        />
+      )}
 
       <Modal open={modal} onClose={() => setModal(false)} title="Novo usuário">
         <form onSubmit={adicionar} className="space-y-4">
@@ -398,8 +467,12 @@ export function Usuarios() {
               {erroCriar}
             </div>
           )}
-          <button type="submit" className="btn-primary w-full">
-            Criar usuário
+          <button
+            type="submit"
+            className="btn-primary w-full"
+            disabled={criando}
+          >
+            {criando ? 'Criando…' : 'Criar usuário'}
           </button>
         </form>
       </Modal>

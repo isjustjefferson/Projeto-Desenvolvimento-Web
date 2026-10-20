@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { ImagePlus, Trash2, X, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from './Modal';
@@ -62,6 +63,7 @@ export function ContaModal({
       setErro(res.erro || 'Não foi possível salvar as alterações.');
       return;
     }
+    toast.success('Dados da conta atualizados.');
     onClose();
   };
 
@@ -74,6 +76,7 @@ export function ContaModal({
       setErro(res.erro || 'Não foi possível apagar a conta.');
       return;
     }
+    toast.success('Conta excluída.');
     onClose();
   };
 

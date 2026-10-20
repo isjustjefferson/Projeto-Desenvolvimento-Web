@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Search } from 'lucide-react';
+import { ArrowLeft, Inbox, Plus, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChamados } from '../context/ChamadosContext';
 import { useDiretorio } from '../context/DiretorioContext';
@@ -17,6 +17,7 @@ import {
   tempoRelativo,
 } from '../helpers';
 import { PrioridadeBadge, StatusBadge } from '../components/Badge';
+import { EmptyState } from '../components/EmptyState';
 import type { Status } from '../types';
 
 export function ChamadosLista() {
@@ -65,6 +66,7 @@ export function ChamadosLista() {
         statusVisiveisPorRole[usuario.role].includes(s),
       )
     : [];
+  const filtrosAtivos = Boolean(busca || filtroStatus || filtroPrioridade);
 
   return (
     <div className="space-y-4">
@@ -162,10 +164,40 @@ export function ChamadosLista() {
       ) : erro ? (
         <div className="card py-12 text-center text-red-500">{erro}</div>
       ) : visiveis.length === 0 ? (
-        <div className="card py-12 text-center text-gray-500">
-          {usuario?.role === 'TECNICO' && aba === 'disponiveis'
-            ? 'Nenhum chamado disponível na sua especialidade no momento.'
-            : 'Nenhum chamado encontrado para este perfil.'}
+        <div className="card">
+          <EmptyState
+            icon={Inbox}
+            titulo={
+              usuario?.role === 'TECNICO' && aba === 'disponiveis'
+                ? 'Nenhum chamado disponível'
+                : 'Nenhum chamado por aqui'
+            }
+            descricao={
+              filtrosAtivos
+                ? 'Nenhum chamado corresponde à sua busca ou aos filtros aplicados.'
+                : usuario?.role === 'TECNICO' && aba === 'disponiveis'
+                  ? 'Não há chamados da sua especialidade aguardando atendimento no momento.'
+                  : 'Quando houver chamados que você possa acompanhar, eles aparecem aqui.'
+            }
+            acao={
+              filtrosAtivos ? (
+                <button
+                  onClick={() => {
+                    setBusca('');
+                    setFiltroStatus('');
+                    setFiltroPrioridade('');
+                  }}
+                  className="btn-secondary"
+                >
+                  Limpar filtros
+                </button>
+              ) : podeCriar ? (
+                <Link to="/chamados/novo" className="btn-primary">
+                  <Plus className="h-4 w-4" /> Abrir chamado
+                </Link>
+              ) : undefined
+            }
+          />
         </div>
       ) : (
         <div className="space-y-3">

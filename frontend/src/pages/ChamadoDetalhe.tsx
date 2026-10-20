@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Briefcase,
@@ -40,6 +41,7 @@ export function ChamadoDetalhe() {
   const [solDesc, setSolDesc] = useState('');
   const [solMat, setSolMat] = useState('');
   const [erroAcao, setErroAcao] = useState('');
+  const [executando, setExecutando] = useState(false);
   const [buscando, setBuscando] = useState(false);
   const [naoEncontrado, setNaoEncontrado] = useState(false);
   const [erroBusca, setErroBusca] = useState('');
@@ -146,33 +148,46 @@ export function ChamadoDetalhe() {
     chamado.status === 'EM_ANDAMENTO' &&
     (usuario.role === 'ADMINISTRADOR' || chamado.tecnicoId === usuario.id);
 
+  // Ações disparadas de um modal reportam o erro via toast: o banner `erroAcao`
+  // fica renderizado fora do modal e estaria escondido atrás do overlay.
   async function aprovar() {
-    if (!tecnicoSel) return;
+    if (!tecnicoSel || executando) return;
     setErroAcao('');
+    setExecutando(true);
     try {
       await aprovarChamado(c.id, prioridadeSel, Number(tecnicoSel));
       setModalAprovar(false);
+      toast.success('Chamado aprovado e liberado para atendimento.');
     } catch (err) {
-      setErroAcao(
+      toast.error(
         err instanceof ApiError ? err.message : 'Não foi possível aprovar.',
       );
+    } finally {
+      setExecutando(false);
     }
   }
 
   async function iniciar() {
+    if (executando) return;
     setErroAcao('');
+    setExecutando(true);
     try {
       await iniciarChamado(c.id);
+      toast.success('Chamado em andamento.');
     } catch (err) {
+      // O banner fica na própria página, então aqui o erro inline continua visível.
       setErroAcao(
         err instanceof ApiError ? err.message : 'Não foi possível iniciar.',
       );
+    } finally {
+      setExecutando(false);
     }
   }
 
   async function concluir() {
-    if (!solDesc.trim() || !solMat.trim()) return;
+    if (!solDesc.trim() || !solMat.trim() || executando) return;
     setErroAcao('');
+    setExecutando(true);
     try {
       await concluirChamado(c.id, {
         descricao: solDesc.trim(),
@@ -181,10 +196,13 @@ export function ChamadoDetalhe() {
       setModalConcluir(false);
       setSolDesc('');
       setSolMat('');
+      toast.success('Chamado concluído.');
     } catch (err) {
-      setErroAcao(
+      toast.error(
         err instanceof ApiError ? err.message : 'Não foi possível concluir.',
       );
+    } finally {
+      setExecutando(false);
     }
   }
 
@@ -289,8 +307,13 @@ export function ChamadoDetalhe() {
               </button>
             )}
             {podeIniciar && (
-              <button onClick={iniciar} className="btn-primary">
-                <Play className="h-4 w-4" /> Iniciar atendimento
+              <button
+                onClick={() => void iniciar()}
+                className="btn-primary"
+                disabled={executando}
+              >
+                <Play className="h-4 w-4" />{' '}
+                {executando ? 'Iniciando…' : 'Iniciar atendimento'}
               </button>
             )}
             {podeConcluir && (
@@ -368,8 +391,12 @@ export function ChamadoDetalhe() {
               ))}
             </select>
           </div>
-          <button onClick={aprovar} className="btn-primary w-full" disabled={!tecnicoSel}>
-            Aprovar e atribuir
+          <button
+            onClick={() => void aprovar()}
+            className="btn-primary w-full"
+            disabled={!tecnicoSel || executando}
+          >
+            {executando ? 'Aprovando…' : 'Aprovar e atribuir'}
           </button>
         </div>
       </Modal>
@@ -397,11 +424,11 @@ export function ChamadoDetalhe() {
             />
           </div>
           <button
-            onClick={concluir}
+            onClick={() => void concluir()}
             className="btn-primary w-full"
-            disabled={!solDesc.trim() || !solMat.trim()}
+            disabled={!solDesc.trim() || !solMat.trim() || executando}
           >
-            Concluir
+            {executando ? 'Concluindo…' : 'Concluir'}
           </button>
         </div>
       </Modal>

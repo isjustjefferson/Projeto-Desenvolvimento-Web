@@ -11,6 +11,7 @@ import { ChamadosLista } from './pages/ChamadosLista';
 import { NovoChamado } from './pages/NovoChamado';
 import { ChamadoDetalhe } from './pages/ChamadoDetalhe';
 import { Usuarios } from './pages/Usuarios';
+import { NotFound } from './pages/NotFound';
 import type { Role } from './types';
 
 function Carregando() {
@@ -21,7 +22,7 @@ function Carregando() {
   );
 }
 
-function RequireAuth({ children }: { children: ReactNode }) {
+export function RequireAuth({ children }: { children: ReactNode }) {
   const { usuario, carregando } = useAuth();
   const location = useLocation();
   if (carregando) return <Carregando />;
@@ -31,7 +32,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function PublicOnly({ children }: { children: ReactNode }) {
+export function PublicOnly({ children }: { children: ReactNode }) {
   const { usuario, carregando } = useAuth();
   if (carregando) return <Carregando />;
   if (usuario) {
@@ -41,7 +42,7 @@ function PublicOnly({ children }: { children: ReactNode }) {
 }
 
 // Restringe uma rota a perfis específicos (espelha as regras de @Roles do backend)
-function RequireRoles({
+export function RequireRoles({
   roles,
   children,
 }: {
@@ -119,7 +120,7 @@ export default function App() {
           }
         />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

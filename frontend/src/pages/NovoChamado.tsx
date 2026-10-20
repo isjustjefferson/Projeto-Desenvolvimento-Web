@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { AlertCircle, ImagePlus, X } from 'lucide-react';
 import { useChamados } from '../context/ChamadosContext';
 import { ApiError } from '../api/client';
@@ -61,6 +62,7 @@ export function NovoChamado() {
         },
         foto: foto || undefined,
       });
+      toast.success(`Chamado #${chamado.id} aberto com sucesso.`);
       navigate(`/chamados/${chamado.id}`);
     } catch (err) {
       setErro(

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, User, Home, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AuthShell } from '../components/AuthShell';
@@ -30,6 +31,7 @@ export function RegisterPage() {
       setErro(res.erro || 'Não foi possível criar a conta.');
       return;
     }
+    toast.success('Conta criada com sucesso! Bem-vindo.');
     navigate('/', { replace: true });
   };
 

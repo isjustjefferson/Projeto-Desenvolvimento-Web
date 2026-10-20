@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Eye, EyeOff, LogIn, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AuthShell } from '../components/AuthShell';
@@ -26,6 +27,7 @@ export function LoginPage() {
     }
     // Volta para a rota que o usuário tentava acessar antes do login
     const de = location.state as { from?: { pathname?: string } } | null;
+    toast.success('Login realizado com sucesso.');
     navigate(de?.from?.pathname || '/', { replace: true });
   };
 

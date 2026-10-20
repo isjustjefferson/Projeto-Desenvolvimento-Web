@@ -27,6 +27,7 @@ import {
   statusColor,
 } from '../helpers';
 import { PrioridadeBadge, StatusBadge } from '../components/Badge';
+import { EmptyState } from '../components/EmptyState';
 import type { Prioridade, Status } from '../types';
 
 const statuses: Status[] = [
@@ -463,11 +464,29 @@ export function Dashboard() {
               ))}
               {listaChamados.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="px-4 py-10 text-center text-gray-400"
-                  >
-                    Nenhum chamado corresponde aos filtros.
+                  <td colSpan={7} className="px-4 py-4">
+                    <EmptyState
+                      icon={Inbox}
+                      titulo="Nenhum chamado por aqui"
+                      descricao={
+                        filtroStatus || filtroPrioridade
+                          ? 'Nenhum chamado corresponde aos filtros aplicados.'
+                          : 'Quando houver chamados que você possa acompanhar, eles aparecem aqui.'
+                      }
+                      acao={
+                        filtroStatus || filtroPrioridade ? (
+                          <button
+                            onClick={() => {
+                              setFiltroStatus('');
+                              setFiltroPrioridade('');
+                            }}
+                            className="btn-secondary"
+                          >
+                            Limpar filtros
+                          </button>
+                        ) : undefined
+                      }
+                    />
                   </td>
                 </tr>
               )}
