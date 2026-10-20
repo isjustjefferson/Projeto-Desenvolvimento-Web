@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AlertCircle, ImagePlus, X } from 'lucide-react';
-import { useChamados } from '../context/ChamadosContext';
-import { ApiError } from '../api/client';
+import { useCriarChamado } from '../hooks/useChamados';
+import { mensagemDeErro } from '../api/client';
 import { comprimirImagem } from '../imagem';
 import { categoriaLabel } from '../helpers';
 import type { Categoria } from '../types';
@@ -12,7 +12,7 @@ const categorias = Object.keys(categoriaLabel) as Categoria[];
 
 export function NovoChamado() {
   const navigate = useNavigate();
-  const { criarChamado } = useChamados();
+  const criarChamado = useCriarChamado();
 
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -23,7 +23,6 @@ export function NovoChamado() {
   const [foto, setFoto] = useState('');
   const [fotoNome, setFotoNome] = useState('');
   const [erro, setErro] = useState('');
-  const [enviando, setEnviando] = useState(false);
 
   // RN do solicitante: ele NÃO define prioridade (o gestor define na aprovação)
 
@@ -49,9 +48,8 @@ export function NovoChamado() {
       setErro('Preencha título, descrição e prédio.');
       return;
     }
-    setEnviando(true);
     try {
-      const chamado = await criarChamado({
+      const chamado = await criarChamado.mutateAsync({
         titulo: titulo.trim(),
         descricao: descricao.trim(),
         categoria,
@@ -65,10 +63,7 @@ export function NovoChamado() {
       toast.success(`Chamado #${chamado.id} aberto com sucesso.`);
       navigate(`/chamados/${chamado.id}`);
     } catch (err) {
-      setErro(
-        err instanceof ApiError ? err.message : 'Não foi possível abrir o chamado.',
-      );
-      setEnviando(false);
+      setErro(mensagemDeErro(err, 'Não foi possível abrir o chamado.'));
     }
   }
 
@@ -207,8 +202,12 @@ export function NovoChamado() {
           >
             Cancelar
           </button>
-          <button type="submit" className="btn-primary" disabled={enviando}>
-            {enviando ? 'Abrindo…' : 'Abrir chamado'}
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={criarChamado.isPending}
+          >
+            {criarChamado.isPending ? 'Abrindo…' : 'Abrir chamado'}
           </button>
         </div>
       </form>

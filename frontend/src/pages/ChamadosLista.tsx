@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Inbox, Plus, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useChamados } from '../context/ChamadosContext';
-import { useDiretorio } from '../context/DiretorioContext';
+import { useChamados } from '../hooks/useChamados';
+import { useDiretorio } from '../hooks/useUsuarios';
+import { mensagemDeErro } from '../api/client';
 import {
   chamadosVisiveis,
   pode,
@@ -22,7 +23,7 @@ import type { Status } from '../types';
 
 export function ChamadosLista() {
   const { usuario } = useAuth();
-  const { chamados, carregando, erro } = useChamados();
+  const { data: chamados = [], isPending, error } = useChamados();
   const { nomeUsuario } = useDiretorio();
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroPrioridade, setFiltroPrioridade] = useState('');
@@ -157,12 +158,14 @@ export function ChamadosLista() {
         </select>
       </div>
 
-      {carregando ? (
+      {isPending ? (
         <div className="card py-12 text-center text-gray-500">
           Carregando chamados…
         </div>
-      ) : erro ? (
-        <div className="card py-12 text-center text-red-500">{erro}</div>
+      ) : error ? (
+        <div className="card py-12 text-center text-red-500">
+          {mensagemDeErro(error, 'Não foi possível carregar os chamados.')}
+        </div>
       ) : visiveis.length === 0 ? (
         <div className="card">
           <EmptyState

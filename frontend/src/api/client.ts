@@ -18,6 +18,11 @@ export class ApiError extends Error {
   }
 }
 
+// Converte um erro de requisição em mensagem exibível ao usuário.
+export function mensagemDeErro(erro: unknown, padrao: string): string {
+  return erro instanceof ApiError ? erro.message : padrao;
+}
+
 let aoPerderSessao: (() => void) | null = null;
 
 export function registrarPerdaSessao(handler: () => void): void {

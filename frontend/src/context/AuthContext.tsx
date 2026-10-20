@@ -6,9 +6,9 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { AuthResult, AuthState, NovoCadastro, Usuario } from '../types';
 import * as authApi from '../api/auth';
-import * as usuariosApi from '../api/usuarios';
 import { ApiError, registrarPerdaSessao } from '../api/client';
 
 const STORAGE_KEY = 'predial.usuarioId';
@@ -23,15 +23,26 @@ function mensagemErro(erro: unknown): string {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const queryClient = useQueryClient();
 
-  const definirSessao = useCallback((proximo: Usuario | null) => {
-    if (proximo) {
-      localStorage.setItem(STORAGE_KEY, String(proximo.id));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-    setUsuario(proximo);
-  }, []);
+  // Sessão pura: o cache do React Query é por conta, então ao sair ou trocar de
+  // usuário descartamos tudo — o próximo login nunca herda dados do anterior.
+  const definirSessao = useCallback(
+    (proximo: Usuario | null) => {
+      const idAnterior = localStorage.getItem(STORAGE_KEY);
+      const idProximo = proximo ? String(proximo.id) : null;
+
+      if (idProximo !== idAnterior) queryClient.clear();
+
+      if (idProximo) {
+        localStorage.setItem(STORAGE_KEY, idProximo);
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+      setUsuario(proximo);
+    },
+    [queryClient],
+  );
 
   useEffect(() => {
     registrarPerdaSessao(() => definirSessao(null));
@@ -104,16 +115,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (res.ok) definirSessao(null);
         return res;
       },
-      criarUsuario: (dados) => acao(() => usuariosApi.criar(dados)),
-      definirCargo: (id, role) =>
-        acao(async () => {
-          await usuariosApi.alterarRole(id, role);
-        }),
-      removerCargo: (id) =>
-        acao(async () => {
-          await usuariosApi.alterarRole(id, 'SOLICITANTE');
-        }),
-      excluirContaPorId: (id) => acao(() => usuariosApi.excluir(id)),
       sair: () => definirSessao(null),
     };
   }, [usuario, carregando, definirSessao]);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -11,9 +11,13 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useDiretorio } from '../context/DiretorioContext';
-import * as usuariosApi from '../api/usuarios';
-import { ApiError } from '../api/client';
+import {
+  useAlterarCargo,
+  useCriarUsuario,
+  useExcluirUsuario,
+  useUsuarios,
+} from '../hooks/useUsuarios';
+import { mensagemDeErro } from '../api/client';
 import { roleColor, roleLabel } from '../helpers';
 import { Modal } from '../components/Modal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -59,11 +63,6 @@ function textoConfirmacao(p: PedidoConfirmacao): {
         rotulo: 'Excluir',
       };
   }
-}
-
-function mensagemErro(erro: unknown): string {
-  if (erro instanceof ApiError) return erro.message;
-  return 'Não foi possível concluir a operação.';
 }
 
 function LinhaMorador({
@@ -181,76 +180,46 @@ function LinhaMorador({
 }
 
 export function Usuarios() {
-  const {
-    usuario,
-    criarUsuario,
-    definirCargo,
-    removerCargo,
-    excluirContaPorId,
-  } = useAuth();
-  const { recarregar: recarregarDiretorio } = useDiretorio();
-  const [lista, setLista] = useState<Usuario[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState('');
+  const { usuario } = useAuth();
+  const usuariosQuery = useUsuarios();
+  const criarUsuario = useCriarUsuario();
+  const alterarCargo = useAlterarCargo();
+  const excluirUsuario = useExcluirUsuario();
   const [modal, setModal] = useState(false);
   const [nome, setNome] = useState('');
   const [role, setRole] = useState<Role>('SOLICITANTE');
   const [especialidade, setEspecialidade] = useState('');
   const [setor, setSetor] = useState('');
   const [erroCriar, setErroCriar] = useState('');
-  const [criando, setCriando] = useState(false);
   const [confirmacao, setConfirmacao] = useState<PedidoConfirmacao | null>(
     null,
   );
   const [confirmando, setConfirmando] = useState(false);
 
-  const recarregar = useCallback(async () => {
-    setCarregando(true);
-    setErro('');
-    try {
-      setLista(await usuariosApi.listar());
-    } catch (e) {
-      setErro(mensagemErro(e));
-    } finally {
-      setCarregando(false);
-    }
-  }, []);
-
   const ehAdmin = usuario?.role === 'ADMINISTRADOR';
+  const lista = usuariosQuery.data ?? [];
 
-  useEffect(() => {
-    if (ehAdmin) void recarregar();
-  }, [ehAdmin, recarregar]);
-
-  async function executarAcao(
-    operacao: () => Promise<{ ok: boolean; erro?: string }>,
-  ): Promise<{ ok: boolean; erro?: string }> {
-    setErro('');
-    const res = await operacao();
-    if (!res.ok) {
-      toast.error(res.erro || 'Operação não concluída.');
-      return { ok: false, erro: res.erro };
-    }
-    await recarregar();
-    await recarregarDiretorio();
-    return { ok: true };
-  }
-
+  // As mutations já invalidam a lista da página e o diretório: nenhum
+  // recarregar() manual depois da ação.
   async function executarConfirmacao() {
     if (!confirmacao) return;
     setConfirmando(true);
     const { tipo, alvo, role } = confirmacao;
-    const operacao =
-      tipo === 'atribuir' && role
-        ? () => definirCargo(alvo.id, role)
-        : tipo === 'remover'
-          ? () => removerCargo(alvo.id)
-          : () => excluirContaPorId(alvo.id);
+    try {
+      if (tipo === 'atribuir' && role) {
+        await alterarCargo.mutateAsync({ id: alvo.id, role });
+      } else if (tipo === 'remover') {
+        await alterarCargo.mutateAsync({ id: alvo.id, role: 'SOLICITANTE' });
+      } else {
+        await excluirUsuario.mutateAsync(alvo.id);
+      }
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Operação não concluída.'));
+      setConfirmando(false);
+      return;
+    }
 
-    const res = await executarAcao(operacao);
     setConfirmando(false);
-    if (!res.ok) return;
-
     setConfirmacao(null);
     if (tipo === 'atribuir' && role) {
       toast.success(`${alvo.nome} agora é ${roleLabel[role]}.`);
@@ -279,13 +248,10 @@ export function Usuarios() {
     e.preventDefault();
     if (!nome.trim()) return;
     setErroCriar('');
-    setCriando(true);
+    const nomeNovo = nome.trim();
+    const email = `${nomeNovo.toLowerCase().replace(/\s+/g, '.')}@predial.com`;
     try {
-      const nomeNovo = nome.trim();
-      const email = `${nomeNovo
-        .toLowerCase()
-        .replace(/\s+/g, '.')}@predial.com`;
-      const res = await criarUsuario({
+      await criarUsuario.mutateAsync({
         nome: nomeNovo,
         email,
         senha: '123456',
@@ -293,21 +259,17 @@ export function Usuarios() {
         especialidade,
         setor,
       });
-      if (!res.ok) {
-        setErroCriar(res.erro || 'Não foi possível criar o usuário.');
-        return;
-      }
-      setModal(false);
-      setNome('');
-      setRole('SOLICITANTE');
-      setEspecialidade('');
-      setSetor('');
-      await recarregar();
-      await recarregarDiretorio();
-      toast.success(`${nomeNovo} foi criado como ${roleLabel[role]}.`);
-    } finally {
-      setCriando(false);
+    } catch (err) {
+      setErroCriar(mensagemDeErro(err, 'Não foi possível criar o usuário.'));
+      return;
     }
+
+    setModal(false);
+    setNome('');
+    setRole('SOLICITANTE');
+    setEspecialidade('');
+    setSetor('');
+    toast.success(`${nomeNovo} foi criado como ${roleLabel[role]}.`);
   }
 
   return (
@@ -326,9 +288,12 @@ export function Usuarios() {
         </button>
       </div>
 
-      {erro && (
+      {usuariosQuery.isError && (
         <div className="rounded-lg bg-red-500 px-3 py-2 text-sm text-white">
-          {erro}
+          {mensagemDeErro(
+            usuariosQuery.error,
+            'Não foi possível carregar os usuários.',
+          )}
         </div>
       )}
 
@@ -345,7 +310,7 @@ export function Usuarios() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {carregando ? (
+              {usuariosQuery.isPending ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-10 text-center text-gray-400">
                     Carregando usuários…
@@ -360,7 +325,7 @@ export function Usuarios() {
                   />
                 ))
               )}
-              {!carregando && lista.length === 0 && (
+              {!usuariosQuery.isPending && lista.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-10 text-center text-gray-400">
                     Nenhum usuário cadastrado.
@@ -470,9 +435,9 @@ export function Usuarios() {
           <button
             type="submit"
             className="btn-primary w-full"
-            disabled={criando}
+            disabled={criarUsuario.isPending}
           >
-            {criando ? 'Criando…' : 'Criar usuário'}
+            {criarUsuario.isPending ? 'Criando…' : 'Criar usuário'}
           </button>
         </form>
       </Modal>

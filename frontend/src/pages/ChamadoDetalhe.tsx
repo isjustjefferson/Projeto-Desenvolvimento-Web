@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -10,9 +10,14 @@ import {
   Play,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useChamados } from '../context/ChamadosContext';
-import { useDiretorio } from '../context/DiretorioContext';
-import { ApiError } from '../api/client';
+import {
+  useAprovarChamado,
+  useChamado,
+  useConcluirChamado,
+  useIniciarChamado,
+} from '../hooks/useChamados';
+import { useDiretorio } from '../hooks/useUsuarios';
+import { ApiError, mensagemDeErro } from '../api/client';
 import { categoriaLabel, formatarData, prioridadeLabel, statusLabel } from '../helpers';
 import { PrioridadeBadge, StatusBadge } from '../components/Badge';
 import { Modal } from '../components/Modal';
@@ -20,18 +25,25 @@ import type { Prioridade } from '../types';
 
 const prioridades: Prioridade[] = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'];
 
+function ChamadoNaoEncontrado() {
+  return (
+    <div className="card py-12 text-center text-gray-500">
+      Chamado não encontrado.{' '}
+      <Link to="/chamados" className="text-brand-600">
+        Voltar
+      </Link>
+    </div>
+  );
+}
+
 export function ChamadoDetalhe() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { usuario } = useAuth();
-  const {
-    getChamado,
-    obterChamado,
-    carregando,
-    aprovarChamado,
-    iniciarChamado,
-    concluirChamado,
-  } = useChamados();
+  const chamadoQuery = useChamado(id ? Number(id) : undefined);
+  const aprovarChamado = useAprovarChamado();
+  const iniciarChamado = useIniciarChamado();
+  const concluirChamado = useConcluirChamado();
   const { tecnicos, nomeUsuario } = useDiretorio();
 
   const [modalAprovar, setModalAprovar] = useState(false);
@@ -41,51 +53,18 @@ export function ChamadoDetalhe() {
   const [solDesc, setSolDesc] = useState('');
   const [solMat, setSolMat] = useState('');
   const [erroAcao, setErroAcao] = useState('');
-  const [executando, setExecutando] = useState(false);
-  const [buscando, setBuscando] = useState(false);
-  const [naoEncontrado, setNaoEncontrado] = useState(false);
-  const [erroBusca, setErroBusca] = useState('');
-  const [tentativa, setTentativa] = useState(0);
 
+  // id não numérico não vira requisição: já cai direto em "não encontrado"
   const alvoId = id ? Number(id) : undefined;
-  const chamado = alvoId !== undefined ? getChamado(alvoId) : undefined;
+  const chamado = chamadoQuery.data;
+  const naoEncontrado =
+    chamadoQuery.isError &&
+    chamadoQuery.error instanceof ApiError &&
+    chamadoQuery.error.status === 404;
 
-  // Ao trocar de ID, limpa os estados de erro da busca anterior
-  useEffect(() => {
-    setNaoEncontrado(false);
-    setErroBusca('');
-  }, [alvoId]);
+  if (alvoId === undefined) return <ChamadoNaoEncontrado />;
 
-  // Se o chamado não estiver na listagem (acesso direto pela URL ou status fora
-  // do escopo da lista), busca pelo endpoint de detalhe.
-  useEffect(() => {
-    if (carregando || alvoId === undefined || chamado) return;
-    let ativo = true;
-    setBuscando(true);
-    setNaoEncontrado(false);
-    setErroBusca('');
-    obterChamado(alvoId)
-      .catch((err: unknown) => {
-        if (!ativo) return;
-        if (err instanceof ApiError && err.status === 404) {
-          setNaoEncontrado(true);
-        } else {
-          setErroBusca(
-            err instanceof ApiError
-              ? err.message
-              : 'Não foi possível carregar o chamado. Verifique sua conexão.',
-          );
-        }
-      })
-      .finally(() => {
-        if (ativo) setBuscando(false);
-      });
-    return () => {
-      ativo = false;
-    };
-  }, [carregando, alvoId, chamado, obterChamado, tentativa]);
-
-  if (carregando || buscando) {
+  if (chamadoQuery.isPending) {
     return (
       <div className="card py-12 text-center text-gray-500">
         Carregando chamado…
@@ -93,15 +72,19 @@ export function ChamadoDetalhe() {
     );
   }
 
-  if (erroBusca) {
+  if (naoEncontrado) return <ChamadoNaoEncontrado />;
+
+  if (chamadoQuery.isError) {
     return (
       <div className="card flex flex-col items-center gap-2 py-12 text-center">
-        <p className="text-red-500">{erroBusca}</p>
+        <p className="text-red-500">
+          {mensagemDeErro(
+            chamadoQuery.error,
+            'Não foi possível carregar o chamado. Verifique sua conexão.',
+          )}
+        </p>
         <div className="flex gap-2">
-          <button
-            onClick={() => setTentativa((t) => t + 1)}
-            className="btn-secondary"
-          >
+          <button onClick={() => void chamadoQuery.refetch()} className="btn-secondary">
             Tentar novamente
           </button>
           <Link to="/chamados" className="btn-secondary">
@@ -112,16 +95,7 @@ export function ChamadoDetalhe() {
     );
   }
 
-  if (!usuario || !chamado || naoEncontrado) {
-    return (
-      <div className="card py-12 text-center text-gray-500">
-        Chamado não encontrado.{' '}
-        <Link to="/chamados" className="text-brand-600">
-          Voltar
-        </Link>
-      </div>
-    );
-  }
+  if (!usuario || !chamado) return <ChamadoNaoEncontrado />;
 
   const c = chamado;
 
@@ -151,58 +125,47 @@ export function ChamadoDetalhe() {
   // Ações disparadas de um modal reportam o erro via toast: o banner `erroAcao`
   // fica renderizado fora do modal e estaria escondido atrás do overlay.
   async function aprovar() {
-    if (!tecnicoSel || executando) return;
+    if (!tecnicoSel || aprovarChamado.isPending) return;
     setErroAcao('');
-    setExecutando(true);
     try {
-      await aprovarChamado(c.id, prioridadeSel, Number(tecnicoSel));
+      await aprovarChamado.mutateAsync({
+        id: c.id,
+        prioridade: prioridadeSel,
+        tecnicoId: Number(tecnicoSel),
+      });
       setModalAprovar(false);
       toast.success('Chamado aprovado e liberado para atendimento.');
     } catch (err) {
-      toast.error(
-        err instanceof ApiError ? err.message : 'Não foi possível aprovar.',
-      );
-    } finally {
-      setExecutando(false);
+      toast.error(mensagemDeErro(err, 'Não foi possível aprovar.'));
     }
   }
 
   async function iniciar() {
-    if (executando) return;
+    if (iniciarChamado.isPending) return;
     setErroAcao('');
-    setExecutando(true);
     try {
-      await iniciarChamado(c.id);
+      await iniciarChamado.mutateAsync(c.id);
       toast.success('Chamado em andamento.');
     } catch (err) {
       // O banner fica na própria página, então aqui o erro inline continua visível.
-      setErroAcao(
-        err instanceof ApiError ? err.message : 'Não foi possível iniciar.',
-      );
-    } finally {
-      setExecutando(false);
+      setErroAcao(mensagemDeErro(err, 'Não foi possível iniciar.'));
     }
   }
 
   async function concluir() {
-    if (!solDesc.trim() || !solMat.trim() || executando) return;
+    if (!solDesc.trim() || !solMat.trim() || concluirChamado.isPending) return;
     setErroAcao('');
-    setExecutando(true);
     try {
-      await concluirChamado(c.id, {
-        descricao: solDesc.trim(),
-        materiais: solMat.trim(),
+      await concluirChamado.mutateAsync({
+        id: c.id,
+        solucao: { descricao: solDesc.trim(), materiais: solMat.trim() },
       });
       setModalConcluir(false);
       setSolDesc('');
       setSolMat('');
       toast.success('Chamado concluído.');
     } catch (err) {
-      toast.error(
-        err instanceof ApiError ? err.message : 'Não foi possível concluir.',
-      );
-    } finally {
-      setExecutando(false);
+      toast.error(mensagemDeErro(err, 'Não foi possível concluir.'));
     }
   }
 
@@ -310,10 +273,10 @@ export function ChamadoDetalhe() {
               <button
                 onClick={() => void iniciar()}
                 className="btn-primary"
-                disabled={executando}
+                disabled={iniciarChamado.isPending}
               >
                 <Play className="h-4 w-4" />{' '}
-                {executando ? 'Iniciando…' : 'Iniciar atendimento'}
+                {iniciarChamado.isPending ? 'Iniciando…' : 'Iniciar atendimento'}
               </button>
             )}
             {podeConcluir && (
@@ -394,9 +357,9 @@ export function ChamadoDetalhe() {
           <button
             onClick={() => void aprovar()}
             className="btn-primary w-full"
-            disabled={!tecnicoSel || executando}
+            disabled={!tecnicoSel || aprovarChamado.isPending}
           >
-            {executando ? 'Aprovando…' : 'Aprovar e atribuir'}
+            {aprovarChamado.isPending ? 'Aprovando…' : 'Aprovar e atribuir'}
           </button>
         </div>
       </Modal>
@@ -426,9 +389,11 @@ export function ChamadoDetalhe() {
           <button
             onClick={() => void concluir()}
             className="btn-primary w-full"
-            disabled={!solDesc.trim() || !solMat.trim() || executando}
+            disabled={
+              !solDesc.trim() || !solMat.trim() || concluirChamado.isPending
+            }
           >
-            {executando ? 'Concluindo…' : 'Concluir'}
+            {concluirChamado.isPending ? 'Concluindo…' : 'Concluir'}
           </button>
         </div>
       </Modal>

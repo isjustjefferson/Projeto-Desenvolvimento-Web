@@ -35,17 +35,6 @@ export interface AuthState {
   redefinirSenha: (token: string, novaSenha: string) => Promise<AuthResult>;
   atualizarConta: (dados: { nome?: string; foto?: string }) => Promise<AuthResult>;
   excluirConta: () => Promise<AuthResult>;
-  criarUsuario: (dados: {
-    nome: string;
-    email: string;
-    senha: string;
-    role: Role;
-    especialidade?: string;
-    setor?: string;
-  }) => Promise<AuthResult>;
-  definirCargo: (id: number, role: Role) => Promise<AuthResult>;
-  removerCargo: (id: number) => Promise<AuthResult>;
-  excluirContaPorId: (id: number) => Promise<AuthResult>;
   sair: () => void;
 }
 

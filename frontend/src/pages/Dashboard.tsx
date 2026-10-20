@@ -8,9 +8,10 @@ import {
   Inbox,
   Users,
 } from 'lucide-react';
-import { useChamados } from '../context/ChamadosContext';
+import { useChamados } from '../hooks/useChamados';
+import { useDiretorio } from '../hooks/useUsuarios';
 import { useAuth } from '../context/AuthContext';
-import { useDiretorio } from '../context/DiretorioContext';
+import { mensagemDeErro } from '../api/client';
 import {
   chamadosVisiveis,
   especialidadeParaCategoria,
@@ -47,7 +48,7 @@ const prioridadeIconeCor: Record<Prioridade, string> = {
 };
 
 export function Dashboard() {
-  const { chamados, carregando, erro, recarregar } = useChamados();
+  const { data: chamados = [], isPending, error, refetch } = useChamados();
   const { usuario } = useAuth();
   const { nomeUsuario } = useDiretorio();
   const [filtroStatus, setFiltroStatus] = useState('');
@@ -122,7 +123,7 @@ export function Dashboard() {
 
   if (!usuario) return null;
 
-  if (carregando) {
+  if (isPending) {
     return (
       <div className="card py-12 text-center text-gray-500">
         Carregando indicadores…
@@ -130,11 +131,13 @@ export function Dashboard() {
     );
   }
 
-  if (erro) {
+  if (error) {
     return (
       <div className="card flex flex-col items-center gap-2 py-12 text-center">
-        <p className="text-red-500">{erro}</p>
-        <button onClick={() => void recarregar()} className="btn-secondary">
+        <p className="text-red-500">
+          {mensagemDeErro(error, 'Não foi possível carregar os chamados.')}
+        </p>
+        <button onClick={() => void refetch()} className="btn-secondary">
           Tentar novamente
         </button>
       </div>

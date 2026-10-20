@@ -22,10 +22,10 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // Padrão legítimo de "carregar dados ao montar / resetar ao trocar de rota"
-      // (AuthContext, ChamadosContext, ChamadoDetalhe...). A Fase 3 da roadmap
-      // troca esses efeitos por TanStack Query; até lá fica como aviso para o
-      // `npm run lint` não travar com um erro que será refatorado de qualquer forma.
+      // A Fase 3 migrou a camada de dados para TanStack Query e eliminou quase
+      // todos esses avisos. Restam 2 casos legítimos: o bootstrap da sessão no
+      // AuthContext e o reset do formulário ao abrir o ContaModal — por isso a
+      // regra segue como aviso e não como erro.
       'react-hooks/set-state-in-effect': 'warn',
       'react-refresh/only-export-components': [
         'warn',
