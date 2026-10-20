@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
 import {
   Building2,
   LayoutDashboard,
@@ -15,6 +16,49 @@ import { roleLabel, iniciais, avatarCor } from '../helpers';
 import { pode } from '../rbac';
 import { UserCard } from './UserCard';
 import { ContaModal } from './ContaModal';
+
+type LinkNav = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  end: boolean;
+};
+
+// Declarado fora de Layout: componentes criados durante o render são recriados a
+// cada atualização e perderiam o próprio estado.
+function NavLista({
+  links,
+  onClick,
+}: {
+  links: LinkNav[];
+  onClick?: () => void;
+}) {
+  return (
+    <>
+      {links.map((link) => {
+        const Icon = link.icon;
+        return (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            end={link.end}
+            onClick={onClick}
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                isActive
+                  ? 'bg-brand-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`
+            }
+          >
+            <Icon className="h-5 w-5" />
+            {link.label}
+          </NavLink>
+        );
+      })}
+    </>
+  );
+}
 
 export function Layout() {
   const { usuario, sair } = useAuth();
@@ -53,32 +97,6 @@ export function Layout() {
     navigate('/login');
   };
 
-  const NavLista = ({ onClick }: { onClick?: () => void }) => (
-    <>
-      {links.map((link) => {
-        const Icon = link.icon;
-        return (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.end}
-            onClick={onClick}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                isActive
-                  ? 'bg-brand-500 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`
-            }
-          >
-            <Icon className="h-5 w-5" />
-            {link.label}
-          </NavLink>
-        );
-      })}
-    </>
-  );
-
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 md:flex-row">
       {/* Sidebar desktop (estática/fixa) */}
@@ -90,7 +108,7 @@ export function Layout() {
           <span className="text-lg font-bold text-gray-900">Gestão Predial</span>
         </div>
         <nav className="flex-1 space-y-1 p-4">
-          <NavLista />
+          <NavLista links={links} />
         </nav>
         <div className="border-t border-gray-100 p-4">
           <div className="mb-3 flex items-center gap-3">
@@ -181,7 +199,7 @@ export function Layout() {
               </button>
             </div>
             <nav className="flex-1 space-y-1 p-4">
-              <NavLista onClick={() => setMenuAberto(false)} />
+              <NavLista links={links} onClick={() => setMenuAberto(false)} />
             </nav>
             <div className="border-t border-gray-100 p-4">
               <div className="mb-3 flex items-center gap-3">
