@@ -4,3 +4,11 @@ dist/
 .env
 .vite/
 *.tsbuildinfo
+
+# Test and Coverage Artifacts
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/

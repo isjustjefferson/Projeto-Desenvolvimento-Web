@@ -1,0 +1,556 @@
+{
+  "info": {
+    "_postman_id": "a918e7d2-7b24-4f2a-b73f-c399b92e8df1",
+    "name": "Sistema de Gestão de Chamados - API",
+    "description": "Coleção oficial de testes de API (QA: Arthur José). Cobre autenticação, RBAC, ciclo de vida de chamados e gestão de usuários com asserções automáticas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Autenticação & Perfil",
+      "item": [
+        {
+          "name": "Login (Sucesso - Solicitante)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Deve retornar usuário sem expor senha\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('usuario');",
+                  "    pm.expect(data.usuario.email).to.eql('ana@predial.com');",
+                  "    pm.expect(data.usuario).to.not.have.property('senha');",
+                  "    pm.expect(data.usuario).to.not.have.property('senhaHash');",
+                  "    pm.environment.set(\"usuarioId\", data.usuario.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana@predial.com\",\n  \"senha\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login (Falha - Senha Incorreta)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Deve retornar 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana@predial.com\",\n  \"senha\": \"senha_errada_999\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Auto-registro (Novo Solicitante)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Novo usuário deve ter role SOLICITANTE\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.usuario.role).to.eql('SOLICITANTE');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"QA Tester Temporário\",\n  \"email\": \"tester.temp_{{$timestamp}}@predial.com\",\n  \"senha\": \"123456\",\n  \"unidade\": \"Bloco B, Ap 101\",\n  \"setor\": \"Apartamento 101\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Esqueci a Senha (Gerar Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status deve ser 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const data = pm.response.json();",
+                  "if (data.token) {",
+                  "    pm.environment.set(\"resetToken\", data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana@predial.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "forgot-password"]
+            }
+          }
+        },
+        {
+          "name": "Obter Dados da Minha Sessão (GET /me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Retorna os dados do usuário autenticado\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('usuario');",
+                  "    pm.expect(data.usuario).to.have.property('id');",
+                  "    pm.expect(data.usuario).to.have.property('role');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Chamados (Ciclo de Vida & RNs)",
+      "item": [
+        {
+          "name": "Criar Chamado (Solicitante - Ana)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Chamado criado com status AGUARDANDO_APROVACAO\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.chamado.status).to.eql('AGUARDANDO_APROVACAO');",
+                  "    pm.expect(data.chamado.criadoPorId).to.eql(Number(pm.environment.get(\"usuarioId\")));",
+                  "    pm.environment.set(\"chamadoId\", data.chamado.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-usuario-id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Lâmpada piscando na recepção\",\n  \"descricao\": \"A lâmpada tubular principal da recepção está oscilando constantemente.\",\n  \"categoria\": \"ELETRICA\",\n  \"local\": {\n    \"predio\": \"Bloco A\",\n    \"andar\": \"1º Andar\",\n    \"sala\": \"Recepção\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chamados",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chamados"]
+            }
+          }
+        },
+        {
+          "name": "Listar Chamados (RN01 - Isolamento Solicitante)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Solicitante só enxerga seus próprios chamados (RN01)\", function () {",
+                  "    const data = pm.response.json();",
+                  "    const myId = Number(pm.environment.get(\"usuarioId\"));",
+                  "    data.chamados.forEach(c => {",
+                  "        pm.expect(c.criadoPorId).to.eql(myId);",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chamados",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chamados"]
+            }
+          }
+        },
+        {
+          "name": "Aprovar Chamado (Gestor - Ricardo - RN02)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Status mudou para REVISADO e técnico foi atribuído\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.chamado.status).to.eql('REVISADO');",
+                  "    pm.expect(data.chamado.tecnicoId).to.eql(Number(pm.environment.get(\"tecnicoId\")));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-usuario-id",
+                "value": "{{gestorId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prioridade\": \"ALTA\",\n  \"tecnicoId\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/aprovar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chamados", "{{chamadoId}}", "aprovar"]
+            }
+          }
+        },
+        {
+          "name": "Iniciar Chamado (Técnico - João - RN03)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Status mudou para EM_ANDAMENTO\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.chamado.status).to.eql('EM_ANDAMENTO');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{tecnicoId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/iniciar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chamados", "{{chamadoId}}", "iniciar"]
+            }
+          }
+        },
+        {
+          "name": "Tentar Concluir SEM Solução (Bloqueio RN04)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Deve bloquear com 400 Bad Request pela RN04\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-usuario-id",
+                "value": "{{tecnicoId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"\",\n  \"materiais\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/concluir",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chamados", "{{chamadoId}}", "concluir"]
+            }
+          }
+        },
+        {
+          "name": "Concluir Chamado COM Solução e Materiais (Sucesso RN04)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 ou 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "pm.test(\"Chamado concluído com registro de materiais e solução\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.chamado.status).to.eql('CONCLUIDO');",
+                  "    pm.expect(data.chamado.solucao.descricao).to.be.a('string').and.not.empty;",
+                  "    pm.expect(data.chamado.solucao.materiais).to.be.a('string').and.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-usuario-id",
+                "value": "{{tecnicoId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Substituída a lâmpada fluorescente e testado o circuito elétrico.\",\n  \"materiais\": \"1x Lâmpada LED tubular 18W Bivolt, fita isolante 3M.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/concluir",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chamados", "{{chamadoId}}", "concluir"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Gestão de Usuários (Admin)",
+      "item": [
+        {
+          "name": "Listar Usuários (Admin - Tiago)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status deve ser 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Não deve vazar senha ou senhaHash\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.usuarios[0]).to.not.have.property('senha');",
+                  "    pm.expect(data.usuarios[0]).to.not.have.property('senhaHash');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{adminId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "usuarios"]
+            }
+          }
+        },
+        {
+          "name": "Listar Usuários como Solicitante (Bloqueio 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Não-admin deve tomar 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{usuarioId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "usuarios"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Health & Infra (RNF02)",
+      "item": [
+        {
+          "name": "Health Check (GET /health)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Tempo de resposta inferior a 500ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(500);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
