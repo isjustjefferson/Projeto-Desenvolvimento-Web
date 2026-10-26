@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Inbox, Plus, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChamados } from '../hooks/useChamados';
@@ -25,11 +25,19 @@ export function ChamadosLista() {
   const { usuario } = useAuth();
   const { data: chamados = [], isPending, error } = useChamados();
   const { nomeUsuario } = useDiretorio();
-  const [filtroStatus, setFiltroStatus] = useState('');
-  const [filtroPrioridade, setFiltroPrioridade] = useState('');
+  const [searchParams] = useSearchParams();
+  const [filtroStatus, setFiltroStatus] = useState(searchParams.get('status') || '');
+  const [filtroPrioridade, setFiltroPrioridade] = useState(searchParams.get('prioridade') || '');
+  const [filtroCategoria, setFiltroCategoria] = useState(searchParams.get('categoria') || '');
   const [busca, setBusca] = useState('');
   const [aba, setAba] = useState<'disponiveis' | 'meus'>('disponiveis');
   const [filtroSolicitante, setFiltroSolicitante] = useState('');
+
+  useEffect(() => {
+    setFiltroStatus(searchParams.get('status') || '');
+    setFiltroPrioridade(searchParams.get('prioridade') || '');
+    setFiltroCategoria(searchParams.get('categoria') || '');
+  }, [searchParams]);
 
   const visiveis = useMemo(() => {
     if (!usuario) return [];
@@ -55,6 +63,7 @@ export function ChamadosLista() {
         // Filtros manuais
         if (filtroStatus && c.status !== filtroStatus) return false;
         if (filtroPrioridade && c.prioridade !== filtroPrioridade) return false;
+        if (filtroCategoria && c.categoria !== filtroCategoria) return false;
         if (filtroSolicitante) {
           if (c.criadoPorId !== Number(filtroSolicitante)) return false;
         }
@@ -69,7 +78,7 @@ export function ChamadosLista() {
         return true;
       })
       .sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime());
-  }, [chamados, usuario, aba, filtroStatus, filtroPrioridade, busca, filtroSolicitante]);
+  }, [chamados, usuario, aba, filtroStatus, filtroPrioridade, filtroCategoria, busca, filtroSolicitante]);
 
   const podeCriar = usuario ? pode(usuario.role, 'criar') : false;
   const semEspecialidade = usuario ? tecnicoSemEspecialidade(usuario) : false;
@@ -78,7 +87,7 @@ export function ChamadosLista() {
         statusVisiveisPorRole[usuario.role].includes(s),
       )
     : [];
-  const filtrosAtivos = Boolean(busca || filtroStatus || filtroPrioridade || filtroSolicitante);
+  const filtrosAtivos = Boolean(busca || filtroStatus || filtroPrioridade || filtroCategoria || filtroSolicitante);
 
   const solicitantes = useMemo(() => {
     const ids = new Set<number>();
@@ -247,6 +256,7 @@ export function ChamadosLista() {
                     setBusca('');
                     setFiltroStatus('');
                     setFiltroPrioridade('');
+                    setFiltroCategoria('');
                     setFiltroSolicitante('');
                   }}
                   className="btn-secondary"

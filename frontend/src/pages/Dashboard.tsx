@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Activity,
   AlertTriangle,
@@ -51,6 +51,7 @@ export function Dashboard() {
   const { data: chamados = [], isPending, error, refetch } = useChamados();
   const { usuario } = useAuth();
   const { nomeUsuario } = useDiretorio();
+  const navigate = useNavigate();
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroPrioridade, setFiltroPrioridade] = useState('');
 
@@ -239,7 +240,11 @@ export function Dashboard() {
         </h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {prioridades.map((p) => (
-            <div key={p} className="card !p-4">
+            <button
+              key={p}
+              onClick={() => navigate(`/chamados?prioridade=${encodeURIComponent(p)}`)}
+              className="card !p-4 text-left transition hover:border-brand-300 hover:shadow"
+            >
               <div className="flex items-center justify-between">
                 <span
                   className={`inline-flex rounded-lg p-2 ${prioridadeIconeCor[p]}`}
@@ -257,7 +262,7 @@ export function Dashboard() {
                   {prioridadeLabel[p]}
                 </span>{' '}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -270,9 +275,10 @@ export function Dashboard() {
           </h2>
           <div className="space-y-2">
             {statusDoPerfil.map((s) => (
-              <div
+              <button
                 key={s}
-                className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
+                onClick={() => navigate(`/chamados?status=${encodeURIComponent(s)}`)}
+                className="flex w-full items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-left transition hover:bg-gray-100"
               >
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusColor[s]}`}
@@ -282,7 +288,7 @@ export function Dashboard() {
                 <span className="text-sm font-bold">
                   {dados.porStatus[s] || 0}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -291,20 +297,24 @@ export function Dashboard() {
           <h2 className="mb-3 font-semibold text-gray-800">Por categoria</h2>
           <div className="space-y-3">
             {Object.entries(dados.porCategoria).map(([cat, total]) => (
-              <div key={cat}>
+              <button
+                key={cat}
+                onClick={() => navigate(`/chamados?categoria=${encodeURIComponent(cat)}`)}
+                className="group w-full rounded-lg px-2 py-1 text-left transition hover:bg-brand-50/70"
+              >
                 <div className="mb-1 flex justify-between text-sm">
-                  <span className="text-gray-600">
+                  <span className="text-gray-600 transition group-hover:text-brand-700">
                     {categoriaLabel[cat as keyof typeof categoriaLabel]}
                   </span>
                   <span className="font-semibold">{total}</span>
                 </div>
                 <div className="h-2 rounded-full bg-gray-100">
                   <div
-                    className="h-2 rounded-full bg-brand-500"
+                    className="h-2 rounded-full bg-brand-500 transition group-hover:brightness-110"
                     style={{ width: `${(total / maxCategoria) * 100}%` }}
                   />
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
