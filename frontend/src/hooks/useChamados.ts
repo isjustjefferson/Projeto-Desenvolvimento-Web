@@ -5,7 +5,9 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import * as chamadosApi from '../api/chamados';
+import * as despesasApi from '../api/despesas';
 import type { NovoChamadoInput, SolucaoInput } from '../api/chamados';
+import type { CriarDespesaInput, EditarDespesaInput, AnexarDespesaInput } from '../api/despesas';
 import { useAuth } from '../context/AuthContext';
 import { chaves } from '../query/keys';
 import type { Chamado, Prioridade } from '../types';
@@ -90,5 +92,103 @@ export function useConcluirChamado() {
     mutationFn: (v: { id: number; solucao: SolucaoInput }) =>
       chamadosApi.concluir(v.id, v.solucao),
     onSuccess: (chamado) => aplicarRetorno(queryClient, chamado),
+  });
+}
+
+export function useCriarDespesa() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (v: { chamadoId: number; input: CriarDespesaInput }) =>
+      despesasApi.criarDespesa(v.chamadoId, v.input),
+    onSuccess: (_d, v) => {
+      void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
+      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
+    },
+  });
+}
+
+export function useEditarDespesa() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (v: { chamadoId: number; despesaId: number; input: EditarDespesaInput }) =>
+      despesasApi.editarDespesa(v.chamadoId, v.despesaId, v.input),
+    onSuccess: (_d, v) => {
+      void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
+      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
+    },
+  });
+}
+
+export function useRemoverDespesa() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (v: { chamadoId: number; despesaId: number }) =>
+      despesasApi.removerDespesa(v.chamadoId, v.despesaId),
+    onSuccess: (_r, v) => {
+      void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
+      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
+    },
+  });
+}
+
+export function useAnexarDespesa() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (v: { chamadoId: number; despesaId: number; input: AnexarDespesaInput }) =>
+      despesasApi.anexarDespesa(v.chamadoId, v.despesaId, v.input),
+    onSuccess: (_d, v) => {
+      void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
+      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
+    },
+  });
+}
+
+export function useRemoverAnexoDespesa() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (v: { chamadoId: number; despesaId: number; anexoId: number }) =>
+      despesasApi.removerAnexoDespesa(v.chamadoId, v.despesaId, v.anexoId),
+    onSuccess: (_d, v) => {
+      void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
+      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
+    },
+  });
+}
+
+export function useAprovarDespesa() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (v: { chamadoId: number; despesaId: number }) =>
+      despesasApi.aprovarDespesa(v.chamadoId, v.despesaId),
+    onSuccess: (_d, v) => {
+      void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
+      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
+    },
+  });
+}
+
+export function useRejeitarDespesa() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (v: { chamadoId: number; despesaId: number; motivo: string }) =>
+      despesasApi.rejeitarDespesa(v.chamadoId, v.despesaId, v.motivo),
+    onSuccess: (_d, v) => {
+      void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
+      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
+    },
   });
 }

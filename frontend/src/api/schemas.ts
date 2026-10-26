@@ -38,16 +38,47 @@ export const CATEGORIA_VALUES = [
   'OUTROS',
 ] as const;
 
+export const CATEGORIA_DESPESA_VALUES = [
+  'MATERIAL',
+  'MAO_DE_OBRA',
+  'SERVICO_TERCEIRO',
+  'DESLOCAMENTO',
+  'OUTROS',
+] as const;
+
+export const STATUS_DESPESA_VALUES = ['PENDENTE', 'APROVADA', 'REJEITADA'] as const;
+
+export const FORMA_PAGAMENTO_VALUES = ['DINHEIRO', 'PIX', 'CARTAO', 'FATURADO'] as const;
+
+export const PAGO_POR_VALUES = ['TECNICO', 'EMPRESA'] as const;
+
+export const TIPO_ANEXO_VALUES = [
+  'NOTA_FISCAL',
+  'RECIBO',
+  'COMPROVANTE_PAGAMENTO',
+  'OUTRO',
+] as const;
+
+export const TIPO_DOCUMENTO_FISCAL_VALUES = [
+  'NFE',
+  'NFSE',
+  'NFCE',
+  'CUPOM_FISCAL',
+  'RECIBO',
+  'BOLETO_COMPROVANTE',
+  'OUTRO',
+] as const;
+
 export const roleSchema = z.enum(ROLE_VALUES);
 export const statusSchema = z.enum(STATUS_VALUES);
 export const prioridadeSchema = z.enum(PRIORIDADE_VALUES);
 export const categoriaSchema = z.enum(CATEGORIA_VALUES);
-
-const classificacaoSchema = z.object({
-  prioridadeSugerida: prioridadeSchema,
-  pontuacao: z.number(),
-  motivos: z.array(z.string()),
-});
+export const categoriaDespesaSchema = z.enum(CATEGORIA_DESPESA_VALUES);
+export const statusDespesaSchema = z.enum(STATUS_DESPESA_VALUES);
+export const formaPagamentoSchema = z.enum(FORMA_PAGAMENTO_VALUES);
+export const pagoPorSchema = z.enum(PAGO_POR_VALUES);
+export const tipoAnexoSchema = z.enum(TIPO_ANEXO_VALUES);
+export const tipoDocumentoFiscalSchema = z.enum(TIPO_DOCUMENTO_FISCAL_VALUES);
 
 const localSchema = z.object({
   predio: z.string(),
@@ -69,6 +100,59 @@ const solucaoSchema = z.object({
   materiais: z.string(),
 });
 
+const classificacaoSchema = z.object({
+  prioridadeSugerida: prioridadeSchema,
+  pontuacao: z.number(),
+  motivos: z.array(z.string()),
+});
+
+export const anexoDespesaSchema = z.object({
+  id: z.number(),
+  despesaId: z.number(),
+  tipo: tipoAnexoSchema,
+  tipoDocumentoFiscal: tipoDocumentoFiscalSchema.nullish(),
+  chaveNFe: z.string().nullish(),
+  numero: z.string().nullish(),
+  serie: z.string().nullish(),
+  nomeArquivo: z.string(),
+  mimeType: z.string(),
+  tamanhoBytes: z.number(),
+  hashSha256: z.string().nullish(),
+  conteudo: z.string(),
+  enviadoPorId: z.number(),
+  criadoEm: z.string(),
+});
+
+export const despesaSchema = z.object({
+  id: z.number(),
+  chamadoId: z.number(),
+  registradoPorId: z.number(),
+  categoria: categoriaDespesaSchema,
+  descricao: z.string(),
+  fornecedor: z.string().nullish(),
+  cnpj: z.string().nullish(),
+  numeroNota: z.string().nullish(),
+  serie: z.string().nullish(),
+  dataEmissao: z.string().nullish(),
+  valorCentavos: z.number(),
+  formaPagamento: formaPagamentoSchema.nullish(),
+  pagoPor: pagoPorSchema.nullish(),
+  status: statusDespesaSchema,
+  motivoRejeicao: z.string().nullish(),
+  aprovadoPorId: z.number().nullish(),
+  aprovadoEm: z.string().nullish(),
+  criadoEm: z.string(),
+  atualizadoEm: z.string(),
+  anexos: z.array(anexoDespesaSchema),
+});
+
+export const resumoFinanceiroSchema = z.object({
+  totalCentavos: z.number(),
+  aprovadoCentavos: z.number(),
+  pendenteCentavos: z.number(),
+  rejeitadoCentavos: z.number(),
+});
+
 export const chamadoSchema = z.object({
   id: z.number(),
   titulo: z.string(),
@@ -85,6 +169,8 @@ export const chamadoSchema = z.object({
   atualizadoEm: z.string(),
   historico: z.array(historicoSchema),
   solucao: solucaoSchema.nullish(),
+  despesas: z.array(despesaSchema).nullish(),
+  resumoFinanceiro: resumoFinanceiroSchema.nullish(),
 });
 
 export const usuarioSchema = z.object({
@@ -139,4 +225,15 @@ export const respostaChamadoSchema = z.object({
 export const respostaChamadosSchema = z.object({
   ok: okLiteral,
   chamados: z.array(chamadoSchema),
+});
+
+export const respostaDespesaSchema = z.object({
+  ok: okLiteral,
+  despesa: despesaSchema,
+});
+
+export const respostaDespesasSchema = z.object({
+  ok: okLiteral,
+  despesas: z.array(despesaSchema),
+  resumoFinanceiro: resumoFinanceiroSchema,
 });

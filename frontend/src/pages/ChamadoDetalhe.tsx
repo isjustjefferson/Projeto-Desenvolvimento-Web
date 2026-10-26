@@ -5,25 +5,54 @@ import {
   ArrowLeft,
   Briefcase,
   CheckCircle2,
+  FileText,
   Hammer,
   Lock,
   Play,
+  Plus,
+  Receipt,
+  Trash2,
+  Upload,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   useAprovarChamado,
+  useAprovarDespesa,
   useChamado,
   useConcluirChamado,
+  useCriarDespesa,
   useIniciarChamado,
+  useRejeitarDespesa,
+  useRemoverDespesa,
 } from '../hooks/useChamados';
 import { useDiretorio } from '../hooks/useUsuarios';
 import { ApiError, mensagemDeErro } from '../api/client';
-import { categoriaLabel, formatarData, prioridadeLabel, statusLabel } from '../helpers';
+import {
+  categoriaDespesaLabel,
+  categoriaLabel,
+  formatarData,
+  formatarMoeda,
+  parseMoedaParaCentavos,
+  prioridadeLabel,
+  statusDespesaColor,
+  statusDespesaLabel,
+  statusLabel,
+  tipoAnexoLabel,
+  tipoDocumentoFiscalLabel,
+} from '../helpers';
 import { PrioridadeBadge, StatusBadge } from '../components/Badge';
 import { Modal } from '../components/Modal';
-import type { Prioridade } from '../types';
+import type { CategoriaDespesa, Prioridade } from '../types';
 
 const prioridades: Prioridade[] = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'];
+
+const categoriasDespesa: CategoriaDespesa[] = [
+  'MATERIAL',
+  'MAO_DE_OBRA',
+  'SERVICO_TERCEIRO',
+  'DESLOCAMENTO',
+  'OUTROS',
+];
 
 function ChamadoNaoEncontrado() {
   return (
@@ -44,15 +73,42 @@ export function ChamadoDetalhe() {
   const aprovarChamado = useAprovarChamado();
   const iniciarChamado = useIniciarChamado();
   const concluirChamado = useConcluirChamado();
+  const criarDespesa = useCriarDespesa();
+  // const anexarDespesa = useAnexarDespesa();
+  // const removerAnexoDespesa = useRemoverAnexoDespesa();
+  const removerDespesa = useRemoverDespesa();
+  const aprovarDespesa = useAprovarDespesa();
+  const rejeitarDespesa = useRejeitarDespesa();
   const { tecnicos, nomeUsuario } = useDiretorio();
 
   const [modalAprovar, setModalAprovar] = useState(false);
   const [modalConcluir, setModalConcluir] = useState(false);
+  const [modalDespesa, setModalDespesa] = useState(false);
+  const [modalRejeitar, setModalRejeitar] = useState(false);
   const [prioridadeSel, setPrioridadeSel] = useState<Prioridade>('MEDIA');
   const [tecnicoSel, setTecnicoSel] = useState('');
   const [solDesc, setSolDesc] = useState('');
   const [solMat, setSolMat] = useState('');
   const [erroAcao, setErroAcao] = useState('');
+  const [despCat, setDespCat] = useState<CategoriaDespesa>('MATERIAL');
+  const [despDesc, setDespDesc] = useState('');
+  const [despValor, setDespValor] = useState('');
+  const [despFornecedor, setDespFornecedor] = useState('');
+  const [despNota, setDespNota] = useState('');
+  const [despData, setDespData] = useState('');
+  const [despAnexos, setDespAnexos] = useState<
+    Array<{
+      tipo: 'NOTA_FISCAL' | 'RECIBO' | 'COMPROVANTE_PAGAMENTO' | 'OUTRO';
+      tipoDocumentoFiscal?: 'NFE' | 'NFSE' | 'NFCE' | 'CUPOM_FISCAL' | 'RECIBO' | 'BOLETO_COMPROVANTE' | 'OUTRO';
+      nomeArquivo: string;
+      mimeType: string;
+      tamanhoBytes: number;
+      conteudo: string;
+    }>
+  >([]);
+  const [anexoTipoDoc, setAnexoTipoDoc] = useState<string>('');
+  const [despesaRejeitarId, setDespesaRejeitarId] = useState<number | null>(null);
+  const [motivoRejeicao, setMotivoRejeicao] = useState('');
 
   // id não numérico não vira requisição: já cai direto em "não encontrado"
   const alvoId = id ? Number(id) : undefined;
@@ -122,6 +178,26 @@ export function ChamadoDetalhe() {
     chamado.status === 'EM_ANDAMENTO' &&
     (usuario.role === 'ADMINISTRADOR' || chamado.tecnicoId === usuario.id);
 
+  const podeGerenciarDespesas =
+    (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') ||
+    (usuario.role === 'TECNICO' && chamado.tecnicoId === usuario.id);
+
+  const podeAprovarDespesas =
+    usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR';
+
+  const despesas = chamado.despesas || [];
+  const resumo = chamado.resumoFinanceiro || {
+    totalCentavos: 0,
+    aprovadoCentavos: 0,
+    pendenteCentavos: 0,
+    rejeitadoCentavos: 0,
+  };
+
+  function abrirAprovacao() {
+    setPrioridadeSel('MEDIA');
+    setModalAprovar(true);
+  }
+
   // Ações disparadas de um modal reportam o erro via toast: o banner `erroAcao`
   // fica renderizado fora do modal e estaria escondido atrás do overlay.
   async function aprovar() {
@@ -166,6 +242,135 @@ export function ChamadoDetalhe() {
       toast.success('Chamado concluído.');
     } catch (err) {
       toast.error(mensagemDeErro(err, 'Não foi possível concluir.'));
+    }
+  }
+
+  function abrirNovaDespesa() {
+    setDespCat('MATERIAL');
+    setDespDesc('');
+    setDespValor('');
+    setDespFornecedor('');
+    setDespNota('');
+    setDespData('');
+    setDespAnexos([]);
+    setAnexoTipoDoc('');
+    setErroAcao('');
+    setModalDespesa(true);
+  }
+
+  async function adicionarAnexoDespesaArquivo(arquivo: File) {
+    if (!arquivo) return;
+    if (arquivo.size > 5 * 1024 * 1024) {
+      toast.error('Anexo excede o limite de 5MB.');
+      return;
+    }
+    const mime = arquivo.type || 'application/octet-stream';
+    if (!['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'].includes(mime)) {
+      toast.error('Tipo de arquivo não permitido.');
+      return;
+    }
+    if (despAnexos.length >= 5) {
+      toast.error('Máximo de 5 anexos por despesa.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const conteudo = String(reader.result || '');
+      setDespAnexos((prev) => [
+        ...prev,
+        {
+          tipo: mime === 'application/pdf' ? 'NOTA_FISCAL' : 'COMPROVANTE_PAGAMENTO',
+          tipoDocumentoFiscal: (anexoTipoDoc as any) || undefined,
+          nomeArquivo: arquivo.name,
+          mimeType: mime,
+          tamanhoBytes: arquivo.size,
+          conteudo,
+        },
+      ]);
+    };
+    reader.readAsDataURL(arquivo);
+  }
+
+  async function salvarDespesa() {
+    if (!despDesc.trim() || !despValor || criarDespesa.isPending) return;
+    const valorCentavos = parseMoedaParaCentavos(despValor);
+    if (valorCentavos <= 0) {
+      toast.error('Informe um valor válido.');
+      return;
+    }
+    setErroAcao('');
+    try {
+      await criarDespesa.mutateAsync({
+        chamadoId: c.id,
+        input: {
+          categoria: despCat,
+          descricao: despDesc.trim(),
+          fornecedor: despFornecedor.trim() || undefined,
+          numeroNota: despNota.trim() || undefined,
+          dataEmissao: despData || undefined,
+          valorCentavos,
+          anexos: despAnexos,
+        },
+      });
+      setModalDespesa(false);
+      toast.success('Despesa lançada.');
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Não foi possível lançar a despesa.'));
+    }
+  }
+
+  async function aprovarDespesaAcao(despesaId: number) {
+    const d = despesas.find((x) => x.id === despesaId);
+    if (d && d.anexos.length === 0) {
+      const ok = window.confirm(
+        'Esta despesa não possui comprovante/anexo. Tem certeza que deseja aprová-la mesmo assim?',
+      );
+      if (!ok) return;
+    } else if (d && d.anexos.length > 0 && d.categoria === 'SERVICO_TERCEIRO') {
+      const temFiscal = d.anexos.some((a) => a.tipoDocumentoFiscal === 'NFE' || a.tipoDocumentoFiscal === 'NFSE');
+      if (!temFiscal) {
+        const ok = window.confirm(
+          'Para despesa de SERVIÇO TERCEIRO, recomenda-se anexar NFe ou NFS-e. Tem certeza que deseja aprová-la mesmo assim?',
+        );
+        if (!ok) return;
+      }
+    }
+    try {
+      await aprovarDespesa.mutateAsync({ chamadoId: c.id, despesaId });
+      toast.success('Despesa aprovada.');
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Não foi possível aprovar.'));
+    }
+  }
+
+  function abrirRejeitar(despesaId: number) {
+    setDespesaRejeitarId(despesaId);
+    setMotivoRejeicao('');
+    setModalRejeitar(true);
+  }
+
+  async function rejeitarDespesaAcao() {
+    if (!despesaRejeitarId || !motivoRejeicao.trim() || rejeitarDespesa.isPending) return;
+    try {
+      await rejeitarDespesa.mutateAsync({
+        chamadoId: c.id,
+        despesaId: despesaRejeitarId,
+        motivo: motivoRejeicao.trim(),
+      });
+      setModalRejeitar(false);
+      toast.success('Despesa rejeitada.');
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Não foi possível rejeitar.'));
+    }
+  }
+
+  async function removerDespesaAcao(despesaId: number) {
+    if (!confirm('Remover esta despesa?')) return;
+    try {
+      await removerDespesa.mutateAsync({ chamadoId: c.id, despesaId });
+      toast.success('Despesa removida.');
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Não foi possível remover.'));
     }
   }
 
@@ -265,7 +470,7 @@ export function ChamadoDetalhe() {
         {chamado.status !== 'CONCLUIDO' && (
           <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
             {podeAprovar && (
-              <button onClick={() => setModalAprovar(true)} className="btn-primary">
+              <button onClick={abrirAprovacao} className="btn-primary">
                 <Briefcase className="h-4 w-4" /> Aprovar e Liberar Chamado
               </button>
             )}
@@ -284,6 +489,100 @@ export function ChamadoDetalhe() {
                 <Hammer className="h-4 w-4" /> Concluir chamado
               </button>
             )}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-semibold text-gray-800">
+            <Receipt className="h-4 w-4" /> Custos e notas fiscais
+          </h2>
+          {podeGerenciarDespesas && chamado.status === 'EM_ANDAMENTO' && (
+            <button onClick={abrirNovaDespesa} className="btn-secondary !px-2 !py-1 text-xs">
+              <Plus className="h-3 w-3" /> Adicionar despesa
+            </button>
+          )}
+        </div>
+        <div className="mb-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+          <div className="rounded-lg bg-gray-50 p-2">
+            <div className="text-xs text-gray-500">Total</div>
+            <div className="font-semibold">{formatarMoeda(resumo.totalCentavos)}</div>
+          </div>
+          <div className="rounded-lg bg-emerald-50 p-2">
+            <div className="text-xs text-gray-500">Aprovado</div>
+            <div className="font-semibold text-emerald-700">{formatarMoeda(resumo.aprovadoCentavos)}</div>
+          </div>
+          <div className="rounded-lg bg-amber-50 p-2">
+            <div className="text-xs text-gray-500">Pendente</div>
+            <div className="font-semibold text-amber-700">{formatarMoeda(resumo.pendenteCentavos)}</div>
+          </div>
+          <div className="rounded-lg bg-red-50 p-2">
+            <div className="text-xs text-gray-500">Rejeitado</div>
+            <div className="font-semibold text-red-700">{formatarMoeda(resumo.rejeitadoCentavos)}</div>
+          </div>
+        </div>
+        {usuario.role === 'SOLICITANTE' ? (
+          <p className="text-xs text-gray-500">Apenas o total aprovado é exibido.</p>
+        ) : despesas.length === 0 ? (
+          <p className="text-sm text-gray-400">Nenhuma despesa lançada.</p>
+        ) : (
+          <div className="space-y-2">
+            {despesas.map((d) => (
+              <div key={d.id} className="rounded-lg border border-gray-100 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-800">{d.descricao}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusDespesaColor[d.status]}`}>
+                        {statusDespesaLabel[d.status]}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {categoriaDespesaLabel[d.categoria]}
+                      {d.fornecedor ? ` · ${d.fornecedor}` : ''}
+                      {d.numeroNota ? ` · NF ${d.numeroNota}` : ''}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold">{formatarMoeda(d.valorCentavos)}</div>
+                    <div className="text-xs text-gray-400">{d.anexos.length} anexo(s)</div>
+                  </div>
+                </div>
+                {d.motivoRejeicao && (
+                  <div className="mt-2 rounded bg-red-50 px-2 py-1 text-xs text-red-700">
+                    Motivo: {d.motivoRejeicao}
+                  </div>
+                )}
+                {d.anexos.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {d.anexos.map((a) => (
+                      <span key={a.id} className="flex items-center gap-1 rounded bg-gray-50 px-2 py-0.5 text-xs text-gray-600">
+                        <FileText className="h-3 w-3" />
+                        {a.tipoDocumentoFiscal ? tipoDocumentoFiscalLabel[a.tipoDocumentoFiscal as keyof typeof tipoDocumentoFiscalLabel] : tipoAnexoLabel[a.tipo]} · {a.nomeArquivo}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {podeAprovarDespesas && d.status === 'PENDENTE' && (
+                    <>
+                      <button onClick={() => void aprovarDespesaAcao(d.id)} className="btn-primary !px-2 !py-1 text-xs" disabled={aprovarDespesa.isPending}>
+                        Aprovar
+                      </button>
+                      <button onClick={() => abrirRejeitar(d.id)} className="btn-secondary !px-2 !py-1 text-xs">
+                        Rejeitar
+                      </button>
+                    </>
+                  )}
+                  {podeGerenciarDespesas && d.status === 'PENDENTE' && (
+                    <button onClick={() => void removerDespesaAcao(d.id)} className="btn-secondary !px-2 !py-1 text-xs text-red-600" disabled={removerDespesa.isPending}>
+                      <Trash2 className="h-3 w-3" /> Remover
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -394,6 +693,90 @@ export function ChamadoDetalhe() {
             }
           >
             {concluirChamado.isPending ? 'Concluindo…' : 'Concluir'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={modalDespesa} onClose={() => setModalDespesa(false)} title="Adicionar despesa">
+        <div className="space-y-3">
+          <div>
+            <label className="label">Categoria</label>
+            <select className="input" value={despCat} onChange={(e) => setDespCat(e.target.value as CategoriaDespesa)}>
+              {categoriasDespesa.map((c) => (
+                <option key={c} value={c}>{categoriaDespesaLabel[c]}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Descrição</label>
+            <input className="input" value={despDesc} onChange={(e) => setDespDesc(e.target.value)} placeholder="Ex: Compra de peças" />
+          </div>
+          <div>
+            <label className="label">Valor (R$)</label>
+            <input className="input" value={despValor} onChange={(e) => setDespValor(e.target.value)} placeholder="Ex: 150,00" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="label">Fornecedor</label>
+              <input className="input" value={despFornecedor} onChange={(e) => setDespFornecedor(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Nº da Nota</label>
+              <input className="input" value={despNota} onChange={(e) => setDespNota(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="label">Data de emissão</label>
+            <input type="date" className="input" value={despData} onChange={(e) => setDespData(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Tipo de documento fiscal (opcional)</label>
+            <select className="input" value={anexoTipoDoc} onChange={(e) => setAnexoTipoDoc(e.target.value)}>
+              <option value="">Não classificar</option>
+              <option value="NFE">NF-e (NFe)</option>
+              <option value="NFSE">NFS-e</option>
+              <option value="NFCE">NFC-e</option>
+              <option value="CUPOM_FISCAL">Cupom Fiscal</option>
+              <option value="RECIBO">Recibo</option>
+              <option value="BOLETO_COMPROVANTE">Comprovante/Boleto</option>
+              <option value="OUTRO">Outro</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Anexos (NF/comprovante)</label>
+            <label className="btn-secondary inline-flex cursor-pointer !px-2 !py-1 text-xs">
+              <Upload className="h-3 w-3" /> Adicionar arquivo
+              <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void adicionarAnexoDespesaArquivo(f);
+                e.target.value = '';
+              }} />
+            </label>
+            {despAnexos.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {despAnexos.map((a, i) => (
+                  <div key={i} className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs">
+                    <span className="truncate">{a.nomeArquivo}</span>
+                    <button onClick={() => setDespAnexos((p) => p.filter((_, idx) => idx !== i))} className="text-red-500">Remover</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <button onClick={() => void salvarDespesa()} className="btn-primary w-full" disabled={!despDesc.trim() || !despValor || criarDespesa.isPending}>
+            {criarDespesa.isPending ? 'Salvando…' : 'Salvar despesa'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={modalRejeitar} onClose={() => setModalRejeitar(false)} title="Rejeitar despesa">
+        <div className="space-y-3">
+          <div>
+            <label className="label">Motivo</label>
+            <textarea className="input min-h-[80px]" value={motivoRejeicao} onChange={(e) => setMotivoRejeicao(e.target.value)} placeholder="Informe o motivo da rejeição" />
+          </div>
+          <button onClick={() => void rejeitarDespesaAcao()} className="btn-primary w-full" disabled={!motivoRejeicao.trim() || rejeitarDespesa.isPending}>
+            {rejeitarDespesa.isPending ? 'Rejeitando…' : 'Rejeitar'}
           </button>
         </div>
       </Modal>

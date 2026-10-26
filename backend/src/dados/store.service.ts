@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { Chamado, UsuarioPublico } from '../contrato.js';
+import type { Chamado, Despesa, UsuarioPublico } from '../contrato.js';
+import { classificarChamado } from '../chamados/criticidade.js';
 import { chamadosSeed, usuariosSeed } from './seed.js';
 import type { UsuarioInterno } from './seed.js';
 
@@ -16,14 +17,20 @@ export class StoreService {
     usuariosSeed.map((u) => [u.id, u]),
   );
   private readonly chamados = new Map<number, Chamado>(
-    chamadosSeed.map((c) => [c.id, c]),
+    chamadosSeed.map((c) => [
+      c.id,
+      c.classificacao ? c : { ...c, classificacao: classificarChamado(c) },
+    ]),
   );
+  private readonly despesas = new Map<number, Despesa>();
   private readonly tokensReset = new Map<string, TokenReset>();
 
   private proximoIdUsuario = Math.max(...this.usuarios.keys()) + 1;
   private proximoIdChamado = Math.max(...this.chamados.keys()) + 1;
   private proximoIdHistorico =
     Math.max(...chamadosSeed.flatMap((c) => c.historico.map((h) => h.id))) + 1;
+  private proximoIdDespesa = 1;
+  private proximoIdAnexoDespesa = 1;
 
   // ---- Usuários ----
   getUsuariosInternos(): UsuarioInterno[] {
@@ -114,5 +121,40 @@ export class StoreService {
 
   incProximoIdHistorico(): number {
     return this.proximoIdHistorico++;
+  }
+
+  // ---- Despesas ----
+  getDespesasPorChamado(chamadoId: number): Despesa[] {
+    return [...this.despesas.values()]
+      .filter((d) => d.chamadoId === chamadoId)
+      .sort((a, b) => a.id - b.id);
+  }
+
+  getDespesaPorId(id: number): Despesa | undefined {
+    return this.despesas.get(id);
+  }
+
+  salvarDespesa(despesa: Despesa): void {
+    this.despesas.set(despesa.id, despesa);
+  }
+
+  removerDespesa(id: number): void {
+    this.despesas.delete(id);
+  }
+
+  getProximoIdDespesa(): number {
+    return this.proximoIdDespesa;
+  }
+
+  incProximoIdDespesa(): number {
+    return this.proximoIdDespesa++;
+  }
+
+  getProximoIdAnexoDespesa(): number {
+    return this.proximoIdAnexoDespesa;
+  }
+
+  incProximoIdAnexoDespesa(): number {
+    return this.proximoIdAnexoDespesa++;
   }
 }
