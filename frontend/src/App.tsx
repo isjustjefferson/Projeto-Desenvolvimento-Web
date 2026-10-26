@@ -106,7 +106,7 @@ export default function App() {
         <Route
           path="chamados/novo"
           element={
-            <RequireRoles roles={['SOLICITANTE', 'ADMINISTRADOR']}>
+            <RequireRoles roles={['SOLICITANTE', 'GESTOR', 'ADMINISTRADOR']}>
               <NovoChamado />
             </RequireRoles>
           }

@@ -13,7 +13,7 @@ export const statusVisiveisPorRole: Record<Role, Status[]> = {
 export const acoesPorRole: Record<Role, string[]> = {
   SOLICITANTE: ['criar', 'visualizar_proprios'],
   TECNICO: ['iniciar', 'concluir', 'visualizar_atribuidos_disponiveis'],
-  GESTOR: ['triar', 'aprovar', 'iniciar', 'dashboard'],
+  GESTOR: ['criar', 'triar', 'aprovar', 'iniciar', 'dashboard'],
   ADMINISTRADOR: ['tudo'],
 };
 

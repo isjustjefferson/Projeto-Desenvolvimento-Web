@@ -49,7 +49,7 @@ export class ChamadosController {
   }
 
   @Post()
-  @Roles('SOLICITANTE', 'ADMINISTRADOR')
+  @Roles('SOLICITANTE', 'GESTOR', 'ADMINISTRADOR')
   criar(
     @Body() dto: CriarChamadoDto,
     @UsuarioAtual() usuario: UsuarioInterno,

@@ -29,6 +29,7 @@ export function ChamadosLista() {
   const [filtroPrioridade, setFiltroPrioridade] = useState('');
   const [busca, setBusca] = useState('');
   const [aba, setAba] = useState<'disponiveis' | 'meus'>('disponiveis');
+  const [filtroSolicitante, setFiltroSolicitante] = useState('');
 
   const visiveis = useMemo(() => {
     if (!usuario) return [];
@@ -44,9 +45,19 @@ export function ChamadosLista() {
           }
         }
 
+        // Gestor: filtrar por próprios chamados ou por solicitante
+        if (usuario.role === 'GESTOR') {
+          if (aba === 'meus') {
+            if (c.criadoPorId !== usuario.id) return false;
+          }
+        }
+
         // Filtros manuais
         if (filtroStatus && c.status !== filtroStatus) return false;
         if (filtroPrioridade && c.prioridade !== filtroPrioridade) return false;
+        if (filtroSolicitante) {
+          if (c.criadoPorId !== Number(filtroSolicitante)) return false;
+        }
         if (busca) {
           const termo = busca.toLowerCase();
           const match =
@@ -58,7 +69,7 @@ export function ChamadosLista() {
         return true;
       })
       .sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime());
-  }, [chamados, usuario, aba, filtroStatus, filtroPrioridade, busca]);
+  }, [chamados, usuario, aba, filtroStatus, filtroPrioridade, busca, filtroSolicitante]);
 
   const podeCriar = usuario ? pode(usuario.role, 'criar') : false;
   const semEspecialidade = usuario ? tecnicoSemEspecialidade(usuario) : false;
@@ -67,7 +78,15 @@ export function ChamadosLista() {
         statusVisiveisPorRole[usuario.role].includes(s),
       )
     : [];
-  const filtrosAtivos = Boolean(busca || filtroStatus || filtroPrioridade);
+  const filtrosAtivos = Boolean(busca || filtroStatus || filtroPrioridade || filtroSolicitante);
+
+  const solicitantes = useMemo(() => {
+    const ids = new Set<number>();
+    for (const c of chamados) ids.add(c.criadoPorId);
+    return Array.from(ids)
+      .map((id) => ({ id, nome: nomeUsuario(id) }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [chamados, nomeUsuario]);
 
   return (
     <div className="space-y-4">
@@ -82,8 +101,8 @@ export function ChamadosLista() {
           <h1 className="text-2xl font-bold text-gray-900">Chamados</h1>
           <p className="text-sm text-gray-500">
             {usuario?.role === 'SOLICITANTE' && 'Seus chamados de manutenção'}
+            {usuario?.role === 'GESTOR' && 'Seus chamados e chamados da edificação'}
             {usuario?.role === 'TECNICO' && 'Chamados da sua especialidade e atribuídos a você'}
-            {usuario?.role === 'GESTOR' && 'Fila de triagem e chamados da edificação'}
             {usuario?.role === 'ADMINISTRADOR' && 'Gestão completa de chamados'}
           </p>
         </div>
@@ -119,6 +138,31 @@ export function ChamadosLista() {
         </div>
       )}
 
+      {usuario?.role === 'GESTOR' && (
+        <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+          <button
+            onClick={() => setAba('disponiveis')}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              aba === 'disponiveis'
+                ? 'bg-brand-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Todos os chamados
+          </button>
+          <button
+            onClick={() => setAba('meus')}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              aba === 'meus'
+                ? 'bg-brand-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Meus chamados
+          </button>
+        </div>
+      )}
+
       {semEspecialidade && (
         <div className="card border-amber-200 bg-amber-50 text-sm text-amber-800">
           Sua especialidade não está definida. Você está vendo apenas os chamados
@@ -126,7 +170,7 @@ export function ChamadosLista() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
         <div className="relative sm:col-span-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -156,6 +200,18 @@ export function ChamadosLista() {
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
+        {(usuario?.role === 'GESTOR' || usuario?.role === 'ADMINISTRADOR') && (
+          <select
+            className="input"
+            value={filtroSolicitante}
+            onChange={(e) => setFiltroSolicitante(e.target.value)}
+          >
+            <option value="">Solicitante: todos</option>
+            {solicitantes.map((s) => (
+              <option key={s.id} value={s.id}>{s.nome}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {isPending ? (
@@ -180,7 +236,9 @@ export function ChamadosLista() {
                 ? 'Nenhum chamado corresponde à sua busca ou aos filtros aplicados.'
                 : usuario?.role === 'TECNICO' && aba === 'disponiveis'
                   ? 'Não há chamados da sua especialidade aguardando atendimento no momento.'
-                  : 'Quando houver chamados que você possa acompanhar, eles aparecem aqui.'
+                  : usuario?.role === 'GESTOR' && aba === 'meus'
+                    ? 'Você ainda não abriu nenhum chamado.'
+                    : 'Quando houver chamados que você possa acompanhar, eles aparecem aqui.'
             }
             acao={
               filtrosAtivos ? (
@@ -189,12 +247,13 @@ export function ChamadosLista() {
                     setBusca('');
                     setFiltroStatus('');
                     setFiltroPrioridade('');
+                    setFiltroSolicitante('');
                   }}
                   className="btn-secondary"
                 >
                   Limpar filtros
                 </button>
-              ) : podeCriar ? (
+              ) : usuario?.role === 'GESTOR' && aba === 'meus' ? undefined : podeCriar ? (
                 <Link to="/chamados/novo" className="btn-primary">
                   <Plus className="h-4 w-4" /> Abrir chamado
                 </Link>
