@@ -50,10 +50,11 @@ const prioridades: Prioridade[] = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'];
 interface AnexoArquivo {
   nomeArquivo: string;
   mimeType: string;
-  conteudo: string;
+  conteudo?: string;
 }
 
 function criarUrlAnexo(anexo: AnexoArquivo): string | null {
+  if (!anexo.conteudo) return null;
   const virgula = anexo.conteudo.indexOf(',');
   const base64 =
     virgula >= 0 ? anexo.conteudo.slice(virgula + 1) : anexo.conteudo;

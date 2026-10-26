@@ -46,8 +46,8 @@ export function RelatoriosDespesas() {
   };
   const despesas = data?.despesas || [];
   const porCategoria = data?.porCategoria || {};
-  const porTecnico = data?.porTecnico || {};
-  const tecnicos = usuarios?.filter((u) => u.role === 'TECNICO') || [];
+  const porRegistrante = data?.porRegistrante || {};
+  const registrantes = [...(usuarios || [])].sort((a, b) => a.nome.localeCompare(b.nome));
 
   const cards = [
     { label: 'Total', valor: formatarMoeda(resumo.totalCentavos), icon: Receipt, cor: 'bg-brand-500 text-white' },
@@ -60,7 +60,7 @@ export function RelatoriosDespesas() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Relatório de Despesas</h1>
-        <p className="text-sm text-gray-500">Consolidado por chamado, técnico, categoria e tipo de documento</p>
+        <p className="text-sm text-gray-500">Consolidado por chamado, registrante, categoria e tipo de documento</p>
       </div>
 
       <div className="card">
@@ -83,8 +83,8 @@ export function RelatoriosDespesas() {
             <option value="OUTROS">Outros</option>
           </select>
           <select className="input" value={filtros.registradoPorId} onChange={(e) => setFiltros((f) => ({ ...f, registradoPorId: e.target.value }))}>
-            <option value="">Técnico: todos</option>
-            {tecnicos.map((t) => (
+            <option value="">Registrado por: todos</option>
+            {registrantes.map((t) => (
               <option key={t.id} value={t.id}>{t.nome}</option>
             ))}
           </select>
@@ -132,16 +132,16 @@ export function RelatoriosDespesas() {
           </div>
         </div>
         <div className="card">
-          <h2 className="mb-3 font-semibold text-gray-800">Por técnico</h2>
+          <h2 className="mb-3 font-semibold text-gray-800">Por registrante</h2>
           <div className="space-y-2">
-            {Object.entries(porTecnico).length === 0 ? (
+            {Object.entries(porRegistrante).length === 0 ? (
               <p className="text-sm text-gray-400">Sem dados</p>
             ) : (
-              Object.entries(porTecnico).map(([tid, val]) => {
+              Object.entries(porRegistrante).map(([tid, val]) => {
                 const u = usuarios?.find((x) => String(x.id) === tid);
                 return (
                   <div key={tid} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
-                    <span className="flex items-center gap-2 text-sm text-gray-600"><Users className="h-4 w-4" /> {u?.nome || `Técnico #${tid}`}</span>
+                    <span className="flex items-center gap-2 text-sm text-gray-600"><Users className="h-4 w-4" /> {u?.nome || `Usuário #${tid}`}</span>
                     <span className="text-sm font-semibold">{formatarMoeda(val as number)}</span>
                   </div>
                 );
@@ -171,7 +171,7 @@ export function RelatoriosDespesas() {
                 <tr className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-400">
                   <th className="px-4 py-3">Data</th>
                   <th className="px-4 py-3">Chamado</th>
-                  <th className="px-4 py-3">Técnico</th>
+                  <th className="px-4 py-3">Registrado por</th>
                   <th className="px-4 py-3">Categoria</th>
                   <th className="px-4 py-3">Fornecedor</th>
                   <th className="px-4 py-3">Valor</th>

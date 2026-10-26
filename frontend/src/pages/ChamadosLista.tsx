@@ -209,6 +209,16 @@ export function ChamadosLista() {
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
+        <select
+          className="input"
+          value={filtroCategoria}
+          onChange={(e) => setFiltroCategoria(e.target.value)}
+        >
+          <option value="">Categoria: todas</option>
+          {Object.entries(categoriaLabel).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
         {(usuario?.role === 'GESTOR' || usuario?.role === 'ADMINISTRADOR') && (
           <select
             className="input"

@@ -30,7 +30,7 @@ export interface RelatorioDespesas {
   ok: boolean;
   resumo: ResumoRelatorioDespesas;
   porCategoria: Record<string, number>;
-  porTecnico: Record<string, number>;
+  porRegistrante: Record<string, number>;
   porFornecedor: Record<string, number>;
   despesas: DespesaRelatorio[];
 }

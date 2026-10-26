@@ -1,7 +1,24 @@
 import { Injectable } from '@nestjs/common';
+import { despesaSemConteudo } from '../common/anexos.js';
+import type { Despesa } from '../contrato.js';
 import { StoreService } from '../dados/store.service.js';
 import type { UsuarioInterno } from '../dados/seed.js';
-import type { Despesa } from '../contrato.js';
+
+function inicioDoDia(valor?: string): number | undefined {
+  if (!valor) return undefined;
+  const [ano, mes, dia] = valor.split('-').map(Number);
+  if (!ano || !mes || !dia) return undefined;
+  const data = new Date(ano, mes - 1, dia, 0, 0, 0, 0);
+  return Number.isNaN(data.getTime()) ? undefined : data.getTime();
+}
+
+function fimDoDia(valor?: string): number | undefined {
+  if (!valor) return undefined;
+  const [ano, mes, dia] = valor.split('-').map(Number);
+  if (!ano || !mes || !dia) return undefined;
+  const data = new Date(ano, mes - 1, dia, 23, 59, 59, 999);
+  return Number.isNaN(data.getTime()) ? undefined : data.getTime();
+}
 
 @Injectable()
 export class RelatoriosService {
@@ -21,12 +38,12 @@ export class RelatoriosService {
       const id = Number(filtros.registradoPorId);
       if (!Number.isNaN(id)) despesas = despesas.filter((d) => d.registradoPorId === id);
     }
-    if (filtros?.de) {
-      const ini = new Date(filtros.de).getTime();
-      despesas = despesas.filter((d) => new Date(d.criadoEm).getTime() >= ini);
+    const inicio = inicioDoDia(filtros?.de);
+    if (inicio !== undefined) {
+      despesas = despesas.filter((d) => new Date(d.criadoEm).getTime() >= inicio);
     }
-    if (filtros?.ate) {
-      const fim = new Date(filtros.ate).getTime();
+    const fim = fimDoDia(filtros?.ate);
+    if (fim !== undefined) {
       despesas = despesas.filter((d) => new Date(d.criadoEm).getTime() <= fim);
     }
     if (filtros?.temDocumento === 'sim') {
@@ -45,7 +62,7 @@ export class RelatoriosService {
     let rejeitadoCentavos = 0;
     let comDocumento = 0;
     const porCategoria: Record<string, number> = {};
-    const porTecnico: Record<string, number> = {};
+    const porRegistrante: Record<string, number> = {};
     const porFornecedor: Record<string, number> = {};
 
     for (const d of despesas) {
@@ -55,8 +72,9 @@ export class RelatoriosService {
       if (d.status === 'REJEITADA') rejeitadoCentavos += d.valorCentavos;
       if (d.anexos.some((a) => !!a.tipoDocumentoFiscal)) comDocumento += 1;
       porCategoria[d.categoria] = (porCategoria[d.categoria] || 0) + d.valorCentavos;
-      const chaveTec = String(d.registradoPorId);
-      porTecnico[chaveTec] = (porTecnico[chaveTec] || 0) + d.valorCentavos;
+      const chaveRegistrante = String(d.registradoPorId);
+      porRegistrante[chaveRegistrante] =
+        (porRegistrante[chaveRegistrante] || 0) + d.valorCentavos;
       if (d.fornecedor) {
         porFornecedor[d.fornecedor] = (porFornecedor[d.fornecedor] || 0) + d.valorCentavos;
       }
@@ -70,8 +88,7 @@ export class RelatoriosService {
       .map((d) => {
         const chamado = this.store.getChamadoPorId(d.chamadoId);
         return {
-          ...d,
-          chamadoId: d.chamadoId,
+          ...despesaSemConteudo(d),
           chamadoTitulo: chamado?.titulo,
           chamadoNumero: chamado?.id,
         };
@@ -90,7 +107,7 @@ export class RelatoriosService {
         pctComDocumento,
       },
       porCategoria,
-      porTecnico,
+      porRegistrante,
       porFornecedor,
       despesas: itens,
     };

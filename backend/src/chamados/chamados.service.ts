@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
 import type { AnexoDespesa, Chamado, Despesa, ResumoFinanceiro, Status } from '../contrato.js';
+import { despesaSemConteudo } from '../common/anexos.js';
 import { StoreService } from '../dados/store.service.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import { classificarChamado } from './criticidade.js';
@@ -42,7 +43,7 @@ export class ChamadosService {
       .getChamados()
       .filter((c) => this.noEscopo(c, usuario))
       .filter((c) => this.atendeFiltros(c, filtros))
-      .map((c) => this.prepararChamadoParaResposta(c, usuario));
+      .map((c) => this.prepararChamadoParaResposta(c, usuario, false));
     return { ok: true, chamados };
   }
 
@@ -565,6 +566,7 @@ export class ChamadosService {
   private prepararChamadoParaResposta(
     chamado: Chamado,
     usuario: UsuarioInterno,
+    incluirConteudoAnexos = true,
   ): Chamado {
     const despesas = this.store.getDespesasPorChamado(chamado.id);
     const resumoFinanceiro = this.calcularResumo(despesas);
@@ -582,7 +584,9 @@ export class ChamadosService {
     }
     return {
       ...chamado,
-      despesas,
+      despesas: incluirConteudoAnexos
+        ? despesas
+        : despesas.map(despesaSemConteudo),
       resumoFinanceiro,
     };
   }

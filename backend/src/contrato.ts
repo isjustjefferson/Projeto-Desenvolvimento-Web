@@ -103,7 +103,7 @@ export interface AnexoDespesa {
   mimeType: string;
   tamanhoBytes: number;
   hashSha256?: string;
-  conteudo: string;
+  conteudo?: string;
   enviadoPorId: number;
   criadoEm: string;
 }

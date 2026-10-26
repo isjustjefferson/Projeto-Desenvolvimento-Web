@@ -118,7 +118,7 @@ export const anexoDespesaSchema = z.object({
   mimeType: z.string(),
   tamanhoBytes: z.number(),
   hashSha256: z.string().nullish(),
-  conteudo: z.string(),
+  conteudo: z.string().optional(),
   enviadoPorId: z.number(),
   criadoEm: z.string(),
 });
