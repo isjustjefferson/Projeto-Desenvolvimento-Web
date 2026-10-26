@@ -5,6 +5,7 @@ export const chaves = {
   chamados: ['chamados'] as const,
   chamado: (id: number) => ['chamados', id] as const,
   despesas: (chamadoId: number) => ['chamados', chamadoId, 'despesas'] as const,
+  relatorioDespesas: (filtros: string) => ['relatorios', 'despesas', filtros] as const,
   usuarios: ['usuarios'] as const,
   diretorio: ['usuarios', 'resumo'] as const,
 };

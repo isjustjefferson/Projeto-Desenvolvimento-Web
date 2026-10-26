@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
+  BarChart3,
   Building2,
   LayoutDashboard,
   LifeBuoy,
@@ -81,6 +82,13 @@ export function Layout() {
       label: 'Chamados',
       icon: LifeBuoy,
       visivel: true,
+      end: false,
+    },
+    {
+      to: '/relatorios/despesas',
+      label: 'Relatórios',
+      icon: BarChart3,
+      visivel: usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR',
       end: false,
     },
     {
