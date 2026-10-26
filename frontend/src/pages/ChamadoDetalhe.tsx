@@ -43,9 +43,59 @@ import {
 } from '../helpers';
 import { PrioridadeBadge, StatusBadge } from '../components/Badge';
 import { Modal } from '../components/Modal';
-import type { CategoriaDespesa, Prioridade } from '../types';
+import type { CategoriaDespesa, Prioridade, TipoDocumentoFiscal } from '../types';
 
 const prioridades: Prioridade[] = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'];
+
+interface AnexoArquivo {
+  nomeArquivo: string;
+  mimeType: string;
+  conteudo: string;
+}
+
+function criarUrlAnexo(anexo: AnexoArquivo): string | null {
+  const virgula = anexo.conteudo.indexOf(',');
+  const base64 =
+    virgula >= 0 ? anexo.conteudo.slice(virgula + 1) : anexo.conteudo;
+  const meta = virgula >= 0 ? anexo.conteudo.slice(0, virgula) : '';
+  const mime = meta.match(/^data:([^;,]+)/)?.[1] ?? anexo.mimeType;
+
+  try {
+    const binario = atob(base64);
+    const bytes = new Uint8Array(binario.length);
+    for (let i = 0; i < binario.length; i += 1) {
+      bytes[i] = binario.charCodeAt(i);
+    }
+    return URL.createObjectURL(new Blob([bytes], { type: mime }));
+  } catch {
+    return null;
+  }
+}
+
+function abrirAnexo(anexo: AnexoArquivo) {
+  const url = criarUrlAnexo(anexo);
+  if (!url) {
+    toast.error('Não foi possível abrir o anexo.');
+    return;
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function baixarAnexo(anexo: AnexoArquivo) {
+  const url = criarUrlAnexo(anexo);
+  if (!url) {
+    toast.error('Não foi possível baixar o anexo.');
+    return;
+  }
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = anexo.nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
 
 const categoriasDespesa: CategoriaDespesa[] = [
   'MATERIAL',
@@ -107,7 +157,7 @@ export function ChamadoDetalhe() {
       conteudo: string;
     }>
   >([]);
-  const [anexoTipoDoc, setAnexoTipoDoc] = useState<string>('');
+  const [anexoTipoDoc, setAnexoTipoDoc] = useState<TipoDocumentoFiscal | ''>('');
   const [despesaRejeitarId, setDespesaRejeitarId] = useState<number | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
 
@@ -281,7 +331,7 @@ export function ChamadoDetalhe() {
         ...prev,
         {
           tipo: mime === 'application/pdf' ? 'NOTA_FISCAL' : 'COMPROVANTE_PAGAMENTO',
-          tipoDocumentoFiscal: (anexoTipoDoc as any) || undefined,
+          tipoDocumentoFiscal: anexoTipoDoc || undefined,
           nomeArquivo: arquivo.name,
           mimeType: mime,
           tamanhoBytes: arquivo.size,
@@ -590,12 +640,28 @@ export function ChamadoDetalhe() {
                   </div>
                 )}
                 {d.anexos.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
+                  <div className="mt-2 space-y-1">
                     {d.anexos.map((a) => (
-                      <span key={a.id} className="flex items-center gap-1 rounded bg-gray-50 px-2 py-0.5 text-xs text-gray-600">
-                        <FileText className="h-3 w-3" />
-                        {a.tipoDocumentoFiscal ? tipoDocumentoFiscalLabel[a.tipoDocumentoFiscal as keyof typeof tipoDocumentoFiscalLabel] : tipoAnexoLabel[a.tipo]} · {a.nomeArquivo}
-                      </span>
+                      <div key={a.id} className="flex flex-wrap items-center gap-2 rounded bg-gray-50 px-2 py-1 text-xs text-gray-600">
+                        <FileText className="h-3 w-3 shrink-0" />
+                        <span className="min-w-0 flex-1 truncate">
+                          {a.tipoDocumentoFiscal ? tipoDocumentoFiscalLabel[a.tipoDocumentoFiscal as keyof typeof tipoDocumentoFiscalLabel] : tipoAnexoLabel[a.tipo]} · {a.nomeArquivo}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => abrirAnexo(a)}
+                          className="font-medium text-brand-700 hover:underline"
+                        >
+                          Visualizar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => baixarAnexo(a)}
+                          className="font-medium text-brand-700 hover:underline"
+                        >
+                          Baixar
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -773,7 +839,7 @@ export function ChamadoDetalhe() {
           </div>
           <div>
             <label className="label">Tipo de documento fiscal (opcional)</label>
-            <select className="input" value={anexoTipoDoc} onChange={(e) => setAnexoTipoDoc(e.target.value)}>
+            <select className="input" value={anexoTipoDoc} onChange={(e) => setAnexoTipoDoc(e.target.value as TipoDocumentoFiscal | '')}>
               <option value="">Não classificar</option>
               <option value="NFE">NF-e (NFe)</option>
               <option value="NFSE">NFS-e</option>
