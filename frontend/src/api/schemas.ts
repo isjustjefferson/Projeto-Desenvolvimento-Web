@@ -43,6 +43,12 @@ export const statusSchema = z.enum(STATUS_VALUES);
 export const prioridadeSchema = z.enum(PRIORIDADE_VALUES);
 export const categoriaSchema = z.enum(CATEGORIA_VALUES);
 
+const classificacaoSchema = z.object({
+  prioridadeSugerida: prioridadeSchema,
+  pontuacao: z.number(),
+  motivos: z.array(z.string()),
+});
+
 const localSchema = z.object({
   predio: z.string(),
   andar: z.string().nullish(),
@@ -71,6 +77,7 @@ export const chamadoSchema = z.object({
   local: localSchema,
   status: statusSchema,
   prioridade: prioridadeSchema.nullable(),
+  classificacao: classificacaoSchema.nullish(),
   foto: z.string().nullish(),
   criadoPorId: z.number(),
   tecnicoId: z.number().nullish(),

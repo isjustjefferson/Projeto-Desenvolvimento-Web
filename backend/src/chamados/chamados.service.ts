@@ -7,6 +7,7 @@ import {
 import type { Chamado, Status } from '../contrato.js';
 import { StoreService } from '../dados/store.service.js';
 import type { UsuarioInterno } from '../dados/seed.js';
+import { classificarChamado } from './criticidade.js';
 import type {
   AprovarChamadoDto,
   ConcluirChamadoDto,
@@ -48,18 +49,25 @@ export class ChamadosService {
     dados: CriarChamadoDto,
   ): { ok: true; chamado: Chamado } {
     const agora = new Date().toISOString();
+    const local = {
+      predio: dados.local.predio.trim(),
+      andar: dados.local.andar?.trim(),
+      sala: dados.local.sala?.trim(),
+    };
     const novo: Chamado = {
       id: this.store.incProximoIdChamado(),
       titulo: dados.titulo.trim(),
       descricao: dados.descricao.trim(),
       categoria: dados.categoria,
-      local: {
-        predio: dados.local.predio.trim(),
-        andar: dados.local.andar?.trim(),
-        sala: dados.local.sala?.trim(),
-      },
+      local,
       status: 'AGUARDANDO_APROVACAO',
       prioridade: null,
+      classificacao: classificarChamado({
+        titulo: dados.titulo,
+        descricao: dados.descricao,
+        categoria: dados.categoria,
+        local,
+      }),
       foto: dados.foto ?? null,
       criadoPorId: usuario.id,
       tecnicoId: null,

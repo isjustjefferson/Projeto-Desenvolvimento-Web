@@ -61,6 +61,12 @@ export interface Historico {
   observacao?: string;
 }
 
+export interface Classificacao {
+  prioridadeSugerida: Prioridade;
+  pontuacao: number;
+  motivos: string[];
+}
+
 export interface Chamado {
   id: number;
   titulo: string;
@@ -69,6 +75,7 @@ export interface Chamado {
   local: Local;
   status: Status;
   prioridade: Prioridade | null;
+  classificacao?: Classificacao | null;
   foto?: string | null;
   criadoPorId: number;
   tecnicoId?: number | null;
