@@ -458,7 +458,7 @@ export function Dashboard() {
                     <StatusBadge status={c.status} />
                   </td>
                   <td className="px-4 py-3">
-                    <PrioridadeBadge prioridade={c.prioridade} />
+                    <PrioridadeBadge prioridade={c.prioridade} sugestao={c.classificacao?.prioridadeSugerida} />
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500">
                     {formatarData(c.criadoEm)}

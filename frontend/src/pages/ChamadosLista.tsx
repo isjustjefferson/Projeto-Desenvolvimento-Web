@@ -273,7 +273,7 @@ export function ChamadosLista() {
                 <span className="text-xs font-bold text-gray-400">#{c.id}</span>
                 <h3 className="font-semibold text-gray-900">{c.titulo}</h3>
                 <StatusBadge status={c.status} />
-                <PrioridadeBadge prioridade={c.prioridade} />
+                <PrioridadeBadge prioridade={c.prioridade} sugestao={c.classificacao?.prioridadeSugerida} />
               </div>
               <p className="mt-1 line-clamp-2 text-sm text-gray-500">{c.descricao}</p>
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">

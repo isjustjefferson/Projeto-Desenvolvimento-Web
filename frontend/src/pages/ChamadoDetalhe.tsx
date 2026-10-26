@@ -11,6 +11,7 @@ import {
   Play,
   Plus,
   Receipt,
+  Sparkles,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -194,7 +195,7 @@ export function ChamadoDetalhe() {
   };
 
   function abrirAprovacao() {
-    setPrioridadeSel('MEDIA');
+    setPrioridadeSel(c.classificacao?.prioridadeSugerida ?? 'MEDIA');
     setModalAprovar(true);
   }
 
@@ -399,8 +400,42 @@ export function ChamadoDetalhe() {
           <span className="text-xs font-bold text-gray-400">#{chamado.id}</span>
           <h1 className="text-xl font-bold text-gray-900">{chamado.titulo}</h1>
           <StatusBadge status={chamado.status} />
-          <PrioridadeBadge prioridade={chamado.prioridade} />
+          <PrioridadeBadge
+            prioridade={chamado.prioridade}
+            sugestao={chamado.classificacao?.prioridadeSugerida}
+          />
         </div>
+
+        {chamado.classificacao && (
+          <div className="mt-4 rounded-lg border border-brand-100 bg-brand-50 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Sparkles className="h-4 w-4 text-brand-600" />
+              <span className="text-sm font-semibold text-brand-700">
+                Sugestão automática
+              </span>
+              <PrioridadeBadge
+                prioridade={chamado.classificacao.prioridadeSugerida}
+              />
+              <span className="text-xs text-gray-500">
+                {chamado.classificacao.pontuacao}/100
+              </span>
+            </div>
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {chamado.classificacao.motivos.map((motivo) => (
+                <li
+                  key={motivo}
+                  className="rounded bg-white px-2 py-0.5 text-[11px] text-gray-600 ring-1 ring-gray-200"
+                >
+                  {motivo}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[11px] text-gray-500">
+              Sugestão do sistema. A prioridade final é definida pelo gestor na
+              aprovação.
+            </p>
+          </div>
+        )}
 
         <p className="mt-4 whitespace-pre-wrap text-sm text-gray-700">
           {chamado.descricao}
@@ -636,6 +671,13 @@ export function ChamadoDetalhe() {
                 </button>
               ))}
             </div>
+            {c.classificacao && (
+              <p className="mt-2 text-xs text-gray-500">
+                Sugestão automática:{' '}
+                {prioridadeLabel[c.classificacao.prioridadeSugerida]} (
+                {c.classificacao.pontuacao}/100).
+              </p>
+            )}
           </div>
           <div>
             <label className="label">Atribuir ao técnico</label>
