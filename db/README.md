@@ -12,11 +12,15 @@
 db/
 ├── README.md                      # Este guia
 ├── modelo-de-dados.md             # Modelo conceitual, lógico e físico
-├── 01_tipos.sql                   # ENUMs
-├── 02_tabelas.sql                 # Tabelas
-├── 03_chaves_estrangeiras.sql     # FKs e regras ON DELETE
+├── 01_tipos.sql                   # ENUMs principais
+├── 01b_tipos_despesas.sql         # ENUMs de despesas/anexos
+├── 02_tabelas.sql                 # Tabelas principais
+├── 02b_despesas_tabelas.sql       # Tabelas despesas e anexos_despesa
+├── 03_chaves_estrangeiras.sql     # FKs principais
+├── 03b_chaves_despesas.sql        # FKs de despesas
 ├── 04_check_rn04.sql              # CHECK da regra RN04
-├── 05_indices.sql                 # Índices
+├── 05_indices.sql                 # Índices principais
+├── 05b_indices_despesas.sql       # Índices de despesas
 └── scripts/
     └── iniciar-banco.ps1          # Script de provisionamento
 ```
@@ -54,7 +58,7 @@ O script irá:
 1. Criar o papel `predial` (ou gerar senha se não informada)
 2. Criar o banco `predial` com `UTF8`
 3. Aplicar os arquivos SQL na ordem correta
-4. Verificar: 5 tabelas, 16 índices, 6 FKs, 1 CHECK, 4 ENUMs
+4. Verificar: 7 tabelas, 24 índices, 11 FKs, 1 CHECK, 10 ENUMs
 
 **Variáveis opcionais:**
 
@@ -73,10 +77,14 @@ $env:DB_PASSWORD = "sua-senha"; .\db\scripts\iniciar-banco.ps1
 
 ```bash
 psql -U postgres -v ON_ERROR_STOP=1 -f db/01_tipos.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/01b_tipos_despesas.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/02_tabelas.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/02b_despesas_tabelas.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/03_chaves_estrangeiras.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/03b_chaves_despesas.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/04_check_rn04.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/05_indices.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/05b_indices_despesas.sql
 ```
 
 > **Importante:** Sempre use `-v ON_ERROR_STOP=1`. Sem isso, o `psql` continua após erro e retorna sucesso.

@@ -212,10 +212,14 @@ Para provisionar o banco, veja [README.md](./README.md).
 
 **Ordem aplicada pelos scripts:**
 
-1. `01_tipos.sql` → ENUMs
-2. `02_tabelas.sql` → Tabelas
-3. `03_chaves_estrangeiras.sql` → FKs
-4. `04_check_rn04.sql` → CHECK
-5. `05_indices.sql` → Índices
+1. `01_tipos.sql` → ENUMs principais
+2. `01b_tipos_despesas.sql` → ENUMs de despesas/anexos
+3. `02_tabelas.sql` → Tabelas principais
+4. `02b_despesas_tabelas.sql` → `despesas` e `anexos_despesa`
+5. `03_chaves_estrangeiras.sql` → FKs principais
+6. `03b_chaves_despesas.sql` → FKs de despesas
+7. `04_check_rn04.sql` → CHECK
+8. `05_indices.sql` → Índices principais
+9. `05b_indices_despesas.sql` → Índices de despesas
 
-**Validação realizada:** Schema testado em PostgreSQL 18 com todos os cenários (reexecução, CHECK, FKs, ENUMs e `setval`).
+**Validação realizada:** Schema testado em PostgreSQL 18 com todos os cenários (reexecução, CHECK, FKs, ENUMs e `setval`). Agora cobre também `despesas` e `anexos_despesa`, com `unidade`/`setor` em `usuarios` e `classificacao` JSONB em `chamados` para manter compatibilidade com o contrato atual.
