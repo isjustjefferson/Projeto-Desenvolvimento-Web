@@ -6,6 +6,20 @@
 [circleci-url]: https://circleci.com/gh/nestjs/nest
 
   <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+
+## Banco de Dados
+
+O banco de dados PostgreSQL pode ser provisionado com os scripts em [`../db/`](../db/README.md).
+
+1. Copie `.env.example` para `.env` e configure a conexão:
+   ```env
+   DATABASE_URL=postgresql://predial:senha@localhost:5432/predial
+   ```
+2. Provisione o schema:
+   ```powershell
+   ..\db\scripts\iniciar-banco.ps1
+   ```
+3. O TypeORM está configurado com `synchronize: false` e `autoLoadEntities: false`. Os arquivos em `db/` são a fonte da verdade.
     <p align="center">
 <a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
 <a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
