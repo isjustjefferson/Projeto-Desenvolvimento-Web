@@ -126,3 +126,8 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+
+## Bugs / Observações
+
+- **test/chamados.e2e-spec.ts - POST /chamados bloqueia gestor e técnico**: Atualmente falha com `expected 403 "Forbidden", got 201 "Created"`. O teste já apresentava esse comportamento antes das alterações da Fase A (validado ao reverter temporariamente as alterações). Não foi introduzido nesta fase e precisa ser investigado separadamente.
