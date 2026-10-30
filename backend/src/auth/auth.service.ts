@@ -2,14 +2,17 @@ import {
   ConflictException,
   HttpException,
   HttpStatus,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'node:crypto';
+import type { Repository } from 'typeorm';
 import type { UsuarioPublico } from '../contrato.js';
 import { StoreService } from '../dados/store.service.js';
+import { TokenResetEntity } from '../database/entities/token-reset.entity.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import type {
   AtualizarContaDto,
@@ -23,7 +26,10 @@ const TEMPO_TOKEN_HORAS = 1;
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly store: StoreService) {}
+  constructor(
+    private readonly store: StoreService,
+    @Inject('TOKEN_RESET_REPO') private readonly tokenResetRepo: Repository<TokenResetEntity>,
+  ) {}
 
   login(dados: LoginDto): { ok: true; usuario: UsuarioPublico } {
     const usuario = this.store.getUsuarioPorEmail(dados.email);
