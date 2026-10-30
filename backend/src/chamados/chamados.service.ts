@@ -1,13 +1,23 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
+import type { DataSource, Repository } from 'typeorm';
 import type { AnexoDespesa, Chamado, Despesa, ResumoFinanceiro, Status } from '../contrato.js';
 import { despesaSemConteudo } from '../common/anexos.js';
 import { StoreService } from '../dados/store.service.js';
+import { ChamadoEntity } from '../database/entities/chamado.entity.js';
+import { HistoricoEntity } from '../database/entities/historico.entity.js';
+import { LocalEntity } from '../database/entities/local.entity.js';
+import { UsuarioEntity } from '../database/entities/usuario.entity.js';
+import { DespesaEntity } from '../database/entities/despesa.entity.js';
+import { AnexoDespesaEntity } from '../database/entities/anexo-despesa.entity.js';
+import { mapChamadoToContrato } from '../database/mappers/chamado.mapper.js';
+import { mapUsuarioToContrato } from '../database/mappers/usuario.mapper.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import { classificarChamado } from './criticidade.js';
 import type {
@@ -33,7 +43,15 @@ const MAX_ANEXOS_POR_DESPESA = 5;
 
 @Injectable()
 export class ChamadosService {
-  constructor(private readonly store: StoreService) {}
+  constructor(
+    private readonly store: StoreService,
+    @Inject('CHAMADO_REPO') private readonly chamadoRepo: Repository<ChamadoEntity>,
+    @Inject('HISTORICO_REPO') private readonly historicoRepo: Repository<HistoricoEntity>,
+    @Inject('LOCAL_REPO') private readonly localRepo: Repository<LocalEntity>,
+    @Inject('USUARIO_REPO') private readonly usuarioRepo: Repository<UsuarioEntity>,
+    @Inject('DESPESA_REPO') private readonly despesaRepo: Repository<DespesaEntity>,
+    @Inject('ANEXO_DESPESA_REPO') private readonly anexoRepo: Repository<AnexoDespesaEntity>,
+  ) {}
 
   listar(
     usuario: UsuarioInterno,

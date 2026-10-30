@@ -19,7 +19,8 @@ describe('ChamadosService', () => {
 
   beforeEach(() => {
     store = new StoreService();
-    service = new ChamadosService(store);
+    const repo = { find: async () => [], findOne: async () => null } as any;
+    service = new ChamadosService(store, repo, repo, repo, repo, repo, repo);
     ana = store.getUsuarioInternoPorId(1)!;
     joao = store.getUsuarioInternoPorId(3)!;
     marta = store.getUsuarioInternoPorId(4)!;
