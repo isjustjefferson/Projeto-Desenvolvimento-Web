@@ -1,12 +1,16 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import bcrypt from 'bcrypt';
+import type { Repository } from 'typeorm';
 import type { UsuarioPublico, UsuarioResumo } from '../contrato.js';
 import { StoreService } from '../dados/store.service.js';
+import { UsuarioEntity } from '../database/entities/usuario.entity.js';
+import { mapUsuarioToContrato } from '../database/mappers/usuario.mapper.js';
 import { senhaPadrao } from '../dados/seed.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import type { AlterarRoleDto, CriarUsuarioDto } from './dto/usuarios.dto.js';
@@ -15,7 +19,10 @@ const SALT_ROUNDS = 10;
 
 @Injectable()
 export class UsuariosService {
-  constructor(private readonly store: StoreService) {}
+  constructor(
+    private readonly store: StoreService,
+    @Inject('USUARIO_REPO') private readonly usuarioRepo: Repository<UsuarioEntity>,
+  ) {}
 
   listar(): { ok: true; usuarios: UsuarioPublico[] } {
     return { ok: true, usuarios: this.store.getUsuariosPublicos() };

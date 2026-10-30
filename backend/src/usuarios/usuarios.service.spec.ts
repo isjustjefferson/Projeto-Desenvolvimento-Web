@@ -10,7 +10,8 @@ describe('UsuariosService', () => {
 
   beforeEach(() => {
     store = new StoreService();
-    service = new UsuariosService(store);
+    const repo = { find: async () => [], findOne: async () => null } as any;
+    service = new UsuariosService(store, repo);
   });
 
   it('lista usuários públicos sem senha/hash', () => {
