@@ -6,9 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
-import type { DataSource, Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import type { AnexoDespesa, Chamado, Despesa, ResumoFinanceiro, Status } from '../contrato.js';
-import { despesaSemConteudo } from '../common/anexos.js';
+import { anexoSemConteudo, despesaSemConteudo } from '../common/anexos.js';
 import { StoreService } from '../dados/store.service.js';
 import { ChamadoEntity } from '../database/entities/chamado.entity.js';
 import { HistoricoEntity } from '../database/entities/historico.entity.js';
@@ -16,6 +16,7 @@ import { LocalEntity } from '../database/entities/local.entity.js';
 import { UsuarioEntity } from '../database/entities/usuario.entity.js';
 import { DespesaEntity } from '../database/entities/despesa.entity.js';
 import { AnexoDespesaEntity } from '../database/entities/anexo-despesa.entity.js';
+import { mapDespesaToContrato } from '../database/mappers/despesa.mapper.js';
 import { mapChamadoToContrato } from '../database/mappers/chamado.mapper.js';
 import { mapUsuarioToContrato } from '../database/mappers/usuario.mapper.js';
 import type { UsuarioInterno } from '../dados/seed.js';
@@ -267,27 +268,32 @@ export class ChamadosService {
   }
 
   // ---- Despesas ----
-  listarDespesas(
+  async listarDespesas(
     id: number,
     usuario: UsuarioInterno,
-  ): { ok: true; despesas: Despesa[]; resumoFinanceiro: ResumoFinanceiro } {
+  ): Promise<{ ok: true; despesas: Despesa[]; resumoFinanceiro: ResumoFinanceiro }> {
     const chamado = this.buscar(id);
     if (!this.podeVer(chamado, usuario)) {
       throw new NotFoundException('Chamado não encontrado.');
     }
-    const despesas = this.store.getDespesasPorChamado(chamado.id);
     if (usuario.role === 'SOLICITANTE') {
       throw new ForbiddenException('Sem permissão para visualizar despesas.');
     }
+    const despesasEnt = await this.despesaRepo.find({
+      where: { chamadoId: chamado.id },
+      relations: ['anexos'] as any,
+      order: { id: 'ASC' },
+    });
+    const despesas = despesasEnt.map((d) => mapDespesaToContrato(d, false) as any);
     const resumo = this.calcularResumo(despesas);
     return { ok: true, despesas, resumoFinanceiro: resumo };
   }
 
-  criarDespesa(
+  async criarDespesa(
     id: number,
     usuario: UsuarioInterno,
     dados: CriarDespesaDto,
-  ): { ok: true; despesa: Despesa } {
+  ): Promise<{ ok: true; despesa: Despesa }> {
     const chamado = this.buscar(id);
     if (!this.podeGerenciarDespesas(chamado, usuario)) {
       throw new ForbiddenException('Sem permissão para lançar despesas.');
@@ -300,255 +306,270 @@ export class ChamadosService {
     this.validarDataEmissao(dados.dataEmissao);
     this.validarAnexos(dados.anexos);
 
-    const agora = new Date().toISOString();
-    const anexos: AnexoDespesa[] = (dados.anexos || []).map((anexo) => {
-      const hash = crypto
-        .createHash('sha256')
-        .update(anexo.conteudo)
-        .digest('hex');
-      return {
-        id: this.store.incProximoIdAnexoDespesa(),
-        despesaId: 0,
-        tipo: anexo.tipo,
-        tipoDocumentoFiscal: anexo.tipoDocumentoFiscal,
-        chaveNFe: anexo.chaveNFe?.trim() || undefined,
-        numero: anexo.numero?.trim() || undefined,
-        serie: anexo.serie?.trim() || undefined,
-        nomeArquivo: anexo.nomeArquivo,
-        mimeType: anexo.mimeType,
-        tamanhoBytes: anexo.tamanhoBytes,
-        hashSha256: hash,
-        conteudo: anexo.conteudo,
-        enviadoPorId: usuario.id,
-        criadoEm: agora,
-      };
-    });
-
-    const despesa: Despesa = {
-      id: this.store.incProximoIdDespesa(),
+    const agora = new Date();
+    const despesaEnt = this.despesaRepo.create({
       chamadoId: chamado.id,
       registradoPorId: usuario.id,
-      categoria: dados.categoria,
+      categoria: dados.categoria as any,
       descricao: dados.descricao.trim(),
-      fornecedor: dados.fornecedor?.trim() || undefined,
-      cnpj: dados.cnpj?.trim() || undefined,
-      numeroNota: dados.numeroNota?.trim() || undefined,
-      serie: dados.serie?.trim() || undefined,
-      dataEmissao: dados.dataEmissao,
+      fornecedor: dados.fornecedor?.trim() || null,
+      cnpj: dados.cnpj?.trim() || null,
+      numeroNota: dados.numeroNota?.trim() || null,
+      serie: dados.serie?.trim() || null,
+      dataEmissao: dados.dataEmissao || null,
       valorCentavos: dados.valorCentavos,
-      formaPagamento: dados.formaPagamento,
-      pagoPor: dados.pagoPor,
+      formaPagamento: dados.formaPagamento || null,
+      pagoPor: dados.pagoPor || null,
       status: 'PENDENTE',
       criadoEm: agora,
       atualizadoEm: agora,
-      anexos: [],
-    };
+    } as any);
+    const savedRes = await this.despesaRepo.save(despesaEnt);
+    const saved = Array.isArray(savedRes) ? savedRes[0] : savedRes;
 
-    for (const anexo of anexos) {
-      anexo.despesaId = despesa.id;
+    if (dados.anexos && dados.anexos.length > 0) {
+      for (const anexo of dados.anexos) {
+        const hash = crypto
+          .createHash('sha256')
+          .update(anexo.conteudo)
+          .digest('hex');
+        const buf = Buffer.from(anexo.conteudo, 'base64');
+        const aEnt = this.anexoRepo.create({
+          despesaId: saved.id,
+          tipo: anexo.tipo as any,
+          tipoDocumentoFiscal: anexo.tipoDocumentoFiscal || null,
+          chaveNfe: anexo.chaveNFe?.trim() || null,
+          numero: anexo.numero?.trim() || null,
+          serie: anexo.serie?.trim() || null,
+          nomeArquivo: anexo.nomeArquivo,
+          mimeType: anexo.mimeType,
+          tamanhoBytes: anexo.tamanhoBytes,
+          hashSha256: hash,
+          conteudo: buf,
+          enviadoPorId: usuario.id,
+          criadoEm: agora,
+        } as any);
+        await this.anexoRepo.save(aEnt);
+      }
     }
-    despesa.anexos = anexos;
 
-    this.store.salvarDespesa(despesa);
-    return { ok: true, despesa };
+    const full = (await this.despesaRepo.findOne({
+      where: { id: (saved as any).id },
+      relations: { anexos: true } as any,
+    })) as DespesaEntity | null;
+    return { ok: true, despesa: mapDespesaToContrato(full as any, false) as any };
   }
 
-  editarDespesa(
+  async editarDespesa(
     chamadoId: number,
     despesaId: number,
     usuario: UsuarioInterno,
     dados: EditarDespesaDto,
-  ): { ok: true; despesa: Despesa } {
+  ): Promise<{ ok: true; despesa: Despesa }> {
     const chamado = this.buscar(chamadoId);
     if (!this.podeGerenciarDespesas(chamado, usuario)) {
       throw new ForbiddenException('Sem permissão para editar despesas.');
     }
-    const despesa = this.buscarDespesa(despesaId);
-    if (despesa.chamadoId !== chamado.id) {
+    const despesaEntRes = (await this.despesaRepo.findOne({
+      where: { id: despesaId },
+      relations: ['anexos'] as any,
+    }));
+    const despesaEnt: DespesaEntity | null = Array.isArray(despesaEntRes) ? (despesaEntRes[0] as any) : (despesaEntRes as any);
+    if (!despesaEnt || despesaEnt.chamadoId !== chamado.id) {
       throw new NotFoundException('Despesa não encontrada.');
     }
-    if (despesa.status !== 'PENDENTE') {
+    if (despesaEnt.status !== 'PENDENTE') {
       throw new BadRequestException('Apenas despesas pendentes podem ser editadas.');
     }
     this.validarDataEmissao(dados.dataEmissao);
 
-    const agora = new Date().toISOString();
-    const atualizada: Despesa = {
-      ...despesa,
-      ...dados,
-      descricao: dados.descricao?.trim() ?? despesa.descricao,
-      fornecedor:
-        dados.fornecedor !== undefined
-          ? dados.fornecedor.trim() || undefined
-          : despesa.fornecedor,
-      cnpj: dados.cnpj !== undefined ? dados.cnpj.trim() || undefined : despesa.cnpj,
-      numeroNota:
-        dados.numeroNota !== undefined
-          ? dados.numeroNota.trim() || undefined
-          : despesa.numeroNota,
-      serie: dados.serie !== undefined ? dados.serie.trim() || undefined : despesa.serie,
-      dataEmissao: dados.dataEmissao ?? despesa.dataEmissao,
-      atualizadoEm: agora,
-    };
-    this.store.salvarDespesa(atualizada);
-    return { ok: true, despesa: atualizada };
+    const agora = new Date();
+    if (dados.categoria !== undefined) despesaEnt.categoria = dados.categoria as any;
+    if (dados.descricao !== undefined) despesaEnt.descricao = dados.descricao.trim();
+    if (dados.fornecedor !== undefined) despesaEnt.fornecedor = dados.fornecedor?.trim() || null;
+    if (dados.cnpj !== undefined) despesaEnt.cnpj = dados.cnpj?.trim() || null;
+    if (dados.numeroNota !== undefined) despesaEnt.numeroNota = dados.numeroNota?.trim() || null;
+    if (dados.serie !== undefined) despesaEnt.serie = dados.serie?.trim() || null;
+    if (dados.dataEmissao !== undefined) despesaEnt.dataEmissao = dados.dataEmissao || null;
+    if (dados.valorCentavos !== undefined) despesaEnt.valorCentavos = dados.valorCentavos;
+    if (dados.formaPagamento !== undefined) despesaEnt.formaPagamento = (dados.formaPagamento as any) || null;
+    if (dados.pagoPor !== undefined) despesaEnt.pagoPor = (dados.pagoPor as any) || null;
+    despesaEnt.atualizadoEm = agora;
+    await this.despesaRepo.save(despesaEnt);
+    const full = await this.despesaRepo.findOne({
+      where: { id: despesaEnt.id },
+      relations: { anexos: true },
+    });
+    return { ok: true, despesa: mapDespesaToContrato(full as any, false) as any };
   }
 
-  removerDespesa(
+  async removerDespesa(
     chamadoId: number,
     despesaId: number,
     usuario: UsuarioInterno,
-  ): { ok: true } {
+  ): Promise<{ ok: true }> {
     const chamado = this.buscar(chamadoId);
     if (!this.podeGerenciarDespesas(chamado, usuario)) {
       throw new ForbiddenException('Sem permissão para remover despesas.');
     }
-    const despesa = this.buscarDespesa(despesaId);
-    if (despesa.chamadoId !== chamado.id) {
+    const despesaEnt = await this.despesaRepo.findOne({ where: { id: despesaId } });
+    if (!despesaEnt || despesaEnt.chamadoId !== chamado.id) {
       throw new NotFoundException('Despesa não encontrada.');
     }
-    if (despesa.status !== 'PENDENTE') {
+    if (despesaEnt.status !== 'PENDENTE') {
       throw new BadRequestException(
         'Apenas despesas pendentes podem ser removidas.',
       );
     }
-    this.store.removerDespesa(despesa.id);
+    await this.anexoRepo.delete({ despesaId: despesaEnt.id });
+    await this.despesaRepo.delete({ id: despesaEnt.id });
     return { ok: true };
   }
 
-  anexarDespesa(
+  async anexarDespesa(
     chamadoId: number,
     despesaId: number,
     usuario: UsuarioInterno,
     dto: AnexoDespesaDto,
-  ): { ok: true; despesa: Despesa } {
+  ): Promise<{ ok: true; despesa: Despesa }> {
     const chamado = this.buscar(chamadoId);
     if (!this.podeGerenciarDespesas(chamado, usuario)) {
       throw new ForbiddenException('Sem permissão para anexar arquivos.');
     }
-    const despesa = this.buscarDespesa(despesaId);
-    if (despesa.chamadoId !== chamado.id) {
+    const despesaEnt = await this.despesaRepo.findOne({
+      where: { id: despesaId },
+      relations: { anexos: true },
+    });
+    if (!despesaEnt || despesaEnt.chamadoId !== chamado.id) {
       throw new NotFoundException('Despesa não encontrada.');
     }
-    if (despesa.status !== 'PENDENTE') {
+    if (despesaEnt.status !== 'PENDENTE') {
       throw new BadRequestException('Não é possível anexar em despesa não pendente.');
     }
     this.validarAnexos([dto]);
-    if (despesa.anexos.length >= MAX_ANEXOS_POR_DESPESA) {
+    if ((despesaEnt as any).anexos && (despesaEnt as any).anexos.length >= MAX_ANEXOS_POR_DESPESA) {
       throw new BadRequestException('Máximo de 5 anexos por despesa.');
     }
-    const agora = new Date().toISOString();
+    const agora = new Date();
     const hash = crypto.createHash('sha256').update(dto.conteudo).digest('hex');
-    const anexo: AnexoDespesa = {
-      id: this.store.incProximoIdAnexoDespesa(),
-      despesaId: despesa.id,
-      tipo: dto.tipo,
-      tipoDocumentoFiscal: dto.tipoDocumentoFiscal,
-      chaveNFe: dto.chaveNFe?.trim() || undefined,
-      numero: dto.numero?.trim() || undefined,
-      serie: dto.serie?.trim() || undefined,
+    const buf = Buffer.from(dto.conteudo, 'base64');
+    const aEnt = this.anexoRepo.create({
+      despesaId: despesaEnt.id,
+      tipo: dto.tipo as any,
+      tipoDocumentoFiscal: dto.tipoDocumentoFiscal || null,
+      chaveNfe: dto.chaveNFe?.trim() || null,
+      numero: dto.numero?.trim() || null,
+      serie: dto.serie?.trim() || null,
       nomeArquivo: dto.nomeArquivo,
       mimeType: dto.mimeType,
       tamanhoBytes: dto.tamanhoBytes,
       hashSha256: hash,
-      conteudo: dto.conteudo,
+      conteudo: buf,
       enviadoPorId: usuario.id,
       criadoEm: agora,
-    };
-    const atualizada: Despesa = {
-      ...despesa,
-      anexos: [...despesa.anexos, anexo],
-      atualizadoEm: agora,
-    };
-    this.store.salvarDespesa(atualizada);
-    return { ok: true, despesa: atualizada };
+    } as any);
+    await this.anexoRepo.save(aEnt);
+    despesaEnt.atualizadoEm = agora;
+    await this.despesaRepo.save(despesaEnt);
+    const full = await this.despesaRepo.findOne({
+      where: { id: despesaEnt.id },
+      relations: { anexos: true },
+    });
+    return { ok: true, despesa: mapDespesaToContrato(full as any, false) as any };
   }
 
-  removerAnexoDespesa(
+  async removerAnexoDespesa(
     chamadoId: number,
     despesaId: number,
     anexoId: number,
     usuario: UsuarioInterno,
-  ): { ok: true; despesa: Despesa } {
+  ): Promise<{ ok: true; despesa: Despesa }> {
     const chamado = this.buscar(chamadoId);
     if (!this.podeGerenciarDespesas(chamado, usuario)) {
       throw new ForbiddenException('Sem permissão para remover anexos.');
     }
-    const despesa = this.buscarDespesa(despesaId);
-    if (despesa.chamadoId !== chamado.id) {
+    const despesaEnt = await this.despesaRepo.findOne({
+      where: { id: despesaId },
+      relations: { anexos: true },
+    });
+    if (!despesaEnt || despesaEnt.chamadoId !== chamado.id) {
       throw new NotFoundException('Despesa não encontrada.');
     }
-    if (despesa.status !== 'PENDENTE') {
+    if (despesaEnt.status !== 'PENDENTE') {
       throw new BadRequestException(
         'Não é possível remover anexo de despesa não pendente.',
       );
     }
-    const atualizada: Despesa = {
-      ...despesa,
-      anexos: despesa.anexos.filter((a) => a.id !== anexoId),
-      atualizadoEm: new Date().toISOString(),
-    };
-    this.store.salvarDespesa(atualizada);
-    return { ok: true, despesa: atualizada };
+    await this.anexoRepo.delete({ id: anexoId, despesaId: despesaEnt.id });
+    despesaEnt.atualizadoEm = new Date();
+    await this.despesaRepo.save(despesaEnt);
+    const fullRes = (await this.despesaRepo.findOne({
+      where: { id: (despesaEnt as any).id },
+      relations: ['anexos'] as any,
+    }));
+    const full: DespesaEntity | null = Array.isArray(fullRes) ? (fullRes[0] as any) : (fullRes as any);
+    return { ok: true, despesa: mapDespesaToContrato(full as any, false) as any };
   }
 
-  aprovarDespesa(
+  async aprovarDespesa(
     chamadoId: number,
     despesaId: number,
     usuario: UsuarioInterno,
-  ): { ok: true; despesa: Despesa } {
+  ): Promise<{ ok: true; despesa: Despesa }> {
     if (usuario.role !== 'GESTOR' && usuario.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('Apenas gestor ou administrador podem aprovar.');
     }
     const chamado = this.buscar(chamadoId);
-    const despesa = this.buscarDespesa(despesaId);
-    if (despesa.chamadoId !== chamado.id) {
+    const despesaEnt = await this.despesaRepo.findOne({
+      where: { id: despesaId },
+      relations: { anexos: true },
+    });
+    if (!despesaEnt || despesaEnt.chamadoId !== chamado.id) {
       throw new NotFoundException('Despesa não encontrada.');
     }
-    if (despesa.status !== 'PENDENTE') {
+    if (despesaEnt.status !== 'PENDENTE') {
       throw new BadRequestException('Apenas despesas pendentes podem ser aprovadas.');
     }
-    const agora = new Date().toISOString();
-    const atualizada: Despesa = {
-      ...despesa,
-      status: 'APROVADA',
-      aprovadoPorId: usuario.id,
-      aprovadoEm: agora,
-      motivoRejeicao: undefined,
-      atualizadoEm: agora,
-    };
-    this.store.salvarDespesa(atualizada);
-    return { ok: true, despesa: atualizada };
+    const agora = new Date();
+    despesaEnt.status = 'APROVADA';
+    despesaEnt.aprovadoPorId = usuario.id;
+    despesaEnt.aprovadoEm = agora;
+    despesaEnt.motivoRejeicao = null as any;
+    despesaEnt.atualizadoEm = agora;
+    await this.despesaRepo.save(despesaEnt);
+    const fullEnt = await (this.despesaRepo as any).findOne({ where: { id: (despesaEnt as any).id }, relations: ['anexos'] });
+    return { ok: true, despesa: mapDespesaToContrato(Array.isArray(fullEnt) ? fullEnt[0] : fullEnt, false) as any };
   }
 
-  rejeitarDespesa(
+  async rejeitarDespesa(
     chamadoId: number,
     despesaId: number,
     usuario: UsuarioInterno,
     dto: RejeitarDespesaDto,
-  ): { ok: true; despesa: Despesa } {
+  ): Promise<{ ok: true; despesa: Despesa }> {
     if (usuario.role !== 'GESTOR' && usuario.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('Apenas gestor ou administrador podem rejeitar.');
     }
     const chamado = this.buscar(chamadoId);
-    const despesa = this.buscarDespesa(despesaId);
-    if (despesa.chamadoId !== chamado.id) {
+    const despesaEnt = await this.despesaRepo.findOne({
+      where: { id: despesaId },
+      relations: { anexos: true },
+    });
+    if (!despesaEnt || despesaEnt.chamadoId !== chamado.id) {
       throw new NotFoundException('Despesa não encontrada.');
     }
-    if (despesa.status !== 'PENDENTE') {
+    if (despesaEnt.status !== 'PENDENTE') {
       throw new BadRequestException('Apenas despesas pendentes podem ser rejeitadas.');
     }
-    const agora = new Date().toISOString();
-    const atualizada: Despesa = {
-      ...despesa,
-      status: 'REJEITADA',
-      motivoRejeicao: dto.motivo.trim(),
-      aprovadoPorId: usuario.id,
-      aprovadoEm: agora,
-      atualizadoEm: agora,
-    };
-    this.store.salvarDespesa(atualizada);
-    return { ok: true, despesa: atualizada };
+    const agora = new Date();
+    despesaEnt.status = 'REJEITADA';
+    despesaEnt.motivoRejeicao = dto.motivo.trim();
+    despesaEnt.aprovadoPorId = usuario.id;
+    despesaEnt.aprovadoEm = agora;
+    despesaEnt.atualizadoEm = agora;
+    await this.despesaRepo.save(despesaEnt);
+    const fullEnt = await (this.despesaRepo as any).findOne({ where: { id: (despesaEnt as any).id }, relations: ['anexos'] });
+    return { ok: true, despesa: mapDespesaToContrato(Array.isArray(fullEnt) ? fullEnt[0] : fullEnt, false) as any };
   }
 
   private buscarDespesa(id: number): Despesa {
