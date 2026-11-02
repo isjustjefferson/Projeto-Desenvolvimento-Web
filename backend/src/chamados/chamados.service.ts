@@ -14,7 +14,7 @@ import type {
   FiltrosChamadosDto,
 } from './dto/chamados.dto.js';
 
-const STATUS_SOLICITANTE: Status[] = [
+const STATUS_CONDOMINO: Status[] = [
   'AGUARDANDO_APROVACAO',
   'EM_ANDAMENTO',
   'CONCLUIDO',
@@ -62,7 +62,7 @@ export class ChamadosService {
       prioridade: null,
       foto: dados.foto ?? null,
       criadoPorId: usuario.id,
-      tecnicoId: null,
+      prestadorId: null,
       criadoEm: agora,
       atualizadoEm: agora,
       historico: [
@@ -91,16 +91,16 @@ export class ChamadosService {
         'Apenas chamados em aguardando aprovação podem ser aprovados.',
       );
     }
-    const tecnico = this.store.getUsuarioInternoPorId(dados.tecnicoId);
-    if (!tecnico || tecnico.role !== 'TECNICO') {
-      throw new BadRequestException('Informe um técnico válido.');
+    const prestador = this.store.getUsuarioInternoPorId(dados.prestadorId);
+    if (!prestador || prestador.role !== 'PRESTADOR') {
+      throw new BadRequestException('Informe um prestador válido.');
     }
     return this.transicionar(
       chamado,
       autenticado,
       'REVISADO',
-      `Aprovado com prioridade ${dados.prioridade} e atribuído ao técnico`,
-      { prioridade: dados.prioridade, tecnicoId: dados.tecnicoId },
+      `Aprovado com prioridade ${dados.prioridade} e atribuído ao prestador`,
+      { prioridade: dados.prioridade, prestadorId: dados.prestadorId },
     );
   }
 
@@ -111,7 +111,7 @@ export class ChamadosService {
         'Apenas chamados revisados podem ser iniciados.',
       );
     }
-    this.validarDonoTecnico(chamado, autenticado);
+    this.validarDonoPrestador(chamado, autenticado);
     return this.transicionar(chamado, autenticado, 'EM_ANDAMENTO');
   }
 
@@ -126,7 +126,7 @@ export class ChamadosService {
         'Apenas chamados em andamento podem ser concluídos.',
       );
     }
-    this.validarDonoTecnico(chamado, autenticado);
+    this.validarDonoPrestador(chamado, autenticado);
     return this.transicionar(chamado, autenticado, 'CONCLUIDO', undefined, {
       solucao: {
         descricao: dados.descricao.trim(),
@@ -138,27 +138,27 @@ export class ChamadosService {
   // ---- Helpers ----
 
   private noEscopo(c: Chamado, usuario: UsuarioInterno): boolean {
-    if (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') return true;
-    if (usuario.role === 'SOLICITANTE') {
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') return true;
+    if (usuario.role === 'CONDOMINO') {
       return (
-        c.criadoPorId === usuario.id && STATUS_SOLICITANTE.includes(c.status)
+        c.criadoPorId === usuario.id && STATUS_CONDOMINO.includes(c.status)
       );
     }
-    // TECNICO: disponíveis (REVISADO) ou atribuídos a ele
-    return c.status === 'REVISADO' || c.tecnicoId === usuario.id;
+    // PRESTADOR: disponíveis (REVISADO) ou atribuídos a ele
+    return c.status === 'REVISADO' || c.prestadorId === usuario.id;
   }
 
   private podeVer(c: Chamado, usuario: UsuarioInterno): boolean {
-    if (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') return true;
-    if (usuario.role === 'SOLICITANTE') return c.criadoPorId === usuario.id;
-    return c.tecnicoId === usuario.id || c.status === 'REVISADO';
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') return true;
+    if (usuario.role === 'CONDOMINO') return c.criadoPorId === usuario.id;
+    return c.prestadorId === usuario.id || c.status === 'REVISADO';
   }
 
   private atendeFiltros(c: Chamado, f: FiltrosChamadosDto): boolean {
     if (f.status && c.status !== f.status) return false;
     if (f.prioridade && c.prioridade !== f.prioridade) return false;
     if (f.categoria && c.categoria !== f.categoria) return false;
-    if (f.tecnicoId && c.tecnicoId !== f.tecnicoId) return false;
+    if (f.prestadorId && c.prestadorId !== f.prestadorId) return false;
     if (f.predio && c.local.predio.toLowerCase() !== f.predio.toLowerCase()) {
       return false;
     }
@@ -178,11 +178,11 @@ export class ChamadosService {
     return true;
   }
 
-  private validarDonoTecnico(c: Chamado, usuario: UsuarioInterno): void {
+  private validarDonoPrestador(c: Chamado, usuario: UsuarioInterno): void {
     if (
-      usuario.role !== 'GESTOR' &&
+      usuario.role !== 'SINDICO' &&
       usuario.role !== 'ADMINISTRADOR' &&
-      c.tecnicoId !== usuario.id
+      c.prestadorId !== usuario.id
     ) {
       throw new ForbiddenException(
         'Este chamado não está atribuído a você.',

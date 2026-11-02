@@ -44,12 +44,12 @@ export function ChamadoDetalhe() {
   const aprovarChamado = useAprovarChamado();
   const iniciarChamado = useIniciarChamado();
   const concluirChamado = useConcluirChamado();
-  const { tecnicos, nomeUsuario } = useDiretorio();
+  const { prestadores, nomeUsuario } = useDiretorio();
 
   const [modalAprovar, setModalAprovar] = useState(false);
   const [modalConcluir, setModalConcluir] = useState(false);
   const [prioridadeSel, setPrioridadeSel] = useState<Prioridade>('MEDIA');
-  const [tecnicoSel, setTecnicoSel] = useState('');
+  const [prestadorSel, setPrestadorSel] = useState('');
   const [solDesc, setSolDesc] = useState('');
   const [solMat, setSolMat] = useState('');
   const [erroAcao, setErroAcao] = useState('');
@@ -100,38 +100,38 @@ export function ChamadoDetalhe() {
   const c = chamado;
 
   const podeVer =
-    usuario.role === 'GESTOR' ||
+    usuario.role === 'SINDICO' ||
     usuario.role === 'ADMINISTRADOR' ||
-    (usuario.role === 'SOLICITANTE' && chamado.criadoPorId === usuario.id) ||
-    (usuario.role === 'TECNICO' &&
-      (chamado.tecnicoId === usuario.id || chamado.status === 'REVISADO'));
+    (usuario.role === 'CONDOMINO' && chamado.criadoPorId === usuario.id) ||
+    (usuario.role === 'PRESTADOR' &&
+      (chamado.prestadorId === usuario.id || chamado.status === 'REVISADO'));
 
   const podeAprovar =
-    (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') &&
+    (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') &&
     chamado.status === 'AGUARDANDO_APROVACAO';
   const podeIniciar =
-    (usuario.role === 'GESTOR' ||
-      usuario.role === 'TECNICO' ||
+    (usuario.role === 'SINDICO' ||
+      usuario.role === 'PRESTADOR' ||
       usuario.role === 'ADMINISTRADOR') &&
     chamado.status === 'REVISADO' &&
-    (usuario.role === 'GESTOR' ||
+    (usuario.role === 'SINDICO' ||
       usuario.role === 'ADMINISTRADOR' ||
-      chamado.tecnicoId === usuario.id);
+      chamado.prestadorId === usuario.id);
   const podeConcluir =
-    (usuario.role === 'TECNICO' || usuario.role === 'ADMINISTRADOR') &&
+    (usuario.role === 'PRESTADOR' || usuario.role === 'ADMINISTRADOR') &&
     chamado.status === 'EM_ANDAMENTO' &&
-    (usuario.role === 'ADMINISTRADOR' || chamado.tecnicoId === usuario.id);
+    (usuario.role === 'ADMINISTRADOR' || chamado.prestadorId === usuario.id);
 
   // Ações disparadas de um modal reportam o erro via toast: o banner `erroAcao`
   // fica renderizado fora do modal e estaria escondido atrás do overlay.
   async function aprovar() {
-    if (!tecnicoSel || aprovarChamado.isPending) return;
+    if (!prestadorSel || aprovarChamado.isPending) return;
     setErroAcao('');
     try {
       await aprovarChamado.mutateAsync({
         id: c.id,
         prioridade: prioridadeSel,
-        tecnicoId: Number(tecnicoSel),
+        prestadorId: Number(prestadorSel),
       });
       setModalAprovar(false);
       toast.success('Chamado aprovado e liberado para atendimento.');
@@ -225,13 +225,13 @@ export function ChamadoDetalhe() {
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Solicitante</div>
+            <div className="text-xs text-gray-500">Condômino</div>
             <div className="font-medium">{nomeUsuario(chamado.criadoPorId)}</div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Técnico</div>
+            <div className="text-xs text-gray-500">Prestador</div>
             <div className="font-medium">
-              {chamado.tecnicoId ? nomeUsuario(chamado.tecnicoId) : 'Não atribuído'}
+              {chamado.prestadorId ? nomeUsuario(chamado.prestadorId) : 'Não atribuído'}
             </div>
           </div>
           <div>
@@ -339,14 +339,14 @@ export function ChamadoDetalhe() {
             </div>
           </div>
           <div>
-            <label className="label">Atribuir ao técnico</label>
+            <label className="label">Atribuir ao prestador</label>
             <select
               className="input"
-              value={tecnicoSel}
-              onChange={(e) => setTecnicoSel(e.target.value)}
+              value={prestadorSel}
+              onChange={(e) => setPrestadorSel(e.target.value)}
             >
-              <option value="">Selecione o técnico</option>
-              {tecnicos.map((t) => (
+              <option value="">Selecione o prestador</option>
+              {prestadores.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.nome}
                   {t.especialidade ? ` (${t.especialidade})` : ''}
@@ -357,7 +357,7 @@ export function ChamadoDetalhe() {
           <button
             onClick={() => void aprovar()}
             className="btn-primary w-full"
-            disabled={!tecnicoSel || aprovarChamado.isPending}
+            disabled={!prestadorSel || aprovarChamado.isPending}
           >
             {aprovarChamado.isPending ? 'Aprovando…' : 'Aprovar e atribuir'}
           </button>

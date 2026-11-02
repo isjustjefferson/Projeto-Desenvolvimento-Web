@@ -24,7 +24,7 @@ export function NovoChamado() {
   const [fotoNome, setFotoNome] = useState('');
   const [erro, setErro] = useState('');
 
-  // RN do solicitante: ele NÃO define prioridade (o gestor define na aprovação)
+  // RN do condômino: ele NÃO define prioridade (o síndico define na aprovação)
 
   async function onArquivo(e: React.ChangeEvent<HTMLInputElement>) {
     const input = e.target;
@@ -72,7 +72,7 @@ export function NovoChamado() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Novo Chamado</h1>
         <p className="text-sm text-gray-500">
-          Descreva o problema. Ele ficará aguardando aprovação do gestor.
+          Descreva o problema. Ele ficará aguardando aprovação do síndico.
         </p>
       </div>
 
@@ -184,7 +184,7 @@ export function NovoChamado() {
         <div className="flex items-start gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs text-white">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            A prioridade será definida pelo gestor durante a triagem.
+            A prioridade será definida pelo síndico durante a triagem.
           </span>
         </div>
 

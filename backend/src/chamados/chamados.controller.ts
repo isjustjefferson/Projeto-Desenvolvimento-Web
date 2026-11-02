@@ -43,7 +43,7 @@ export class ChamadosController {
   }
 
   @Post()
-  @Roles('SOLICITANTE', 'ADMINISTRADOR')
+  @Roles('CONDOMINO', 'ADMINISTRADOR')
   criar(
     @Body() dto: CriarChamadoDto,
     @UsuarioAtual() usuario: UsuarioInterno,
@@ -52,7 +52,7 @@ export class ChamadosController {
   }
 
   @Post(':id/aprovar')
-  @Roles('GESTOR', 'ADMINISTRADOR')
+  @Roles('SINDICO', 'ADMINISTRADOR')
   aprovar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AprovarChamadoDto,
@@ -62,7 +62,7 @@ export class ChamadosController {
   }
 
   @Post(':id/iniciar')
-  @Roles('GESTOR', 'TECNICO', 'ADMINISTRADOR')
+  @Roles('SINDICO', 'PRESTADOR', 'ADMINISTRADOR')
   iniciar(
     @Param('id', ParseIntPipe) id: number,
     @UsuarioAtual() usuario: UsuarioInterno,
@@ -71,7 +71,7 @@ export class ChamadosController {
   }
 
   @Post(':id/concluir')
-  @Roles('TECNICO', 'ADMINISTRADOR')
+  @Roles('PRESTADOR', 'ADMINISTRADOR')
   concluir(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ConcluirChamadoDto,

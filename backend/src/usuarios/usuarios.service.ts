@@ -39,15 +39,15 @@ export class UsuariosService {
       throw new ConflictException('Este e-mail já está cadastrado.');
     }
 
-    const role = dados.role ?? 'SOLICITANTE';
+    const role = dados.role ?? 'CONDOMINO';
     const novo: UsuarioInterno = {
       id: this.store.incProximoIdUsuario(),
       nome: dados.nome.trim(),
       email,
       role,
       especialidade:
-        role === 'TECNICO' ? dados.especialidade?.trim() : undefined,
-      setor: role !== 'TECNICO' ? dados.setor?.trim() : undefined,
+        role === 'PRESTADOR' ? dados.especialidade?.trim() : undefined,
+      setor: role !== 'PRESTADOR' ? dados.setor?.trim() : undefined,
       ativo: true,
       criadoEm: new Date().toISOString(),
       senhaHash: bcrypt.hashSync(dados.senha || senhaPadrao, SALT_ROUNDS),

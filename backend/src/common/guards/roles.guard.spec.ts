@@ -25,22 +25,22 @@ describe('RolesGuard', () => {
     vi.spyOn(Reflector.prototype, 'getAllAndOverride').mockReturnValueOnce(
       undefined,
     );
-    expect(guard.canActivate(contexto('SOLICITANTE'))).toBe(true);
+    expect(guard.canActivate(contexto('CONDOMINO'))).toBe(true);
   });
 
   it('libera quando o perfil do usuário está entre os exigidos', () => {
     vi.spyOn(Reflector.prototype, 'getAllAndOverride').mockReturnValueOnce([
-      'GESTOR',
+      'SINDICO',
       'ADMINISTRADOR',
     ] as Role[]);
-    expect(guard.canActivate(contexto('GESTOR'))).toBe(true);
+    expect(guard.canActivate(contexto('SINDICO'))).toBe(true);
   });
 
   it('bloqueia perfil que não está entre os exigidos', () => {
     vi.spyOn(Reflector.prototype, 'getAllAndOverride').mockReturnValueOnce([
       'ADMINISTRADOR',
     ] as Role[]);
-    expect(() => guard.canActivate(contexto('TECNICO'))).toThrow(
+    expect(() => guard.canActivate(contexto('PRESTADOR'))).toThrow(
       ForbiddenException,
     );
   });

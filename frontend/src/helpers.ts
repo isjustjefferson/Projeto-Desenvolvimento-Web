@@ -29,16 +29,16 @@ export const prioridadeColor: Record<Prioridade, string> = {
 };
 
 export const roleLabel: Record<Role, string> = {
-  SOLICITANTE: 'Solicitante',
-  TECNICO: 'Técnico',
-  GESTOR: 'Gestor',
+  CONDOMINO: 'Condômino',
+  PRESTADOR: 'Prestador de Serviços',
+  SINDICO: 'Síndico',
   ADMINISTRADOR: 'Administrador',
 };
 
 export const roleColor: Record<Role, string> = {
-  SOLICITANTE: 'bg-gray-500 text-white',
-  TECNICO: 'bg-blue-500 text-white',
-  GESTOR: 'bg-amber-500 text-white',
+  CONDOMINO: 'bg-gray-500 text-white',
+  PRESTADOR: 'bg-blue-500 text-white',
+  SINDICO: 'bg-amber-500 text-white',
   ADMINISTRADOR: 'bg-purple-500 text-white',
 };
 
@@ -96,4 +96,46 @@ export function avatarCor(nome: string): string {
     .split('')
     .reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
   return AVATAR_CORES[soma % AVATAR_CORES.length];
+}
+
+const MOEDA = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+});
+
+// Valores monetários trafegam em centavos (inteiro) para evitar erro de ponto
+// flutuante; só a exibição converte para reais.
+export function formatarMoeda(centavos: number): string {
+  return MOEDA.format(centavos / 100);
+}
+
+// Até R$ 9.999.999.999,99 — acima disso o número perderia precisão.
+const MAX_DIGITOS_MOEDA = 12;
+
+// Lê o texto digitado como em caixa eletrônico: cada dígito entra pela direita
+// ("1" → R$ 0,01, "1234" → R$ 12,34). Qualquer outro caractere é ignorado.
+export function centavosDeDigitos(texto: string): number {
+  const digitos = texto.replace(/\D/g, '').slice(0, MAX_DIGITOS_MOEDA);
+  return digitos ? Number(digitos) : 0;
+}
+
+export interface Pagina<T> {
+  itens: T[];
+  pagina: number;
+  totalPaginas: number;
+  total: number;
+}
+
+// Paginação no cliente: a API ainda devolve a lista inteira. A página pedida é
+// corrigida para o intervalo válido (ex.: após um filtro reduzir a lista).
+export function paginar<T>(itens: T[], pagina: number, porPagina: number): Pagina<T> {
+  const totalPaginas = Math.max(1, Math.ceil(itens.length / porPagina));
+  const atual = Math.min(Math.max(1, pagina), totalPaginas);
+  const inicio = (atual - 1) * porPagina;
+  return {
+    itens: itens.slice(inicio, inicio + porPagina),
+    pagina: atual,
+    totalPaginas,
+    total: itens.length,
+  };
 }

@@ -55,24 +55,24 @@ describe('Usuários (admin) (e2e)', () => {
     expect(res.body.usuarios[0]).toMatchObject({
       id: 1,
       nome: 'Ana Souza',
-      role: 'SOLICITANTE',
+      role: 'CONDOMINO',
     });
   });
 
-  it('POST cria TECNICO com especialidade e login com senha padrão', async () => {
+  it('POST cria PRESTADOR com especialidade e login com senha padrão', async () => {
     const criar = await request(app.getHttpServer())
       .post('/api/usuarios')
       .set('x-usuario-id', '6')
       .send({
         nome: 'Fábio Manutenção',
         email: 'fabio@predial.com',
-        role: 'TECNICO',
+        role: 'PRESTADOR',
         especialidade: 'Climatização',
       })
       .expect(201);
     expect(criar.body.usuario).toMatchObject({
       id: 7,
-      role: 'TECNICO',
+      role: 'PRESTADOR',
       especialidade: 'Climatização',
     });
 
@@ -80,7 +80,7 @@ describe('Usuários (admin) (e2e)', () => {
       .post('/api/auth/login')
       .send({ email: 'fabio@predial.com', senha: '123456' })
       .expect(200);
-    expect(login.body.usuario.role).toBe('TECNICO');
+    expect(login.body.usuario.role).toBe('PRESTADOR');
   });
 
   it('POST com e-mail duplicado retorna 409', async () => {
@@ -99,25 +99,25 @@ describe('Usuários (admin) (e2e)', () => {
       .expect(400);
   });
 
-  it('PATCH promove para GESTOR e rebaixa para SOLICITANTE', async () => {
+  it('PATCH promove para SINDICO e rebaixa para CONDOMINO', async () => {
     await request(app.getHttpServer())
       .patch('/api/usuarios/1/role')
       .set('x-usuario-id', '6')
-      .send({ role: 'GESTOR' })
+      .send({ role: 'SINDICO' })
       .expect(200);
 
     const login = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: 'ana@predial.com', senha: '123456' })
       .expect(200);
-    expect(login.body.usuario.role).toBe('GESTOR');
+    expect(login.body.usuario.role).toBe('SINDICO');
 
     const rebaixa = await request(app.getHttpServer())
       .patch('/api/usuarios/1/role')
       .set('x-usuario-id', '6')
-      .send({ role: 'SOLICITANTE' })
+      .send({ role: 'CONDOMINO' })
       .expect(200);
-    expect(rebaixa.body.usuario.role).toBe('SOLICITANTE');
+    expect(rebaixa.body.usuario.role).toBe('CONDOMINO');
   });
 
   it('PATCH com role inválida retorna 400', async () => {
@@ -132,7 +132,7 @@ describe('Usuários (admin) (e2e)', () => {
     await request(app.getHttpServer())
       .patch('/api/usuarios/999/role')
       .set('x-usuario-id', '6')
-      .send({ role: 'GESTOR' })
+      .send({ role: 'SINDICO' })
       .expect(404);
     await request(app.getHttpServer())
       .delete('/api/usuarios/999')
@@ -144,7 +144,7 @@ describe('Usuários (admin) (e2e)', () => {
     await request(app.getHttpServer())
       .patch('/api/usuarios/6/role')
       .set('x-usuario-id', '6')
-      .send({ role: 'GESTOR' })
+      .send({ role: 'SINDICO' })
       .expect(400);
     await request(app.getHttpServer())
       .delete('/api/usuarios/6')

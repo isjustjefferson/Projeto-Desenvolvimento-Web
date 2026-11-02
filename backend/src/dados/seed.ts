@@ -33,23 +33,23 @@ function usuario(
 
 // Replica os 6 usuários de demonstração do frontend/src/data/mock.ts
 export const usuariosSeed: UsuarioInterno[] = [
-  usuario(1, 'Ana Souza', 'ana@predial.com', 'SOLICITANTE', {
+  usuario(1, 'Ana Souza', 'ana@predial.com', 'CONDOMINO', {
     unidade: 'Bloco A, Ap 204',
     setor: 'Apartamento 204',
   }),
-  usuario(2, 'Carlos Lima', 'carlos@predial.com', 'SOLICITANTE', {
+  usuario(2, 'Carlos Lima', 'carlos@predial.com', 'CONDOMINO', {
     unidade: 'Bloco A, Ap 102',
     setor: 'Apartamento 102',
   }),
-  usuario(3, 'João Eletricista', 'joao@predial.com', 'TECNICO', {
+  usuario(3, 'João Eletricista', 'joao@predial.com', 'PRESTADOR', {
     especialidade: 'Elétrica',
     setor: 'Manutenção',
   }),
-  usuario(4, 'Marta Encanadora', 'marta@predial.com', 'TECNICO', {
+  usuario(4, 'Marta Encanadora', 'marta@predial.com', 'PRESTADOR', {
     especialidade: 'Hidráulica',
     setor: 'Manutenção',
   }),
-  usuario(5, 'Ricardo Síndico', 'ricardo@predial.com', 'GESTOR', {
+  usuario(5, 'Ricardo Síndico', 'ricardo@predial.com', 'SINDICO', {
     setor: 'Administração',
   }),
   usuario(6, 'Tiago TI', 'tiago@predial.com', 'ADMINISTRADOR', {
@@ -90,7 +90,7 @@ export const chamadosSeed: Chamado[] = [
     status: 'CONCLUIDO',
     prioridade: 'MEDIA',
     criadoPorId: 1,
-    tecnicoId: 3,
+    prestadorId: 3,
     criadoEm: new Date(agora - 5 * dia).toISOString(),
     atualizadoEm: new Date(agora - 3 * dia).toISOString(),
     historico: [
@@ -114,7 +114,7 @@ export const chamadosSeed: Chamado[] = [
     status: 'EM_ANDAMENTO',
     prioridade: 'ALTA',
     criadoPorId: 2,
-    tecnicoId: 4,
+    prestadorId: 4,
     criadoEm: new Date(agora - 2 * dia).toISOString(),
     atualizadoEm: new Date(agora - 6 * hora).toISOString(),
     historico: [
@@ -133,7 +133,7 @@ export const chamadosSeed: Chamado[] = [
     status: 'AGUARDANDO_APROVACAO',
     prioridade: 'MEDIA',
     criadoPorId: 1,
-    tecnicoId: null,
+    prestadorId: null,
     criadoEm: new Date(agora - 8 * hora).toISOString(),
     atualizadoEm: new Date(agora - 8 * hora).toISOString(),
     historico: [baseHistorico(8, 1, 'AGUARDANDO_APROVACAO', 8)],
@@ -148,7 +148,7 @@ export const chamadosSeed: Chamado[] = [
     status: 'REVISADO',
     prioridade: 'BAIXA',
     criadoPorId: 2,
-    tecnicoId: null,
+    prestadorId: null,
     criadoEm: new Date(agora - 3 * dia).toISOString(),
     atualizadoEm: new Date(agora - 1 * dia).toISOString(),
     historico: [
@@ -166,7 +166,7 @@ export const chamadosSeed: Chamado[] = [
     status: 'AGUARDANDO_APROVACAO',
     prioridade: 'CRITICA',
     criadoPorId: 1,
-    tecnicoId: null,
+    prestadorId: null,
     criadoEm: new Date(agora - 5 * hora).toISOString(),
     atualizadoEm: new Date(agora - 5 * hora).toISOString(),
     historico: [baseHistorico(11, 1, 'AGUARDANDO_APROVACAO', 5)],

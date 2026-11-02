@@ -1,46 +1,74 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Inbox, Plus, Search } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Inbox, LayoutGrid, List, Plus, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChamados } from '../hooks/useChamados';
 import { useDiretorio } from '../hooks/useUsuarios';
+import { useVisualizacao, type Visualizacao } from '../hooks/useVisualizacao';
 import { mensagemDeErro } from '../api/client';
 import {
   chamadosVisiveis,
   pode,
   statusVisiveisPorRole,
-  tecnicoSemEspecialidade,
+  prestadorSemEspecialidade,
 } from '../rbac';
-import {
-  categoriaLabel,
-  prioridadeLabel,
-  statusLabel,
-  tempoRelativo,
-} from '../helpers';
-import { PrioridadeBadge, StatusBadge } from '../components/Badge';
+import { paginar, prioridadeLabel, statusLabel } from '../helpers';
+import { ChamadoCard, ChamadoLinha } from '../components/ChamadoItem';
 import { EmptyState } from '../components/EmptyState';
+import { Paginacao } from '../components/Paginacao';
 import type { Status } from '../types';
+
+const POR_PAGINA = 10;
+
+const opcoesVisualizacao: { valor: Visualizacao; rotulo: string; icone: typeof List }[] = [
+  { valor: 'cards', rotulo: 'Visualização em cards', icone: LayoutGrid },
+  { valor: 'lista', rotulo: 'Visualização em lista', icone: List },
+];
 
 export function ChamadosLista() {
   const { usuario } = useAuth();
   const { data: chamados = [], isPending, error } = useChamados();
   const { nomeUsuario } = useDiretorio();
-  const [filtroStatus, setFiltroStatus] = useState('');
+  const [params, setParams] = useSearchParams();
   const [filtroPrioridade, setFiltroPrioridade] = useState('');
   const [busca, setBusca] = useState('');
   const [aba, setAba] = useState<'disponiveis' | 'meus'>('disponiveis');
+  const [visualizacao, setVisualizacao] = useVisualizacao();
+
+  const statusDoPerfil = usuario
+    ? (Object.keys(statusLabel) as Status[]).filter((s) =>
+        statusVisiveisPorRole[usuario.role].includes(s),
+      )
+    : [];
+
+  // O filtro de status vive na URL (?status=), para que links como o da fila de
+  // triagem abram a lista já filtrada. Valor fora do perfil é ignorado.
+  const statusDaUrl = params.get('status') ?? '';
+  const filtroStatus = statusDoPerfil.includes(statusDaUrl as Status)
+    ? statusDaUrl
+    : '';
+  const setFiltroStatus = (status: string) =>
+    setParams(
+      (atuais) => {
+        const novos = new URLSearchParams(atuais);
+        if (status) novos.set('status', status);
+        else novos.delete('status');
+        return novos;
+      },
+      { replace: true },
+    );
 
   const visiveis = useMemo(() => {
     if (!usuario) return [];
     return chamadosVisiveis(chamados, usuario)
       .filter((c) => {
-        // Técnico: aba de disponíveis (da especialidade dele, ainda sem técnico)
+        // Prestador: aba de disponíveis (da especialidade dele, ainda sem prestador)
         // ou de meus atribuídos
-        if (usuario.role === 'TECNICO') {
+        if (usuario.role === 'PRESTADOR') {
           if (aba === 'disponiveis') {
-            if (c.tecnicoId) return false;
+            if (c.prestadorId) return false;
           } else {
-            if (c.tecnicoId !== usuario.id) return false;
+            if (c.prestadorId !== usuario.id) return false;
           }
         }
 
@@ -60,13 +88,22 @@ export function ChamadosLista() {
       .sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime());
   }, [chamados, usuario, aba, filtroStatus, filtroPrioridade, busca]);
 
+  // Mudou a busca, um filtro ou a aba: a página guardada é de outro recorte,
+  // então volta para a primeira (sem efeito colateral de re-render).
+  const chaveRecorte = [aba, filtroStatus, filtroPrioridade, busca].join('|');
+  const [paginacao, setPaginacao] = useState({ chave: chaveRecorte, pagina: 1 });
+  const pagina = paginar(
+    visiveis,
+    paginacao.chave === chaveRecorte ? paginacao.pagina : 1,
+    POR_PAGINA,
+  );
+  const irParaPagina = (n: number) => {
+    setPaginacao({ chave: chaveRecorte, pagina: n });
+    window.scrollTo?.({ top: 0, behavior: 'smooth' });
+  };
+
   const podeCriar = usuario ? pode(usuario.role, 'criar') : false;
-  const semEspecialidade = usuario ? tecnicoSemEspecialidade(usuario) : false;
-  const statusDoPerfil = usuario
-    ? (Object.keys(statusLabel) as Status[]).filter((s) =>
-        statusVisiveisPorRole[usuario.role].includes(s),
-      )
-    : [];
+  const semEspecialidade = usuario ? prestadorSemEspecialidade(usuario) : false;
   const filtrosAtivos = Boolean(busca || filtroStatus || filtroPrioridade);
 
   return (
@@ -81,20 +118,44 @@ export function ChamadosLista() {
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Chamados</h1>
           <p className="text-sm text-gray-500">
-            {usuario?.role === 'SOLICITANTE' && 'Seus chamados de manutenção'}
-            {usuario?.role === 'TECNICO' && 'Chamados da sua especialidade e atribuídos a você'}
-            {usuario?.role === 'GESTOR' && 'Fila de triagem e chamados da edificação'}
+            {usuario?.role === 'CONDOMINO' && 'Seus chamados de manutenção'}
+            {usuario?.role === 'PRESTADOR' && 'Chamados da sua especialidade e atribuídos a você'}
+            {usuario?.role === 'SINDICO' && 'Fila de triagem e chamados da edificação'}
             {usuario?.role === 'ADMINISTRADOR' && 'Gestão completa de chamados'}
           </p>
         </div>
-        {podeCriar && (
-          <Link to="/chamados/novo" className="btn-primary">
-            <Plus className="h-4 w-4" /> Novo Chamado
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          <div
+            role="group"
+            aria-label="Modo de visualização"
+            className="flex gap-1 rounded-lg border border-gray-200 bg-white p-1"
+          >
+            {opcoesVisualizacao.map(({ valor, rotulo, icone: Icone }) => (
+              <button
+                key={valor}
+                onClick={() => setVisualizacao(valor)}
+                aria-label={rotulo}
+                aria-pressed={visualizacao === valor}
+                title={rotulo}
+                className={`rounded-md p-1.5 transition ${
+                  visualizacao === valor
+                    ? 'bg-brand-600 text-white'
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                <Icone className="h-4 w-4" />
+              </button>
+            ))}
+          </div>
+          {podeCriar && (
+            <Link to="/chamados/novo" className="btn-primary">
+              <Plus className="h-4 w-4" /> Novo Chamado
+            </Link>
+          )}
+        </div>
       </div>
 
-      {usuario?.role === 'TECNICO' && (
+      {usuario?.role === 'PRESTADOR' && (
         <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
           <button
             onClick={() => setAba('disponiveis')}
@@ -122,7 +183,7 @@ export function ChamadosLista() {
       {semEspecialidade && (
         <div className="card border-amber-200 bg-amber-50 text-sm text-amber-800">
           Sua especialidade não está definida. Você está vendo apenas os chamados
-          atribuídos a você — fale com o gestor para definir sua especialidade.
+          atribuídos a você — fale com o síndico para definir sua especialidade.
         </div>
       )}
 
@@ -171,14 +232,14 @@ export function ChamadosLista() {
           <EmptyState
             icon={Inbox}
             titulo={
-              usuario?.role === 'TECNICO' && aba === 'disponiveis'
+              usuario?.role === 'PRESTADOR' && aba === 'disponiveis'
                 ? 'Nenhum chamado disponível'
                 : 'Nenhum chamado por aqui'
             }
             descricao={
               filtrosAtivos
                 ? 'Nenhum chamado corresponde à sua busca ou aos filtros aplicados.'
-                : usuario?.role === 'TECNICO' && aba === 'disponiveis'
+                : usuario?.role === 'PRESTADOR' && aba === 'disponiveis'
                   ? 'Não há chamados da sua especialidade aguardando atendimento no momento.'
                   : 'Quando houver chamados que você possa acompanhar, eles aparecem aqui.'
             }
@@ -203,36 +264,27 @@ export function ChamadosLista() {
           />
         </div>
       ) : (
-        <div className="space-y-3">
-          {visiveis.map((c) => (
-            <Link
-              key={c.id}
-              to={`/chamados/${c.id}`}
-              className="card block transition hover:border-brand-300 hover:shadow"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-gray-400">#{c.id}</span>
-                <h3 className="font-semibold text-gray-900">{c.titulo}</h3>
-                <StatusBadge status={c.status} />
-                <PrioridadeBadge prioridade={c.prioridade} />
-              </div>
-              <p className="mt-1 line-clamp-2 text-sm text-gray-500">{c.descricao}</p>
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                <span>{categoriaLabel[c.categoria]}</span>
-                <span>
-                  {c.local.predio}
-                  {c.local.andar ? ` · ${c.local.andar}` : ''}
-                  {c.local.sala ? ` · ${c.local.sala}` : ''}
-                </span>
-                <span>{tempoRelativo(c.criadoEm)}</span>
-                <span>Solicitante: {nomeUsuario(c.criadoPorId)}</span>
-                {c.tecnicoId && (
-                  <span>Técnico: {nomeUsuario(c.tecnicoId)}</span>
-                )}
-              </div>
-            </Link>
-          ))}
-        </div>
+        <>
+          {visualizacao === 'cards' ? (
+            <div className="space-y-3">
+              {pagina.itens.map((c) => (
+                <ChamadoCard key={c.id} chamado={c} nomeUsuario={nomeUsuario} />
+              ))}
+            </div>
+          ) : (
+            <div className="card !p-0 divide-y divide-gray-100 overflow-hidden">
+              {pagina.itens.map((c) => (
+                <ChamadoLinha key={c.id} chamado={c} />
+              ))}
+            </div>
+          )}
+          <Paginacao
+            pagina={pagina.pagina}
+            totalPaginas={pagina.totalPaginas}
+            total={pagina.total}
+            onMudar={irParaPagina}
+          />
+        </>
       )}
     </div>
   );

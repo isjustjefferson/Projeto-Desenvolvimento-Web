@@ -23,10 +23,10 @@ import { Modal } from '../components/Modal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import type { Role, Usuario } from '../types';
 
-const roles: Role[] = ['SOLICITANTE', 'TECNICO', 'GESTOR', 'ADMINISTRADOR'];
+const roles: Role[] = ['CONDOMINO', 'PRESTADOR', 'SINDICO', 'ADMINISTRADOR'];
 
-// Cargos que o admin pode atribuir a um morador (o base "Solicitante" é o padrão)
-const cargosPromoviveis: Role[] = ['TECNICO', 'GESTOR', 'ADMINISTRADOR'];
+// Cargos que o admin pode atribuir a um condômino (o base "Condômino" é o padrão)
+const cargosPromoviveis: Role[] = ['PRESTADOR', 'SINDICO', 'ADMINISTRADOR'];
 
 type TipoAcao = 'atribuir' | 'remover' | 'excluir';
 
@@ -47,13 +47,13 @@ function textoConfirmacao(p: PedidoConfirmacao): {
         titulo: 'Alterar perfil',
         mensagem: `Alterar o perfil de ${p.alvo.nome} de "${
           roleLabel[p.alvo.role]
-        }" para "${roleLabel[p.role ?? 'SOLICITANTE']}"?`,
+        }" para "${roleLabel[p.role ?? 'CONDOMINO']}"?`,
         rotulo: 'Alterar',
       };
     case 'remover':
       return {
         titulo: 'Remover cargo',
-        mensagem: `Remover o cargo de ${p.alvo.nome}? O perfil voltará a ser "Solicitante".`,
+        mensagem: `Remover o cargo de ${p.alvo.nome}? O perfil voltará a ser "Condômino".`,
         rotulo: 'Remover',
       };
     default:
@@ -73,9 +73,9 @@ function LinhaMorador({
   pedirConfirmacao: (pedido: PedidoConfirmacao) => void;
 }) {
   const [novoCargo, setNovoCargo] = useState<Role>(
-    m.role === 'SOLICITANTE' ? 'TECNICO' : m.role,
+    m.role === 'CONDOMINO' ? 'PRESTADOR' : m.role,
   );
-  const promovido = m.role !== 'SOLICITANTE';
+  const promovido = m.role !== 'CONDOMINO';
 
   const atribuir = () => {
     if (novoCargo === m.role) return;
@@ -161,7 +161,7 @@ function LinhaMorador({
             <button
               onClick={remover}
               className="flex items-center gap-1.5 rounded-lg border border-amber-300 px-2.5 py-1.5 text-xs font-semibold text-amber-600 transition hover:bg-amber-500 hover:text-white hover:border-amber-500"
-              title="Remover cargo (volta a Solicitante)"
+              title="Remover cargo (volta a Condômino)"
             >
               <UserRoundPlus className="h-3.5 w-3.5 rotate-180" /> Remover cargo
             </button>
@@ -187,7 +187,7 @@ export function Usuarios() {
   const excluirUsuario = useExcluirUsuario();
   const [modal, setModal] = useState(false);
   const [nome, setNome] = useState('');
-  const [role, setRole] = useState<Role>('SOLICITANTE');
+  const [role, setRole] = useState<Role>('CONDOMINO');
   const [especialidade, setEspecialidade] = useState('');
   const [setor, setSetor] = useState('');
   const [erroCriar, setErroCriar] = useState('');
@@ -209,7 +209,7 @@ export function Usuarios() {
       if (tipo === 'atribuir' && role) {
         await alterarCargo.mutateAsync({ id: alvo.id, role });
       } else if (tipo === 'remover') {
-        await alterarCargo.mutateAsync({ id: alvo.id, role: 'SOLICITANTE' });
+        await alterarCargo.mutateAsync({ id: alvo.id, role: 'CONDOMINO' });
       } else {
         await excluirUsuario.mutateAsync(alvo.id);
       }
@@ -266,7 +266,7 @@ export function Usuarios() {
 
     setModal(false);
     setNome('');
-    setRole('SOLICITANTE');
+    setRole('CONDOMINO');
     setEspecialidade('');
     setSetor('');
     toast.success(`${nomeNovo} foi criado como ${roleLabel[role]}.`);
@@ -343,19 +343,19 @@ export function Usuarios() {
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg bg-gray-50 p-3 text-sm">
-            <strong className="text-gray-700">Solicitante</strong>
+            <strong className="text-gray-700">Condômino</strong>
             <p className="text-xs text-gray-500">
               Cria chamados (sem prioridade) e acompanha os próprios chamados.
             </p>
           </div>
           <div className="rounded-lg bg-gray-50 p-3 text-sm">
-            <strong className="text-gray-700">Técnico</strong>
+            <strong className="text-gray-700">Prestador de Serviços</strong>
             <p className="text-xs text-gray-500">
               Vê chamados revisados/disponíveis e executa (inicia e conclui).
             </p>
           </div>
           <div className="rounded-lg bg-gray-50 p-3 text-sm">
-            <strong className="text-gray-700">Gestor</strong>
+            <strong className="text-gray-700">Síndico</strong>
             <p className="text-xs text-gray-500">
               Faz triagem, define prioridade, aprova e vê o dashboard.
             </p>
@@ -406,7 +406,7 @@ export function Usuarios() {
               ))}
             </select>
           </div>
-          {role === 'TECNICO' ? (
+          {role === 'PRESTADOR' ? (
             <div>
               <label className="label">Especialidade</label>
               <input

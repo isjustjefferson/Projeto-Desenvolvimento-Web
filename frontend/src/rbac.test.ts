@@ -4,7 +4,7 @@ import {
   especialidadeParaCategoria,
   pode,
   statusVisiveisPorRole,
-  tecnicoSemEspecialidade,
+  prestadorSemEspecialidade,
 } from './rbac';
 import type { Chamado, Usuario } from './types';
 
@@ -35,18 +35,18 @@ function criarChamado(
   };
 }
 
-const solicitante = criarUsuario({ id: 1, role: 'SOLICITANTE' });
-const solicitanteOutro = criarUsuario({ id: 2, role: 'SOLICITANTE' });
-const tecnicoEletrica = criarUsuario({
+const condomino = criarUsuario({ id: 1, role: 'CONDOMINO' });
+const condominoOutro = criarUsuario({ id: 2, role: 'CONDOMINO' });
+const prestadorEletrica = criarUsuario({
   id: 3,
-  role: 'TECNICO',
+  role: 'PRESTADOR',
   especialidade: 'Elétrica',
 });
-const tecnicoSemEspec = criarUsuario({ id: 4, role: 'TECNICO' });
-const gestor = criarUsuario({ id: 5, role: 'GESTOR' });
+const prestadorSemEspec = criarUsuario({ id: 4, role: 'PRESTADOR' });
+const sindico = criarUsuario({ id: 5, role: 'SINDICO' });
 const admin = criarUsuario({ id: 6, role: 'ADMINISTRADOR' });
 
-const base = { criadoPorId: solicitante.id, status: 'EM_ANDAMENTO' } as const;
+const base = { criadoPorId: condomino.id, status: 'EM_ANDAMENTO' } as const;
 
 describe('especialidadeParaCategoria', () => {
   it('normaliza acento, caixa e espaços', () => {
@@ -62,13 +62,13 @@ describe('especialidadeParaCategoria', () => {
   });
 });
 
-describe('tecnicoSemEspecialidade', () => {
-  it('é true só quando o perfil é TECNICO sem especialidade reconhecida', () => {
-    expect(tecnicoSemEspecialidade(tecnicoSemEspec)).toBe(true);
-    expect(tecnicoSemEspecialidade(tecnicoEletrica)).toBe(false);
-    expect(tecnicoSemEspecialidade(gestor)).toBe(false);
+describe('prestadorSemEspecialidade', () => {
+  it('é true só quando o perfil é PRESTADOR sem especialidade reconhecida', () => {
+    expect(prestadorSemEspecialidade(prestadorSemEspec)).toBe(true);
+    expect(prestadorSemEspecialidade(prestadorEletrica)).toBe(false);
+    expect(prestadorSemEspecialidade(sindico)).toBe(false);
     expect(
-      tecnicoSemEspecialidade(criarUsuario({ id: 9, role: 'TECNICO', especialidade: 'Zeladoria' })),
+      prestadorSemEspecialidade(criarUsuario({ id: 9, role: 'PRESTADOR', especialidade: 'Zeladoria' })),
     ).toBe(true);
   });
 });
@@ -80,18 +80,18 @@ describe('pode', () => {
   });
 
   it('respeita as ações declaradas de cada perfil', () => {
-    expect(pode('SOLICITANTE', 'criar')).toBe(true);
-    expect(pode('SOLICITANTE', 'aprovar')).toBe(false);
-    expect(pode('TECNICO', 'iniciar')).toBe(true);
-    expect(pode('TECNICO', 'aprovar')).toBe(false);
-    expect(pode('GESTOR', 'aprovar')).toBe(true);
-    expect(pode('GESTOR', 'concluir')).toBe(false);
+    expect(pode('CONDOMINO', 'criar')).toBe(true);
+    expect(pode('CONDOMINO', 'aprovar')).toBe(false);
+    expect(pode('PRESTADOR', 'iniciar')).toBe(true);
+    expect(pode('PRESTADOR', 'aprovar')).toBe(false);
+    expect(pode('SINDICO', 'aprovar')).toBe(true);
+    expect(pode('SINDICO', 'concluir')).toBe(false);
   });
 });
 
 describe('statusVisiveisPorRole', () => {
-  it('SOLICITANTE não enxerga chamados ainda não aprovados', () => {
-    expect(statusVisiveisPorRole.SOLICITANTE).not.toContain('REVISADO');
+  it('CONDOMINO não enxerga chamados ainda não aprovados', () => {
+    expect(statusVisiveisPorRole.CONDOMINO).not.toContain('REVISADO');
   });
 });
 
@@ -102,74 +102,74 @@ describe('chamadosVisiveis — isolamento por perfil', () => {
       id: 11,
       ...base,
       categoria: 'HIDRAULICA',
-      criadoPorId: solicitanteOutro.id,
+      criadoPorId: condominoOutro.id,
     }),
     criarChamado({
       id: 12,
       status: 'AGUARDANDO_APROVACAO',
-      criadoPorId: solicitanteOutro.id,
+      criadoPorId: condominoOutro.id,
     }),
-    criarChamado({ id: 13, status: 'REVISADO', criadoPorId: solicitanteOutro.id }),
+    criarChamado({ id: 13, status: 'REVISADO', criadoPorId: condominoOutro.id }),
   ];
 
-  it('SOLICITANTE vê apenas os próprios chamados', () => {
-    const visiveis = chamadosVisiveis(chamados, solicitante);
+  it('CONDOMINO vê apenas os próprios chamados', () => {
+    const visiveis = chamadosVisiveis(chamados, condomino);
     expect(visiveis.map((c) => c.id)).toEqual([10]);
   });
 
-  it('SOLICITANTE não vê chamados de outros usuários', () => {
-    const visiveis = chamadosVisiveis(chamados, solicitante);
-    expect(visiveis.some((c) => c.criadoPorId !== solicitante.id)).toBe(false);
+  it('CONDOMINO não vê chamados de outros usuários', () => {
+    const visiveis = chamadosVisiveis(chamados, condomino);
+    expect(visiveis.some((c) => c.criadoPorId !== condomino.id)).toBe(false);
   });
 
-  it('SOLICITANTE não vê chamados em status que não lhe cabem', () => {
-    const visiveis = chamadosVisiveis(chamados, solicitante);
+  it('CONDOMINO não vê chamados em status que não lhe cabem', () => {
+    const visiveis = chamadosVisiveis(chamados, condomino);
     expect(visiveis.some((c) => c.status === 'REVISADO')).toBe(false);
   });
 
-  it('TECNICO vê os chamados da própria especialidade, mesmo de terceiros', () => {
-    const visiveis = chamadosVisiveis(chamados, tecnicoEletrica);
+  it('PRESTADOR vê os chamados da própria especialidade, mesmo de terceiros', () => {
+    const visiveis = chamadosVisiveis(chamados, prestadorEletrica);
     expect(visiveis.map((c) => c.id)).toEqual([10]);
   });
 
-  it('TECNICO não vê outra categoria, exceto se atribuído a ele', () => {
+  it('PRESTADOR não vê outra categoria, exceto se atribuído a ele', () => {
     const atribuido = criarChamado({
       id: 14,
       ...base,
       categoria: 'HIDRAULICA',
-      criadoPorId: solicitanteOutro.id,
-      tecnicoId: tecnicoEletrica.id,
+      criadoPorId: condominoOutro.id,
+      prestadorId: prestadorEletrica.id,
     });
-    const visiveis = chamadosVisiveis([...chamados, atribuido], tecnicoEletrica);
+    const visiveis = chamadosVisiveis([...chamados, atribuido], prestadorEletrica);
     expect(visiveis.map((c) => c.id).sort()).toEqual([10, 14]);
   });
 
-  it('TECNICO vê o próprio chamado mesmo fora dos status de atendimento', () => {
+  it('PRESTADOR vê o próprio chamado mesmo fora dos status de atendimento', () => {
     const revisadoAtribuido = criarChamado({
       id: 15,
       status: 'REVISADO',
       categoria: 'ESTRUTURAL',
-      criadoPorId: solicitanteOutro.id,
-      tecnicoId: tecnicoEletrica.id,
+      criadoPorId: condominoOutro.id,
+      prestadorId: prestadorEletrica.id,
     });
-    const visiveis = chamadosVisiveis([revisadoAtribuido], tecnicoEletrica);
+    const visiveis = chamadosVisiveis([revisadoAtribuido], prestadorEletrica);
     expect(visiveis.map((c) => c.id)).toEqual([15]);
   });
 
-  it('TECNICO sem especialidade só enxerga os chamados atribuídos a ele', () => {
+  it('PRESTADOR sem especialidade só enxerga os chamados atribuídos a ele', () => {
     const atribuido = criarChamado({
       id: 16,
       ...base,
       categoria: 'MOBILIARIO',
-      criadoPorId: solicitante.id,
-      tecnicoId: tecnicoSemEspec.id,
+      criadoPorId: condomino.id,
+      prestadorId: prestadorSemEspec.id,
     });
-    const visiveis = chamadosVisiveis([...chamados, atribuido], tecnicoSemEspec);
+    const visiveis = chamadosVisiveis([...chamados, atribuido], prestadorSemEspec);
     expect(visiveis.map((c) => c.id)).toEqual([16]);
   });
 
-  it('GESTOR e ADMINISTRADOR têm visão geral dos status permitidos', () => {
-    expect(chamadosVisiveis(chamados, gestor).map((c) => c.id)).toEqual([
+  it('SINDICO e ADMINISTRADOR têm visão geral dos status permitidos', () => {
+    expect(chamadosVisiveis(chamados, sindico).map((c) => c.id)).toEqual([
       10, 11, 12, 13,
     ]);
     expect(chamadosVisiveis(chamados, admin).map((c) => c.id)).toEqual([
@@ -178,10 +178,10 @@ describe('chamadosVisiveis — isolamento por perfil', () => {
   });
 
   it('devolve lista vazia quando nada corresponde ao recorte', () => {
-    expect(chamadosVisiveis([], solicitante)).toEqual([]);
+    expect(chamadosVisiveis([], condomino)).toEqual([]);
     const soAguardando = [
       criarChamado({ id: 20, status: 'AGUARDANDO_APROVACAO', criadoPorId: 99 }),
     ];
-    expect(chamadosVisiveis(soAguardando, tecnicoEletrica)).toEqual([]);
+    expect(chamadosVisiveis(soAguardando, prestadorEletrica)).toEqual([]);
   });
 });

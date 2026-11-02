@@ -53,7 +53,7 @@ export class AuthService {
       id: this.store.incProximoIdUsuario(),
       nome: dados.nome.trim(),
       email,
-      role: 'SOLICITANTE',
+      role: 'CONDOMINO',
       unidade: dados.unidade.trim(),
       setor: dados.unidade.trim(),
       ativo: true,

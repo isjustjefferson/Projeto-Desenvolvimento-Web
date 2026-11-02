@@ -18,7 +18,7 @@ describe('Chamados (e2e)', () => {
     await request(app.getHttpServer()).get('/api/chamados').expect(401);
   });
 
-  it('GET /chamados do solicitante devolve apenas os próprios', async () => {
+  it('GET /chamados do condômino devolve apenas os próprios', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/chamados')
       .set('x-usuario-id', '1')
@@ -28,7 +28,7 @@ describe('Chamados (e2e)', () => {
     ]);
   });
 
-  it('GET /chamados do técnico devolve REVISADO e os atribuídos', async () => {
+  it('GET /chamados do prestador devolve REVISADO e os atribuídos', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/chamados')
       .set('x-usuario-id', '3')
@@ -38,7 +38,7 @@ describe('Chamados (e2e)', () => {
     ).toEqual([1, 4]);
   });
 
-  it('GET /chamados do gestor devolve todos', async () => {
+  it('GET /chamados do síndico devolve todos', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/chamados')
       .set('x-usuario-id', '5')
@@ -46,7 +46,7 @@ describe('Chamados (e2e)', () => {
     expect(res.body.chamados).toHaveLength(5);
   });
 
-  it('GET /chamados/:id não expõe chamado alheio ao solicitante', async () => {
+  it('GET /chamados/:id não expõe chamado alheio ao condômino', async () => {
     await request(app.getHttpServer())
       .get('/api/chamados/3')
       .set('x-usuario-id', '1')
@@ -79,7 +79,7 @@ describe('Chamados (e2e)', () => {
     expect(res.body.chamado).toMatchObject({
       status: 'AGUARDANDO_APROVACAO',
       prioridade: null,
-      tecnicoId: null,
+      prestadorId: null,
       criadoPorId: 1,
     });
     expect(res.body.chamado.historico).toHaveLength(1);
@@ -101,7 +101,7 @@ describe('Chamados (e2e)', () => {
     expect(res.body.chamado.foto).toBe(foto);
   });
 
-  it('POST /chamados bloqueia gestor e técnico', async () => {
+  it('POST /chamados bloqueia síndico e prestador', async () => {
     await request(app.getHttpServer())
       .post('/api/chamados')
       .set('x-usuario-id', '5')
@@ -137,45 +137,45 @@ describe('Chamados (e2e)', () => {
       .expect(400);
   });
 
-  it('aprovar define prioridade, técnico e histórico; bloqueia solicitante', async () => {
+  it('aprovar define prioridade, prestador e histórico; bloqueia condômino', async () => {
     await request(app.getHttpServer())
       .post('/api/chamados/3/aprovar')
       .set('x-usuario-id', '1')
-      .send({ prioridade: 'CRITICA', tecnicoId: 3 })
+      .send({ prioridade: 'CRITICA', prestadorId: 3 })
       .expect(403);
 
     const res = await request(app.getHttpServer())
       .post('/api/chamados/3/aprovar')
       .set('x-usuario-id', '5')
-      .send({ prioridade: 'CRITICA', tecnicoId: 3 })
+      .send({ prioridade: 'CRITICA', prestadorId: 3 })
       .expect(201);
     expect(res.body.chamado).toMatchObject({
       status: 'REVISADO',
       prioridade: 'CRITICA',
-      tecnicoId: 3,
+      prestadorId: 3,
     });
     expect(res.body.chamado.historico[0]).toMatchObject({
       de: 'AGUARDANDO_APROVACAO',
       para: 'REVISADO',
       observacao:
-        'Aprovado com prioridade CRITICA e atribuído ao técnico',
+        'Aprovado com prioridade CRITICA e atribuído ao prestador',
     });
   });
 
-  it('aprovar com técnico não-técnico retorna 400; fora de AGUARDANDO retorna 400', async () => {
+  it('aprovar com prestador não-prestador retorna 400; fora de AGUARDANDO retorna 400', async () => {
     await request(app.getHttpServer())
       .post('/api/chamados/3/aprovar')
       .set('x-usuario-id', '5')
-      .send({ prioridade: 'ALTA', tecnicoId: 1 })
+      .send({ prioridade: 'ALTA', prestadorId: 1 })
       .expect(400);
     await request(app.getHttpServer())
       .post('/api/chamados/1/aprovar')
       .set('x-usuario-id', '5')
-      .send({ prioridade: 'ALTA', tecnicoId: 3 })
+      .send({ prioridade: 'ALTA', prestadorId: 3 })
       .expect(400);
   });
 
-  it('iniciar: gestor inicia REVISADO; técnico não atribuído é bloqueado; fora de REVISADO 400', async () => {
+  it('iniciar: síndico inicia REVISADO; prestador não atribuído é bloqueado; fora de REVISADO 400', async () => {
     await request(app.getHttpServer())
       .post('/api/chamados/4/iniciar')
       .set('x-usuario-id', '3')
@@ -193,7 +193,7 @@ describe('Chamados (e2e)', () => {
       .expect(400);
   });
 
-  it('concluir: técnico atribuído conclui com solução; outrem bloqueado; sem solução 400', async () => {
+  it('concluir: prestador atribuído conclui com solução; outrem bloqueado; sem solução 400', async () => {
     await request(app.getHttpServer())
       .post('/api/chamados/2/concluir')
       .set('x-usuario-id', '3')
@@ -216,11 +216,11 @@ describe('Chamados (e2e)', () => {
     });
   });
 
-  it('fluxo completo end-to-end do técnico', async () => {
+  it('fluxo completo end-to-end do prestador', async () => {
     await request(app.getHttpServer())
       .post('/api/chamados/3/aprovar')
       .set('x-usuario-id', '6')
-      .send({ prioridade: 'MEDIA', tecnicoId: 3 })
+      .send({ prioridade: 'MEDIA', prestadorId: 3 })
       .expect(201);
 
     await request(app.getHttpServer())
@@ -236,7 +236,7 @@ describe('Chamados (e2e)', () => {
     expect(res.body.chamado.status).toBe('CONCLUIDO');
   });
 
-  it('filtros de listagem (status, categoria, técnico, prédio, busca, período)', async () => {
+  it('filtros de listagem (status, categoria, prestador, prédio, busca, período)', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/chamados?status=CONCLUIDO')
       .set('x-usuario-id', '6')

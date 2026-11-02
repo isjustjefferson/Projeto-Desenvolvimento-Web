@@ -3,17 +3,17 @@ import type { Categoria, Chamado, Role, Status, Usuario } from './types';
 // Centraliza as regras de acesso por perfil (RBAC).
 // Cada perfil enxerga um conjunto de status de chamados.
 export const statusVisiveisPorRole: Record<Role, Status[]> = {
-  SOLICITANTE: ['AGUARDANDO_APROVACAO', 'EM_ANDAMENTO', 'CONCLUIDO'],
-  TECNICO: ['REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'],
-  GESTOR: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'],
+  CONDOMINO: ['AGUARDANDO_APROVACAO', 'EM_ANDAMENTO', 'CONCLUIDO'],
+  PRESTADOR: ['REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'],
+  SINDICO: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'],
   ADMINISTRADOR: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'],
 };
 
 // Ações que cada perfil pode executar
 export const acoesPorRole: Record<Role, string[]> = {
-  SOLICITANTE: ['criar', 'visualizar_proprios'],
-  TECNICO: ['iniciar', 'concluir', 'visualizar_atribuidos_disponiveis'],
-  GESTOR: ['triar', 'aprovar', 'iniciar', 'dashboard'],
+  CONDOMINO: ['criar', 'visualizar_proprios'],
+  PRESTADOR: ['iniciar', 'concluir', 'visualizar_atribuidos_disponiveis'],
+  SINDICO: ['triar', 'aprovar', 'iniciar', 'dashboard'],
   ADMINISTRADOR: ['tudo'],
 };
 
@@ -31,7 +31,7 @@ const CATEGORIAS: Categoria[] = [
   'OUTROS',
 ];
 
-// A especialidade do técnico é texto livre ("Elétrica", "Hidráulica"), enquanto
+// A especialidade do prestador é texto livre ("Elétrica", "Hidráulica"), enquanto
 // Chamado.categoria é um enum. Normaliza (sem acento, maiúsculas) para casar.
 // Aceita null porque o payload validado usa nullish() nos campos opcionais.
 export function especialidadeParaCategoria(
@@ -46,10 +46,10 @@ export function especialidadeParaCategoria(
   return CATEGORIAS.find((c) => c === normalizada) ?? null;
 }
 
-// Técnico sem especialidade reconhecida só enxerga os chamados atribuídos a ele.
-export function tecnicoSemEspecialidade(usuario: Usuario): boolean {
+// Prestador sem especialidade reconhecida só enxerga os chamados atribuídos a ele.
+export function prestadorSemEspecialidade(usuario: Usuario): boolean {
   return (
-    usuario.role === 'TECNICO' &&
+    usuario.role === 'PRESTADOR' &&
     especialidadeParaCategoria(usuario.especialidade) === null
   );
 }
@@ -60,27 +60,27 @@ export function chamadosVisiveis(
   usuario: Usuario,
 ): Chamado[] {
   const statusPermitidos = statusVisiveisPorRole[usuario.role];
-  const categoriaDoTecnico =
-    usuario.role === 'TECNICO'
+  const categoriaDoPrestador =
+    usuario.role === 'PRESTADOR'
       ? especialidadeParaCategoria(usuario.especialidade)
       : null;
 
   return chamados.filter((c) => {
     if (!statusPermitidos.includes(c.status)) return false;
 
-    // Solicitante só enxerga os próprios chamados
-    if (usuario.role === 'SOLICITANTE') {
+    // Condômino só enxerga os próprios chamados
+    if (usuario.role === 'CONDOMINO') {
       return c.criadoPorId === usuario.id;
     }
 
-    // Técnico enxerga os da sua especialidade e os já atribuídos a ele
-    if (usuario.role === 'TECNICO') {
+    // Prestador enxerga os da sua especialidade e os já atribuídos a ele
+    if (usuario.role === 'PRESTADOR') {
       const daEspecialidade =
-        categoriaDoTecnico !== null && c.categoria === categoriaDoTecnico;
-      return daEspecialidade || c.tecnicoId === usuario.id;
+        categoriaDoPrestador !== null && c.categoria === categoriaDoPrestador;
+      return daEspecialidade || c.prestadorId === usuario.id;
     }
 
-    // Gestor e Administrador têm visão geral
+    // Síndico e Administrador têm visão geral
     return true;
   });
 }

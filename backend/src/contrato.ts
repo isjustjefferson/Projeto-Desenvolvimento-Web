@@ -1,7 +1,7 @@
 // Espelha os tipos do frontend (frontend/src/types.ts) para manter o mesmo
 // contrato. A diferença: usuário público NUNCA expõe a senha.
 
-export type Role = 'SOLICITANTE' | 'TECNICO' | 'GESTOR' | 'ADMINISTRADOR';
+export type Role = 'CONDOMINO' | 'PRESTADOR' | 'SINDICO' | 'ADMINISTRADOR';
 
 export type Status =
   | 'AGUARDANDO_APROVACAO'
@@ -39,7 +39,7 @@ export interface UsuarioPublico {
 }
 
 // Resumo exposto a qualquer usuário autenticado: suficiente para exibir nomes
-// e montar a lista de técnicos, sem dados sensíveis (e-mail, setor, etc.).
+// e montar a lista de prestadores, sem dados sensíveis (e-mail, setor, etc.).
 export interface UsuarioResumo {
   id: number;
   nome: string;
@@ -71,7 +71,7 @@ export interface Chamado {
   prioridade: Prioridade | null;
   foto?: string | null;
   criadoPorId: number;
-  tecnicoId?: number | null;
+  prestadorId?: number | null;
   criadoEm: string;
   atualizadoEm: string;
   historico: Historico[];

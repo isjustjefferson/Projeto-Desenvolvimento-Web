@@ -28,9 +28,9 @@ export class UsuariosController {
     return this.usuarios.listar();
   }
 
-  // Qualquer usuário autenticado pode ver o resumo (nomes/técnicos).
+  // Qualquer usuário autenticado pode ver o resumo (nomes/prestadores).
   @Get('resumo')
-  @Roles('SOLICITANTE', 'TECNICO', 'GESTOR', 'ADMINISTRADOR')
+  @Roles('CONDOMINO', 'PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
   listarResumo() {
     return this.usuarios.listarResumo();
   }

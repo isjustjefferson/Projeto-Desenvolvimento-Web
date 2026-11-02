@@ -42,6 +42,6 @@ describe('AuthGuard', () => {
     const { ctx, request } = contexto('1');
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(request.usuario.id).toBe(1);
-    expect(request.usuario.role).toBe('SOLICITANTE');
+    expect(request.usuario.role).toBe('CONDOMINO');
   });
 });

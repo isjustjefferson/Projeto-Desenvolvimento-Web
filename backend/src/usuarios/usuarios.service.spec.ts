@@ -20,16 +20,16 @@ describe('UsuariosService', () => {
     expect(res.usuarios[0]).not.toHaveProperty('senhaHash');
   });
 
-  it('cria usuário TECNICO com especialidade e senha padrão', () => {
+  it('cria usuário PRESTADOR com especialidade e senha padrão', () => {
     const res = service.criar({
       nome: 'Fábio Manutenção',
       email: 'fabio@predial.com',
-      role: 'TECNICO',
+      role: 'PRESTADOR',
       especialidade: 'Climatização',
     });
     expect(res.usuario).toMatchObject({
       id: 7,
-      role: 'TECNICO',
+      role: 'PRESTADOR',
       especialidade: 'Climatização',
       ativo: true,
     });
@@ -37,13 +37,13 @@ describe('UsuariosService', () => {
     expect(bcrypt.compareSync(senhaPadrao, interno!.senhaHash)).toBe(true);
   });
 
-  it('cria usuário SOLICITANTE por padrão e guarda setor', () => {
+  it('cria usuário CONDOMINO por padrão e guarda setor', () => {
     const res = service.criar({
       nome: 'Denise',
       email: 'denise@predial.com',
       setor: 'Administração',
     });
-    expect(res.usuario.role).toBe('SOLICITANTE');
+    expect(res.usuario.role).toBe('CONDOMINO');
     expect(res.usuario.especialidade).toBeUndefined();
     expect(res.usuario.setor).toBe('Administração');
   });
@@ -55,26 +55,26 @@ describe('UsuariosService', () => {
   });
 
   it('promove e rebaixa um usuário', () => {
-    const promovido = service.alterarRole(1, { role: 'GESTOR' }, 6);
-    expect(promovido.usuario.role).toBe('GESTOR');
-    const rebaixado = service.alterarRole(1, { role: 'SOLICITANTE' }, 6);
-    expect(rebaixado.usuario.role).toBe('SOLICITANTE');
+    const promovido = service.alterarRole(1, { role: 'SINDICO' }, 6);
+    expect(promovido.usuario.role).toBe('SINDICO');
+    const rebaixado = service.alterarRole(1, { role: 'CONDOMINO' }, 6);
+    expect(rebaixado.usuario.role).toBe('CONDOMINO');
   });
 
   it('bloqueia alterar cargo de usuário inexistente', () => {
-    expect(() => service.alterarRole(999, { role: 'GESTOR' }, 6)).toThrow(
+    expect(() => service.alterarRole(999, { role: 'SINDICO' }, 6)).toThrow(
       'Usuário não encontrado.',
     );
   });
 
   it('bloqueia ação sobre a própria conta', () => {
-    expect(() => service.alterarRole(6, { role: 'GESTOR' }, 6)).toThrow(
+    expect(() => service.alterarRole(6, { role: 'SINDICO' }, 6)).toThrow(
       'Você não pode realizar esta ação na própria conta.',
     );
   });
 
   it('bloqueia rebaixar/excluir o último administrador', () => {
-    expect(() => service.alterarRole(6, { role: 'GESTOR' }, 5)).toThrow(
+    expect(() => service.alterarRole(6, { role: 'SINDICO' }, 5)).toThrow(
       'Não é possível remover o último administrador.',
     );
     expect(() => service.excluir(6, 5)).toThrow(
@@ -88,8 +88,8 @@ describe('UsuariosService', () => {
       email: 'admin2@predial.com',
       role: 'ADMINISTRADOR',
     });
-    const res = service.alterarRole(6, { role: 'GESTOR' }, 7);
-    expect(res.usuario.role).toBe('GESTOR');
+    const res = service.alterarRole(6, { role: 'SINDICO' }, 7);
+    expect(res.usuario.role).toBe('SINDICO');
   });
 
   it('exclui usuário e impede auto-exclusão', () => {

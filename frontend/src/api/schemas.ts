@@ -8,15 +8,15 @@
 // issues no console.
 //
 // Campos opcionais do contrato usam `nullish()` (ausente OU null): o backend em
-// memória serializa alguns como null (ex.: tecnicoId de chamado recém-criado).
+// memória serializa alguns como null (ex.: prestadorId de chamado recém-criado).
 // Campos extras são descartados (padrão do z.object), porque adicionar campo é
 // mudança compatível; o que derruba é campo faltando ou com tipo errado.
 import { z } from 'zod';
 
 export const ROLE_VALUES = [
-  'SOLICITANTE',
-  'TECNICO',
-  'GESTOR',
+  'CONDOMINO',
+  'PRESTADOR',
+  'SINDICO',
   'ADMINISTRADOR',
 ] as const;
 
@@ -73,7 +73,7 @@ export const chamadoSchema = z.object({
   prioridade: prioridadeSchema.nullable(),
   foto: z.string().nullish(),
   criadoPorId: z.number(),
-  tecnicoId: z.number().nullish(),
+  prestadorId: z.number().nullish(),
   criadoEm: z.string(),
   atualizadoEm: z.string(),
   historico: z.array(historicoSchema),
