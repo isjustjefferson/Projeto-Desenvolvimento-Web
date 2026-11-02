@@ -24,6 +24,7 @@ export function useUsuarios() {
 }
 
 interface Diretorio {
+  usuarios: UsuarioResumo[];
   prestadores: UsuarioResumo[];
   nomeUsuario: (id: number | null | undefined) => string;
 }
@@ -42,6 +43,7 @@ export function useDiretorio(): Diretorio {
   return useMemo(() => {
     const usuarios = data ?? [];
     return {
+      usuarios,
       prestadores: usuarios.filter((u) => u.role === 'PRESTADOR'),
       nomeUsuario: (id: number | null | undefined) =>
         id ? usuarios.find((u) => u.id === id)?.nome || '—' : '—',

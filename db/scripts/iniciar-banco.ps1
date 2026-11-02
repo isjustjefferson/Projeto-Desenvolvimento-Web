@@ -179,11 +179,15 @@ if ($bancoExiste -notmatch '1') {
 # ---------------------------------------------------------------------------
 Write-Etapa 'Aplicando o DDL na ordem correta'
 
-Invoke-ArquivoSql -Caminho (Join-Path $dirSql '01_tipos.sql')             -Banco $NomeBanco
-Invoke-ArquivoSql -Caminho (Join-Path $dirSql '02_tabelas.sql')           -Banco $NomeBanco
-Invoke-ArquivoSql -Caminho (Join-Path $dirSql '03_chaves_estrangeiras.sql') -Banco $NomeBanco
-Invoke-ArquivoSql -Caminho (Join-Path $dirSql '04_check_rn04.sql')        -Banco $NomeBanco
-Invoke-ArquivoSql -Caminho (Join-Path $dirSql '05_indices.sql')           -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '01_tipos.sql')               -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '01b_tipos_despesas.sql')      -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '02_tabelas.sql')             -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '02b_despesas_tabelas.sql')    -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '03_chaves_estrangeiras.sql')   -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '03b_chaves_despesas.sql')      -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '04_check_rn04.sql')          -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '05_indices.sql')             -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '05b_indices_despesas.sql')    -Banco $NomeBanco
 
 # ---------------------------------------------------------------------------
 if (-not $PularVerificacao) {
@@ -196,7 +200,7 @@ if (-not $PularVerificacao) {
     $tipos   = Invoke-Sql -Sql "SELECT count(*) FROM pg_type WHERE typname IN ('papel','status','prioridade','categoria');" -Banco $NomeBanco
 
     $esperado = @{
-        tabelas = 5; indices = 16; fks = 6; checks = 1; tipos = 4
+        tabelas = 7; indices = 24; fks = 11; checks = 1; tipos = 10
     }
 
     $divergencias = @()

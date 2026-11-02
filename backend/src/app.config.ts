@@ -3,7 +3,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 
 // Fotos chegam como data URL (base64), que é maior que o limite padrão
 // do express.json (100kb). Usado tanto em main.ts quanto nos testes e2e.
-const LIMITE_CORPO = '10mb';
+const LIMITE_CORPO = '40mb';
 
 export function configurarApp(app: NestExpressApplication): void {
   // Todos os endpoints ficam sob /api

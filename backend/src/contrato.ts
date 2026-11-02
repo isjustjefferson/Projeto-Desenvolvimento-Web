@@ -61,6 +61,83 @@ export interface Historico {
   observacao?: string;
 }
 
+export interface Classificacao {
+  prioridadeSugerida: Prioridade;
+  pontuacao: number;
+  motivos: string[];
+}
+
+export type CategoriaDespesa =
+  | 'MATERIAL'
+  | 'MAO_DE_OBRA'
+  | 'SERVICO_TERCEIRO'
+  | 'DESLOCAMENTO'
+  | 'OUTROS';
+
+export type StatusDespesa = 'PENDENTE' | 'APROVADA' | 'REJEITADA';
+
+export type FormaPagamento = 'DINHEIRO' | 'PIX' | 'CARTAO' | 'FATURADO';
+
+export type PagoPor = 'TECNICO' | 'EMPRESA';
+
+export type TipoAnexo = 'NOTA_FISCAL' | 'RECIBO' | 'COMPROVANTE_PAGAMENTO' | 'OUTRO';
+
+export type TipoDocumentoFiscal =
+  | 'NFE'
+  | 'NFSE'
+  | 'NFCE'
+  | 'CUPOM_FISCAL'
+  | 'RECIBO'
+  | 'BOLETO_COMPROVANTE'
+  | 'OUTRO';
+
+export interface AnexoDespesa {
+  id: number;
+  despesaId: number;
+  tipo: TipoAnexo;
+  tipoDocumentoFiscal?: TipoDocumentoFiscal;
+  chaveNFe?: string;
+  numero?: string;
+  serie?: string;
+  nomeArquivo: string;
+  mimeType: string;
+  tamanhoBytes: number;
+  hashSha256?: string;
+  conteudo?: string;
+  enviadoPorId: number;
+  criadoEm: string;
+}
+
+export interface Despesa {
+  id: number;
+  chamadoId: number;
+  registradoPorId: number;
+  categoria: CategoriaDespesa;
+  descricao: string;
+  fornecedor?: string;
+  cnpj?: string;
+  numeroNota?: string;
+  serie?: string;
+  dataEmissao?: string;
+  valorCentavos: number;
+  formaPagamento?: FormaPagamento;
+  pagoPor?: PagoPor;
+  status: StatusDespesa;
+  motivoRejeicao?: string;
+  aprovadoPorId?: number;
+  aprovadoEm?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+  anexos: AnexoDespesa[];
+}
+
+export interface ResumoFinanceiro {
+  totalCentavos: number;
+  aprovadoCentavos: number;
+  pendenteCentavos: number;
+  rejeitadoCentavos: number;
+}
+
 export interface Chamado {
   id: number;
   titulo: string;
@@ -69,6 +146,7 @@ export interface Chamado {
   local: Local;
   status: Status;
   prioridade: Prioridade | null;
+  classificacao?: Classificacao | null;
   foto?: string | null;
   criadoPorId: number;
   prestadorId?: number | null;
@@ -76,6 +154,8 @@ export interface Chamado {
   atualizadoEm: string;
   historico: Historico[];
   solucao?: Solucao | null;
+  despesas?: Despesa[];
+  resumoFinanceiro?: ResumoFinanceiro;
 }
 
 export interface NovoChamadoInput {

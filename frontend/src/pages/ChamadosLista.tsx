@@ -12,7 +12,7 @@ import {
   statusVisiveisPorRole,
   prestadorSemEspecialidade,
 } from '../rbac';
-import { paginar, prioridadeLabel, statusLabel } from '../helpers';
+import { categoriaLabel, paginar, prioridadeLabel, statusLabel } from '../helpers';
 import { ChamadoCard, ChamadoLinha } from '../components/ChamadoItem';
 import { EmptyState } from '../components/EmptyState';
 import { Paginacao } from '../components/Paginacao';
@@ -30,9 +30,9 @@ export function ChamadosLista() {
   const { data: chamados = [], isPending, error } = useChamados();
   const { nomeUsuario } = useDiretorio();
   const [params, setParams] = useSearchParams();
-  const [filtroPrioridade, setFiltroPrioridade] = useState('');
   const [busca, setBusca] = useState('');
   const [aba, setAba] = useState<'disponiveis' | 'meus'>('disponiveis');
+  const [filtroCondomino, setFiltroCondomino] = useState('');
   const [visualizacao, setVisualizacao] = useVisualizacao();
 
   const statusDoPerfil = usuario
@@ -41,22 +41,29 @@ export function ChamadosLista() {
       )
     : [];
 
-  // O filtro de status vive na URL (?status=), para que links como o da fila de
-  // triagem abram a lista já filtrada. Valor fora do perfil é ignorado.
-  const statusDaUrl = params.get('status') ?? '';
-  const filtroStatus = statusDoPerfil.includes(statusDaUrl as Status)
-    ? statusDaUrl
-    : '';
-  const setFiltroStatus = (status: string) =>
+  // Status, prioridade e categoria vivem na URL (?status=&prioridade=&categoria=),
+  // para que links do dashboard abram a lista já filtrada. Valor que não existe
+  // (ou status fora do perfil) é ignorado.
+  const filtroDaUrl = (chave: string, validos: readonly string[]) => {
+    const valor = params.get(chave) ?? '';
+    return validos.includes(valor) ? valor : '';
+  };
+  const filtroStatus = filtroDaUrl('status', statusDoPerfil);
+  const filtroPrioridade = filtroDaUrl('prioridade', Object.keys(prioridadeLabel));
+  const filtroCategoria = filtroDaUrl('categoria', Object.keys(categoriaLabel));
+  const definirFiltroUrl = (chave: string) => (valor: string) =>
     setParams(
       (atuais) => {
         const novos = new URLSearchParams(atuais);
-        if (status) novos.set('status', status);
-        else novos.delete('status');
+        if (valor) novos.set(chave, valor);
+        else novos.delete(chave);
         return novos;
       },
       { replace: true },
     );
+  const setFiltroStatus = definirFiltroUrl('status');
+  const setFiltroPrioridade = definirFiltroUrl('prioridade');
+  const setFiltroCategoria = definirFiltroUrl('categoria');
 
   const visiveis = useMemo(() => {
     if (!usuario) return [];
@@ -72,9 +79,20 @@ export function ChamadosLista() {
           }
         }
 
+        // Síndico: filtrar por próprios chamados ou por condômino
+        if (usuario.role === 'SINDICO') {
+          if (aba === 'meus') {
+            if (c.criadoPorId !== usuario.id) return false;
+          }
+        }
+
         // Filtros manuais
         if (filtroStatus && c.status !== filtroStatus) return false;
         if (filtroPrioridade && c.prioridade !== filtroPrioridade) return false;
+        if (filtroCategoria && c.categoria !== filtroCategoria) return false;
+        if (filtroCondomino) {
+          if (c.criadoPorId !== Number(filtroCondomino)) return false;
+        }
         if (busca) {
           const termo = busca.toLowerCase();
           const match =
@@ -86,11 +104,11 @@ export function ChamadosLista() {
         return true;
       })
       .sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime());
-  }, [chamados, usuario, aba, filtroStatus, filtroPrioridade, busca]);
+  }, [chamados, usuario, aba, filtroStatus, filtroPrioridade, filtroCategoria, busca, filtroCondomino]);
 
   // Mudou a busca, um filtro ou a aba: a página guardada é de outro recorte,
   // então volta para a primeira (sem efeito colateral de re-render).
-  const chaveRecorte = [aba, filtroStatus, filtroPrioridade, busca].join('|');
+  const chaveRecorte = [aba, filtroStatus, filtroPrioridade, filtroCategoria, filtroCondomino, busca].join('|');
   const [paginacao, setPaginacao] = useState({ chave: chaveRecorte, pagina: 1 });
   const pagina = paginar(
     visiveis,
@@ -104,7 +122,17 @@ export function ChamadosLista() {
 
   const podeCriar = usuario ? pode(usuario.role, 'criar') : false;
   const semEspecialidade = usuario ? prestadorSemEspecialidade(usuario) : false;
-  const filtrosAtivos = Boolean(busca || filtroStatus || filtroPrioridade);
+  const filtrosAtivos = Boolean(
+    busca || filtroStatus || filtroPrioridade || filtroCategoria || filtroCondomino,
+  );
+
+  const condominos = useMemo(() => {
+    const ids = new Set<number>();
+    for (const c of chamados) ids.add(c.criadoPorId);
+    return Array.from(ids)
+      .map((id) => ({ id, nome: nomeUsuario(id) }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [chamados, nomeUsuario]);
 
   return (
     <div className="space-y-4">
@@ -119,8 +147,8 @@ export function ChamadosLista() {
           <h1 className="text-2xl font-bold text-gray-900">Chamados</h1>
           <p className="text-sm text-gray-500">
             {usuario?.role === 'CONDOMINO' && 'Seus chamados de manutenção'}
+            {usuario?.role === 'SINDICO' && 'Seus chamados e chamados da edificação'}
             {usuario?.role === 'PRESTADOR' && 'Chamados da sua especialidade e atribuídos a você'}
-            {usuario?.role === 'SINDICO' && 'Fila de triagem e chamados da edificação'}
             {usuario?.role === 'ADMINISTRADOR' && 'Gestão completa de chamados'}
           </p>
         </div>
@@ -180,6 +208,31 @@ export function ChamadosLista() {
         </div>
       )}
 
+      {usuario?.role === 'SINDICO' && (
+        <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+          <button
+            onClick={() => setAba('disponiveis')}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              aba === 'disponiveis'
+                ? 'bg-brand-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Todos os chamados
+          </button>
+          <button
+            onClick={() => setAba('meus')}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              aba === 'meus'
+                ? 'bg-brand-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Meus chamados
+          </button>
+        </div>
+      )}
+
       {semEspecialidade && (
         <div className="card border-amber-200 bg-amber-50 text-sm text-amber-800">
           Sua especialidade não está definida. Você está vendo apenas os chamados
@@ -187,7 +240,7 @@ export function ChamadosLista() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
         <div className="relative sm:col-span-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -217,6 +270,28 @@ export function ChamadosLista() {
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
+        <select
+          className="input"
+          value={filtroCategoria}
+          onChange={(e) => setFiltroCategoria(e.target.value)}
+        >
+          <option value="">Categoria: todas</option>
+          {Object.entries(categoriaLabel).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+        {(usuario?.role === 'SINDICO' || usuario?.role === 'ADMINISTRADOR') && (
+          <select
+            className="input"
+            value={filtroCondomino}
+            onChange={(e) => setFiltroCondomino(e.target.value)}
+          >
+            <option value="">Condômino: todos</option>
+            {condominos.map((s) => (
+              <option key={s.id} value={s.id}>{s.nome}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {isPending ? (
@@ -241,7 +316,9 @@ export function ChamadosLista() {
                 ? 'Nenhum chamado corresponde à sua busca ou aos filtros aplicados.'
                 : usuario?.role === 'PRESTADOR' && aba === 'disponiveis'
                   ? 'Não há chamados da sua especialidade aguardando atendimento no momento.'
-                  : 'Quando houver chamados que você possa acompanhar, eles aparecem aqui.'
+                  : usuario?.role === 'SINDICO' && aba === 'meus'
+                    ? 'Você ainda não abriu nenhum chamado.'
+                    : 'Quando houver chamados que você possa acompanhar, eles aparecem aqui.'
             }
             acao={
               filtrosAtivos ? (
@@ -250,12 +327,14 @@ export function ChamadosLista() {
                     setBusca('');
                     setFiltroStatus('');
                     setFiltroPrioridade('');
+                    setFiltroCategoria('');
+                    setFiltroCondomino('');
                   }}
                   className="btn-secondary"
                 >
                   Limpar filtros
                 </button>
-              ) : podeCriar ? (
+              ) : usuario?.role === 'SINDICO' && aba === 'meus' ? undefined : podeCriar ? (
                 <Link to="/chamados/novo" className="btn-primary">
                   <Plus className="h-4 w-4" /> Abrir chamado
                 </Link>

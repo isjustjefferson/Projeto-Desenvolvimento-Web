@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -15,10 +17,14 @@ import { RolesGuard } from '../common/guards/roles.guard.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import { ChamadosService } from './chamados.service.js';
 import {
+  AnexoDespesaDto,
   AprovarChamadoDto,
   ConcluirChamadoDto,
   CriarChamadoDto,
+  CriarDespesaDto,
+  EditarDespesaDto,
   FiltrosChamadosDto,
+  RejeitarDespesaDto,
 } from './dto/chamados.dto.js';
 
 @Controller('chamados')
@@ -43,7 +49,7 @@ export class ChamadosController {
   }
 
   @Post()
-  @Roles('CONDOMINO', 'ADMINISTRADOR')
+  @Roles('CONDOMINO', 'SINDICO', 'ADMINISTRADOR')
   criar(
     @Body() dto: CriarChamadoDto,
     @UsuarioAtual() usuario: UsuarioInterno,
@@ -78,5 +84,87 @@ export class ChamadosController {
     @UsuarioAtual() usuario: UsuarioInterno,
   ) {
     return this.chamados.concluir(id, usuario, dto);
+  }
+
+  @Get(':id/despesas')
+  listarDespesas(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.listarDespesas(id, usuario);
+  }
+
+  @Post(':id/despesas')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
+  criarDespesa(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CriarDespesaDto,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.criarDespesa(id, usuario, dto);
+  }
+
+  @Patch(':id/despesas/:despesaId')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
+  editarDespesa(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('despesaId', ParseIntPipe) despesaId: number,
+    @Body() dto: EditarDespesaDto,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.editarDespesa(id, despesaId, usuario, dto);
+  }
+
+  @Delete(':id/despesas/:despesaId')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
+  removerDespesa(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('despesaId', ParseIntPipe) despesaId: number,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.removerDespesa(id, despesaId, usuario);
+  }
+
+  @Post(':id/despesas/:despesaId/anexos')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
+  anexarDespesa(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('despesaId', ParseIntPipe) despesaId: number,
+    @Body() dto: AnexoDespesaDto,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.anexarDespesa(id, despesaId, usuario, dto);
+  }
+
+  @Delete(':id/despesas/:despesaId/anexos/:anexoId')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
+  removerAnexoDespesa(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('despesaId', ParseIntPipe) despesaId: number,
+    @Param('anexoId', ParseIntPipe) anexoId: number,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.removerAnexoDespesa(id, despesaId, anexoId, usuario);
+  }
+
+  @Post(':id/despesas/:despesaId/aprovar')
+  @Roles('SINDICO', 'ADMINISTRADOR')
+  aprovarDespesa(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('despesaId', ParseIntPipe) despesaId: number,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.aprovarDespesa(id, despesaId, usuario);
+  }
+
+  @Post(':id/despesas/:despesaId/rejeitar')
+  @Roles('SINDICO', 'ADMINISTRADOR')
+  rejeitarDespesa(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('despesaId', ParseIntPipe) despesaId: number,
+    @Body() dto: RejeitarDespesaDto,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.rejeitarDespesa(id, despesaId, usuario, dto);
   }
 }

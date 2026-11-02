@@ -11,6 +11,7 @@ import { ChamadosLista } from './pages/ChamadosLista';
 import { NovoChamado } from './pages/NovoChamado';
 import { ChamadoDetalhe } from './pages/ChamadoDetalhe';
 import { Usuarios } from './pages/Usuarios';
+import { RelatoriosDespesas } from './pages/RelatoriosDespesas';
 import { NotFound } from './pages/NotFound';
 import type { Role } from './types';
 
@@ -105,12 +106,20 @@ export default function App() {
         <Route
           path="chamados/novo"
           element={
-            <RequireRoles roles={['CONDOMINO', 'ADMINISTRADOR']}>
+            <RequireRoles roles={['CONDOMINO', 'SINDICO', 'ADMINISTRADOR']}>
               <NovoChamado />
             </RequireRoles>
           }
         />
         <Route path="chamados/:id" element={<ChamadoDetalhe />} />
+        <Route
+          path="relatorios/despesas"
+          element={
+            <RequireRoles roles={['SINDICO', 'ADMINISTRADOR']}>
+              <RelatoriosDespesas />
+            </RequireRoles>
+          }
+        />
         <Route
           path="usuarios"
           element={

@@ -1,10 +1,72 @@
-import type { Categoria, Prioridade, Role, Status } from './types';
+import type {
+  Categoria,
+  CategoriaDespesa,
+  FormaPagamento,
+  PagoPor,
+  Prioridade,
+  Role,
+  Status,
+  StatusDespesa,
+  TipoAnexo,
+} from './types';
 
 export const statusLabel: Record<Status, string> = {
   AGUARDANDO_APROVACAO: 'Aguardando Aprovação',
   REVISADO: 'Revisado',
   EM_ANDAMENTO: 'Em Andamento',
   CONCLUIDO: 'Concluído',
+};
+
+export const statusDespesaLabel: Record<StatusDespesa, string> = {
+  PENDENTE: 'Pendente',
+  APROVADA: 'Aprovada',
+  REJEITADA: 'Rejeitada',
+};
+
+export const statusDespesaColor: Record<StatusDespesa, string> = {
+  PENDENTE: 'bg-amber-500 text-white',
+  APROVADA: 'bg-emerald-500 text-white',
+  REJEITADA: 'bg-red-500 text-white',
+};
+
+export const categoriaDespesaLabel: Record<CategoriaDespesa, string> = {
+  MATERIAL: 'Material',
+  MAO_DE_OBRA: 'Mão de obra',
+  SERVICO_TERCEIRO: 'Serviço terceiro',
+  DESLOCAMENTO: 'Deslocamento',
+  OUTROS: 'Outros',
+};
+
+export const formaPagamentoLabel: Record<FormaPagamento, string> = {
+  DINHEIRO: 'Dinheiro',
+  PIX: 'PIX',
+  CARTAO: 'Cartão',
+  FATURADO: 'Faturado',
+};
+
+export const pagoPorLabel: Record<PagoPor, string> = {
+  TECNICO: 'Prestador',
+  EMPRESA: 'Empresa',
+};
+
+export const tipoAnexoLabel: Record<TipoAnexo, string> = {
+  NOTA_FISCAL: 'Nota Fiscal',
+  RECIBO: 'Recibo',
+  COMPROVANTE_PAGAMENTO: 'Comprovante de Pagamento',
+  OUTRO: 'Outro',
+};
+
+export const tipoDocumentoFiscalLabel: Record<
+  'NFE' | 'NFSE' | 'NFCE' | 'CUPOM_FISCAL' | 'RECIBO' | 'BOLETO_COMPROVANTE' | 'OUTRO',
+  string
+> = {
+  NFE: 'NF-e (NFe)',
+  NFSE: 'NFS-e',
+  NFCE: 'NFC-e',
+  CUPOM_FISCAL: 'Cupom Fiscal',
+  RECIBO: 'Recibo',
+  BOLETO_COMPROVANTE: 'Comprovante/Boleto',
+  OUTRO: 'Outro',
 };
 
 export const statusColor: Record<Status, string> = {
@@ -104,9 +166,16 @@ const MOEDA = new Intl.NumberFormat('pt-BR', {
 });
 
 // Valores monetários trafegam em centavos (inteiro) para evitar erro de ponto
-// flutuante; só a exibição converte para reais.
-export function formatarMoeda(centavos: number): string {
-  return MOEDA.format(centavos / 100);
+// flutuante; só a exibição converte para reais. Ausente conta como zero.
+export function formatarMoeda(centavos?: number | null): string {
+  return MOEDA.format((typeof centavos === 'number' ? centavos : 0) / 100);
+}
+
+export function parseMoedaParaCentavos(texto: string): number {
+  const limpo = texto.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
+  const num = Number(limpo);
+  if (Number.isNaN(num)) return 0;
+  return Math.round(num * 100);
 }
 
 // Até R$ 9.999.999.999,99 — acima disso o número perderia precisão.

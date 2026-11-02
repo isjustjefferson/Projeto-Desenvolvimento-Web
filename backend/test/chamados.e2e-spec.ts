@@ -101,7 +101,7 @@ describe('Chamados (e2e)', () => {
     expect(res.body.chamado.foto).toBe(foto);
   });
 
-  it('POST /chamados bloqueia síndico e prestador', async () => {
+  it('POST /chamados permite síndico e bloqueia prestador', async () => {
     await request(app.getHttpServer())
       .post('/api/chamados')
       .set('x-usuario-id', '5')
@@ -111,7 +111,7 @@ describe('Chamados (e2e)', () => {
         categoria: 'OUTROS',
         local: { predio: 'Bloco A' },
       })
-      .expect(403);
+      .expect(201);
     await request(app.getHttpServer())
       .post('/api/chamados')
       .set('x-usuario-id', '3')

@@ -18,10 +18,13 @@ export function StatusBadge({ status }: { status: Status }) {
 
 export function PrioridadeBadge({
   prioridade,
+  sugestao,
 }: {
   prioridade: Prioridade | null;
+  sugestao?: Prioridade | null;
 }) {
-  if (!prioridade) {
+  const exibir = prioridade ?? sugestao;
+  if (!exibir) {
     return (
       <span className="inline-flex items-center rounded-full bg-gray-500 px-2.5 py-0.5 text-xs font-semibold text-white">
         Sem prioridade
@@ -30,9 +33,11 @@ export function PrioridadeBadge({
   }
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${prioridadeColor[prioridade]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${prioridadeColor[exibir]} ${
+        !prioridade && sugestao ? 'opacity-90' : ''
+      }`}
     >
-      {prioridadeLabel[prioridade]}
+      {prioridadeLabel[exibir]}
     </span>
   );
 }
