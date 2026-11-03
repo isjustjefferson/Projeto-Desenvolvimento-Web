@@ -184,7 +184,7 @@ export function NovoChamado() {
         <div className="flex items-start gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs text-white">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            A prioridade será definida pelo síndico durante a triagem.
+            A prioridade será conferida pelo síndico durante a triagem.
           </span>
         </div>
 
