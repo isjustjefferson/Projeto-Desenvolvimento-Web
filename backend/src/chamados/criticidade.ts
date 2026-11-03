@@ -92,6 +92,18 @@ const GRUPOS: GrupoTermos[] = [
   },
   {
     termos: [
+      'tomada',
+      'disjuntor',
+      'interruptor',
+      'soquete',
+      'arandela',
+      'benjamim',
+      'ponto de luz',
+    ],
+    pontos: -20,
+  },
+  {
+    termos: [
       'sem gelar',
       'não gela',
       'não liga',
