@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation } from 'typeorm';
 import { ChamadoEntity } from './chamado.entity.js';
 import { UsuarioEntity } from './usuario.entity.js';
 
@@ -12,7 +12,9 @@ export class HistoricoEntity {
 
   @ManyToOne(() => ChamadoEntity)
   @JoinColumn({ name: 'chamado_id' })
-  chamado!: ChamadoEntity;
+  // Relation<> evita emitir a classe na metadata: chamado.entity importa esta
+  // entidade de volta, e no ESM a referência ainda não existiria ao carregar.
+  chamado!: Relation<ChamadoEntity>;
 
   @Column({ type: 'integer', name: 'usuario_id', nullable: false })
   usuarioId!: number;
