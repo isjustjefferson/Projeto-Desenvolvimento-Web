@@ -188,6 +188,43 @@ export function centavosDeDigitos(texto: string): number {
   return digitos ? Number(digitos) : 0;
 }
 
+// Filtro de campos numéricos (nº da nota, série, documentos): mantém só os
+// dígitos, cortando no limite quando informado.
+export function apenasDigitos(texto: string, limite?: number): string {
+  const digitos = texto.replace(/\D/g, '');
+  return limite === undefined ? digitos : digitos.slice(0, limite);
+}
+
+// Máscara que acompanha a digitação: até 11 dígitos é CPF (000.000.000-00);
+// a partir de 12 vira CNPJ (00.000.000/0000-00).
+export function formatarCpfCnpj(texto: string): string {
+  const d = apenasDigitos(texto, 14);
+  if (d.length <= 11) {
+    return d
+      .replace(/^(\d{3})(\d)/, '$1.$2')
+      .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+  }
+  return d
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3/$4')
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, '$1.$2.$3/$4-$5');
+}
+
+// Chave de acesso da NF-e/NFC-e: 44 dígitos, exibidos em blocos de 4.
+export function formatarChaveNFe(texto: string): string {
+  return apenasDigitos(texto, 44).replace(/(\d{4})(?=\d)/g, '$1 ');
+}
+
+// Data de hoje (ou da data dada) no formato do <input type="date">, no fuso
+// local — toISOString() usaria UTC e viraria o dia antes da meia-noite.
+export function dataLocalIso(data: Date = new Date()): string {
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  return `${data.getFullYear()}-${mes}-${dia}`;
+}
+
 export interface Pagina<T> {
   itens: T[];
   pagina: number;

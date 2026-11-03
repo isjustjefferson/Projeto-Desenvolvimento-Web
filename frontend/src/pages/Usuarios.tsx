@@ -391,6 +391,7 @@ export function Usuarios() {
               className="input"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
+              placeholder="Ex: Maria Oliveira"
               required
             />
           </div>

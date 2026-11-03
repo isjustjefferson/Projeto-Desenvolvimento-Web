@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  apenasDigitos,
   avatarCor,
   categoriaLabel,
   centavosDeDigitos,
+  dataLocalIso,
+  formatarChaveNFe,
+  formatarCpfCnpj,
   formatarData,
   formatarMoeda,
   iniciais,
@@ -123,5 +127,47 @@ describe('paginar', () => {
       totalPaginas: 1,
       total: 0,
     });
+  });
+});
+
+describe('apenasDigitos', () => {
+  it('remove tudo que não é dígito e respeita o limite', () => {
+    expect(apenasDigitos('12.345-6a')).toBe('123456');
+    expect(apenasDigitos('123456', 3)).toBe('123');
+    expect(apenasDigitos('')).toBe('');
+  });
+});
+
+describe('formatarCpfCnpj', () => {
+  it('formata como CPF enquanto tiver até 11 dígitos', () => {
+    expect(formatarCpfCnpj('123')).toBe('123');
+    expect(formatarCpfCnpj('1234')).toBe('123.4');
+    expect(formatarCpfCnpj('1234567')).toBe('123.456.7');
+    expect(formatarCpfCnpj('12345678901')).toBe('123.456.789-01');
+  });
+
+  it('passa a formatar como CNPJ a partir de 12 dígitos', () => {
+    expect(formatarCpfCnpj('123456789012')).toBe('12.345.678/9012');
+    expect(formatarCpfCnpj('12345678000190')).toBe('12.345.678/0001-90');
+  });
+
+  it('ignora o que não é dígito e o excesso', () => {
+    expect(formatarCpfCnpj('12.345.678/0001-90999')).toBe('12.345.678/0001-90');
+  });
+});
+
+describe('formatarChaveNFe', () => {
+  it('agrupa os dígitos de 4 em 4 e limita a 44', () => {
+    expect(formatarChaveNFe('12345678')).toBe('1234 5678');
+    expect(formatarChaveNFe('1234 567x')).toBe('1234 567');
+    expect(apenasDigitos(formatarChaveNFe('9'.repeat(50)))).toHaveLength(44);
+  });
+});
+
+describe('dataLocalIso', () => {
+  it('usa a data do fuso local, não a de UTC', () => {
+    // 23h do dia 15 no horário local ainda é dia 15, mesmo que em UTC já seja 16
+    expect(dataLocalIso(new Date(2026, 2, 15, 23, 30))).toBe('2026-03-15');
+    expect(dataLocalIso(new Date(2026, 0, 5))).toBe('2026-01-05');
   });
 });

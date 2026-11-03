@@ -9,7 +9,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useRelatorioDespesas } from '../hooks/useRelatorios';
 import { useDiretorio } from '../hooks/useUsuarios';
-import { categoriaDespesaLabel, formatarData, formatarMoeda, statusDespesaLabel } from '../helpers';
+import { categoriaDespesaLabel, dataLocalIso, formatarData, formatarMoeda, statusDespesaLabel } from '../helpers';
 import { EmptyState } from '../components/EmptyState';
 import { useState } from 'react';
 
@@ -25,6 +25,7 @@ export function RelatoriosDespesas() {
     temDocumento: '',
   });
   const { data, isPending, error, refetch } = useRelatorioDespesas(filtros);
+  const hoje = dataLocalIso();
 
   if (!usuario || (usuario.role !== 'SINDICO' && usuario.role !== 'ADMINISTRADOR')) {
     return (
@@ -66,8 +67,16 @@ export function RelatoriosDespesas() {
       <div className="card">
         <h2 className="mb-3 font-semibold text-gray-800">Filtros</h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <input type="date" className="input" value={filtros.de} onChange={(e) => setFiltros((f) => ({ ...f, de: e.target.value }))} />
-          <input type="date" className="input" value={filtros.ate} onChange={(e) => setFiltros((f) => ({ ...f, ate: e.target.value }))} />
+          {/* Campo de data não exibe placeholder: o rótulo fica visível acima. O "de"
+              não passa do "até" (nem de hoje) e o "até" não fica antes do "de". */}
+          <label className="text-xs font-semibold text-gray-600">
+            Período: de
+            <input type="date" className="input mt-1" value={filtros.de} max={filtros.ate || hoje} onChange={(e) => setFiltros((f) => ({ ...f, de: e.target.value }))} />
+          </label>
+          <label className="text-xs font-semibold text-gray-600">
+            Período: até
+            <input type="date" className="input mt-1" value={filtros.ate} min={filtros.de || undefined} max={hoje} onChange={(e) => setFiltros((f) => ({ ...f, ate: e.target.value }))} />
+          </label>
           <select className="input" value={filtros.status} onChange={(e) => setFiltros((f) => ({ ...f, status: e.target.value }))}>
             <option value="">Status: todos</option>
             <option value="PENDENTE">Pendente</option>
