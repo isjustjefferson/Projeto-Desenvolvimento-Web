@@ -163,4 +163,52 @@ describe('ChamadosService', () => {
     const ate = new Date(Date.now() - 3 * 3_600_000).toISOString();
     expect(service.listar(tiago, { de, ate }).chamados.map((c) => c.id)).toEqual([5]);
   });
+
+  it('bloqueia conclusão com despesa pendente de aprovação', () => {
+    store.salvarDespesa({
+      id: 1,
+      chamadoId: 2,
+      registradoPorId: 4,
+      categoria: 'MATERIAL',
+      descricao: 'Torneira nova',
+      valorCentavos: 5000,
+      status: 'PENDENTE',
+      criadoEm: new Date().toISOString(),
+      atualizadoEm: new Date().toISOString(),
+      anexos: [],
+    });
+
+    expect(() =>
+      service.concluir(2, marta, { descricao: 'Feito', materiais: 'Torneira' }),
+    ).toThrow(BadRequestException);
+  });
+
+  it('permite conclusão direta quando não há despesas', () => {
+    const res = service.concluir(2, marta, {
+      descricao: 'Vazamento resolvido',
+      materiais: 'vedante',
+    });
+    expect(res.chamado.status).toBe('CONCLUIDO');
+  });
+
+  it('permite conclusão quando as despesas já foram aprovadas ou rejeitadas', () => {
+    store.salvarDespesa({
+      id: 1,
+      chamadoId: 2,
+      registradoPorId: 4,
+      categoria: 'MATERIAL',
+      descricao: 'Torneira nova',
+      valorCentavos: 5000,
+      status: 'APROVADA',
+      criadoEm: new Date().toISOString(),
+      atualizadoEm: new Date().toISOString(),
+      anexos: [],
+    });
+
+    const res = service.concluir(2, marta, {
+      descricao: 'Vazamento resolvido',
+      materiais: 'vedante',
+    });
+    expect(res.chamado.status).toBe('CONCLUIDO');
+  });
 });
