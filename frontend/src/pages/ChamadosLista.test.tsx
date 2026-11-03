@@ -69,19 +69,19 @@ beforeEach(() => {
 });
 
 describe('ChamadosLista — paginação', () => {
-  it('mostra 10 chamados por página e navega entre as páginas', async () => {
+  it('mostra 8 chamados por página e navega entre as páginas', async () => {
     const usuario = userEvent.setup();
     estado.chamados = Array.from({ length: 12 }, (_, i) => criarChamado(i + 1));
     renderLista();
 
-    expect(titulos()).toHaveLength(10);
+    expect(titulos()).toHaveLength(8);
     expect(titulos()[0]).toBe('Chamado 12');
     expect(screen.getByText(/Página 1 de 2/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Anterior/ })).toBeDisabled();
 
     await usuario.click(screen.getByRole('button', { name: /Próxima/ }));
 
-    expect(titulos()).toEqual(['Chamado 2', 'Chamado 1']);
+    expect(titulos()).toEqual(['Chamado 4', 'Chamado 3', 'Chamado 2', 'Chamado 1']);
     expect(screen.getByText(/Página 2 de 2/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Próxima/ })).toBeDisabled();
   });
@@ -102,7 +102,8 @@ describe('ChamadosLista — paginação', () => {
   });
 
   it('esconde a paginação quando tudo cabe em uma página', () => {
-    estado.chamados = [criarChamado(1)];
+    // 8 é o limite exato de uma página: ainda não pagina
+    estado.chamados = Array.from({ length: 8 }, (_, i) => criarChamado(i + 1));
     renderLista();
     expect(
       screen.queryByRole('button', { name: /Próxima/ }),

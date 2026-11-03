@@ -18,7 +18,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Paginacao } from '../components/Paginacao';
 import type { Status } from '../types';
 
-const POR_PAGINA = 10;
+const POR_PAGINA = 8;
 
 const opcoesVisualizacao: { valor: Visualizacao; rotulo: string; icone: typeof List }[] = [
   { valor: 'cards', rotulo: 'Visualização em cards', icone: LayoutGrid },
