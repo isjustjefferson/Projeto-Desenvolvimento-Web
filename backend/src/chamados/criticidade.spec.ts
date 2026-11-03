@@ -56,4 +56,59 @@ describe('classificarChamado', () => {
 
     expect(resultado.prioridadeSugerida).toBe('ALTA');
   });
+
+  it('classifica queda de energia no bloco como ALTA', () => {
+    const resultado = classificarChamado({
+      titulo: 'Queda de energia',
+      descricao: 'Bloco inteiro sem energia após o temporal',
+      categoria: 'ELETRICA',
+      local: { predio: 'Bloco C' },
+    });
+
+    expect(resultado.prioridadeSugerida).toBe('ALTA');
+  });
+
+  it('classifica tomada sem energia como MEDIA', () => {
+    const resultado = classificarChamado({
+      titulo: 'Tomada sem energia',
+      descricao: 'Tomada da cozinha sem energia, demais pontos funcionando',
+      categoria: 'ELETRICA',
+      local: { predio: 'Bloco A', andar: '2º andar', sala: '204' },
+    });
+
+    expect(resultado.prioridadeSugerida).toBe('MEDIA');
+  });
+
+  it('classifica disjuntor de tomada individual como BAIXA', () => {
+    const resultado = classificarChamado({
+      titulo: 'Disjuntor desarmando',
+      descricao: 'Disjuntor da tomada individual do quarto desarmando',
+      categoria: 'ELETRICA',
+      local: { predio: 'Bloco A', andar: '7º andar', sala: '701' },
+    });
+
+    expect(resultado.prioridadeSugerida).toBe('BAIXA');
+  });
+
+  it('classifica curto-circuito como CRITICA', () => {
+    const resultado = classificarChamado({
+      titulo: 'Faísca no quadro',
+      descricao: 'Curto-circuito com faísca e cheiro de queimado',
+      categoria: 'ELETRICA',
+      local: { predio: 'Bloco B', andar: 'Térreo', sala: 'Quadro geral' },
+    });
+
+    expect(resultado.prioridadeSugerida).toBe('CRITICA');
+  });
+
+  it('expõe a pontuação e os motivos da classificação', () => {
+    const resultado = classificarChamado({
+      titulo: 'Falta de energia',
+      descricao: 'Apartamento inteiro sem energia',
+      categoria: 'ELETRICA',
+    });
+
+    expect(resultado.pontuacao).toBe(60);
+    expect(resultado.motivos).toContain('Termo "sem energia" (+30)');
+  });
 });
