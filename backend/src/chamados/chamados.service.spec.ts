@@ -8,6 +8,42 @@ import { StoreService } from '../dados/store.service.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import { ChamadosService } from './chamados.service.js';
 
+function despesaEntidade(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 1,
+    chamadoId: 2,
+    registradoPorId: 4,
+    categoria: 'MATERIAL',
+    descricao: 'Torneira nova',
+    fornecedor: null,
+    cnpj: null,
+    numeroNota: null,
+    serie: null,
+    dataEmissao: null,
+    valorCentavos: 5000,
+    formaPagamento: null,
+    pagoPor: null,
+    status: 'PENDENTE',
+    motivoRejeicao: null,
+    aprovadoPorId: null,
+    aprovadoEm: null,
+    criadoEm: new Date(),
+    atualizadoEm: new Date(),
+    anexos: [],
+    ...overrides,
+  };
+}
+
+function repoComDespesa(despesa: Record<string, unknown>) {
+  return {
+    find: async () => [],
+    findOne: async () => despesa,
+    save: async (e: Record<string, unknown>) => e,
+    create: async (e: Record<string, unknown>) => e,
+    delete: async () => ({ affected: 1 }),
+  } as any;
+}
+
 describe('ChamadosService', () => {
   let store: StoreService;
   let service: ChamadosService;
@@ -210,5 +246,72 @@ describe('ChamadosService', () => {
       materiais: 'vedante',
     });
     expect(res.chamado.status).toBe('CONCLUIDO');
+  });
+
+  it('síndico aprova despesa pendente', async () => {
+    const despesa = despesaEntidade();
+    const repo = repoComDespesa(despesa);
+    const svc = new ChamadosService(store, repo, repo, repo, repo, repo, repo);
+
+    const res = await svc.aprovarDespesa(2, 1, ricardo);
+
+    expect(res.despesa).toMatchObject({
+      id: 1,
+      status: 'APROVADA',
+      aprovadoPorId: ricardo.id,
+    });
+  });
+
+  it('administrador rejeita despesa pendente com motivo', async () => {
+    const despesa = despesaEntidade();
+    const repo = repoComDespesa(despesa);
+    const svc = new ChamadosService(store, repo, repo, repo, repo, repo, repo);
+
+    const res = await svc.rejeitarDespesa(2, 1, tiago, {
+      motivo: 'Valor divergente da nota fiscal',
+    });
+
+    expect(res.despesa).toMatchObject({
+      id: 1,
+      status: 'REJEITADA',
+      aprovadoPorId: tiago.id,
+      motivoRejeicao: 'Valor divergente da nota fiscal',
+    });
+  });
+
+  it('administrador remove despesa pendente', async () => {
+    const despesa = despesaEntidade();
+    const repo = repoComDespesa(despesa);
+    const svc = new ChamadosService(store, repo, repo, repo, repo, repo, repo);
+
+    await expect(svc.removerDespesa(2, 1, tiago)).resolves.toEqual({ ok: true });
+  });
+
+  it('condômino não pode aprovar despesa', async () => {
+    const despesa = despesaEntidade();
+    const repo = repoComDespesa(despesa);
+    const svc = new ChamadosService(store, repo, repo, repo, repo, repo, repo);
+
+    await expect(svc.aprovarDespesa(2, 1, ana)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('prestador não pode rejeitar despesa', async () => {
+    const despesa = despesaEntidade();
+    const repo = repoComDespesa(despesa);
+    const svc = new ChamadosService(store, repo, repo, repo, repo, repo, repo);
+
+    await expect(
+      svc.rejeitarDespesa(2, 1, joao, { motivo: 'x' }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('não aprova despesa que não está pendente', async () => {
+    const despesa = despesaEntidade({ status: 'APROVADA' });
+    const repo = repoComDespesa(despesa);
+    const svc = new ChamadosService(store, repo, repo, repo, repo, repo, repo);
+
+    await expect(svc.aprovarDespesa(2, 1, ricardo)).rejects.toThrow(
+      BadRequestException,
+    );
   });
 });
