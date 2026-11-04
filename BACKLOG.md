@@ -48,10 +48,10 @@ Este documento reúne todos os pontos de melhoria, correções de fluxo e novas 
 
 ## 🧪 QA (Quality Assurance)
 
-* [ ] **Revisão da acurácia na triagem de criticidade:** Elaborar e validar casos de teste para a classificação automática de prioridade (corrigindo distorções como o cenário demonstrado, onde uma "falta de energia no apartamento" inteiro foi classificada apenas como *média*, quando deveria ter criticidade *alta* ou *crítica* por afetar toda a unidade e não apenas uma tomada isolada).
+* [x] **Revisão da acurácia na triagem de criticidade:** Elaborar e validar casos de teste para a classificação automática de prioridade (corrigindo distorções como o cenário demonstrado, onde uma "falta de energia no apartamento" inteiro foi classificada apenas como *média*, quando deveria ter criticidade *alta* ou *crítica* por afetar toda a unidade e não apenas uma tomada isolada).
 * [ ] **Testes de fluxo de aprovação e exceções:**
-  * Validar o bloqueio de conclusão de chamado pelo prestador enquanto houver despesas pendentes de aprovação.
-  * Testar os cenários de aprovação, rejeição e remoção de despesas pelo perfil de Gestor/Administrador.
+  * [x] Validar o bloqueio de conclusão de chamado pelo prestador enquanto houver despesas pendentes de aprovação.
+  * [x] Testar os cenários de aprovação, rejeição e remoção de despesas pelo perfil de Gestor/Administrador.
   * Validar o fluxo opcional de envio e aprovação de orçamento prévio.
   * Realizar testes de fallback (inserção manual) quando o OCR não conseguir ler a nota fiscal anexada.
   * Testar a performance e o funcionamento da paginação na listagem geral de chamados.
