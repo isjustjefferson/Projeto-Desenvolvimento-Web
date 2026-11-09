@@ -22,16 +22,18 @@ export function mapChamadoToContrato(c: ChamadoEntity) {
     descricao: c.descricao,
     categoria: c.categoria,
     status: c.status,
-    prioridade: c.prioridade ?? undefined,
+    prioridade: c.prioridade ?? null,
     local: mapLocalToContrato(c.local) as any,
+    criadoPorId: c.criadoPorId ?? c.criadoPor?.id,
+    tecnicoId: c.tecnicoId ?? c.tecnico?.id ?? null,
     criadoPor: mapUsuarioToContrato(c.criadoPor),
     tecnico: c.tecnico ? mapUsuarioToContrato(c.tecnico) : undefined,
     foto: bufferToBase64(c.foto),
-    classificacao: c.classificacao ?? undefined,
+    classificacao: (c.classificacao ?? null) as any,
     solucao: c.solucaoDescricao
       ? {
           descricao: c.solucaoDescricao,
-          materiais: c.solucaoMateriais ?? undefined,
+          materiais: c.solucaoMateriais ?? '',
         }
       : undefined,
     historico,

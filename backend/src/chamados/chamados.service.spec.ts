@@ -19,8 +19,9 @@ describe('ChamadosService', () => {
 
   beforeEach(() => {
     store = new StoreService();
-    const repo = { find: async () => [], findOne: async () => null } as any;
-    service = new ChamadosService(store, repo, repo, repo, repo, repo, repo);
+    const repo = { find: async () => [], findOne: async () => null, save: async (x: any) => x, create: (x: any) => x } as any;
+    const dataSource = { transaction: async (fn: any) => fn({ getRepository: () => repo }) } as any;
+    service = new ChamadosService(store, repo, repo, repo, repo, repo, repo, dataSource);
     ana = store.getUsuarioInternoPorId(1)!;
     joao = store.getUsuarioInternoPorId(3)!;
     marta = store.getUsuarioInternoPorId(4)!;
@@ -28,8 +29,8 @@ describe('ChamadosService', () => {
     tiago = store.getUsuarioInternoPorId(6)!;
   });
 
-  it('cria chamado em AGUARDANDO_APROVACAO sem prioridade/técnico', () => {
-    const res = service.criar(ana, {
+  it('cria chamado em AGUARDANDO_APROVACAO sem prioridade/técnico', async () => {
+    const res = await service.criar(ana, {
       titulo: 'Torneira pingando',
       descricao: 'Cozinha do ap 204',
       categoria: 'HIDRAULICA',
@@ -51,29 +52,29 @@ describe('ChamadosService', () => {
     });
   });
 
-  it('solicitante vê apenas os próprios chamados e nunca REVISADO', () => {
-    const res = service.listar(ana, {});
-    expect(res.chamados.map((c) => c.id)).toEqual([1, 3, 5]);
+  it('solicitante vê apenas os próprios chamados e nunca REVISADO', async () => {
+    const res = await service.listar(ana, {});
+    expect(res.chamados.map((c: any) => c.id)).toEqual([1, 3, 5]);
   });
 
-  it('técnico vê REVISADO e os próprios atribuídos', () => {
-    const res = service.listar(joao, {});
-    expect(res.chamados.map((c) => c.id).sort((a, b) => a - b)).toEqual([1, 4]);
+  it('técnico vê REVISADO e os próprios atribuídos', async () => {
+    const res = await service.listar(joao, {});
+    expect(res.chamados.map((c: any) => c.id).sort((a: number, b: number) => a - b)).toEqual([1, 4]);
   });
 
-  it('gestor e administrador vêem todos os chamados', () => {
-    expect(service.listar(ricardo, {}).chamados).toHaveLength(5);
-    expect(service.listar(tiago, {}).chamados).toHaveLength(5);
+  it('gestor e administrador vêem todos os chamados', async () => {
+    expect((await service.listar(ricardo, {})).chamados).toHaveLength(5);
+    expect((await service.listar(tiago, {})).chamados).toHaveLength(5);
   });
 
-  it('obterPorId esconde chamado alheio do solicitante (404)', () => {
-    expect(() => service.obterPorId(2, ana)).toThrow(NotFoundException);
-    expect(() => service.obterPorId(999, ana)).toThrow(NotFoundException);
-    expect(service.obterPorId(1, ana).chamado.id).toBe(1);
+  it('obterPorId esconde chamado alheio do solicitante (404)', async () => {
+    await expect(service.obterPorId(2, ana)).rejects.toThrow(NotFoundException);
+    await expect(service.obterPorId(999, ana)).rejects.toThrow(NotFoundException);
+    expect((await service.obterPorId(1, ana)).chamado.id).toBe(1);
   });
 
-  it('fluxo completo aprovar → iniciar → concluir', () => {
-    const aprovado = service.aprovar(3, ricardo, {
+  it('fluxo completo aprovar → iniciar → concluir', async () => {
+    const aprovado = await service.aprovar(3, ricardo, {
       prioridade: 'ALTA',
       tecnicoId: 3,
     });
@@ -89,10 +90,10 @@ describe('ChamadosService', () => {
         'Aprovado com prioridade ALTA e atribuído ao técnico',
     });
 
-    const iniciado = service.iniciar(3, joao);
+    const iniciado = await service.iniciar(3, joao);
     expect(iniciado.chamado.status).toBe('EM_ANDAMENTO');
 
-    const concluido = service.concluir(3, joao, {
+    const concluido = await service.concluir(3, joao, {
       descricao: 'Peça trocada',
       materiais: '1 válvula',
     });
@@ -104,63 +105,63 @@ describe('ChamadosService', () => {
     expect(concluido.chamado.historico).toHaveLength(4);
   });
 
-  it('aprovar com técnico inexistente ou não-técnico retorna 400', () => {
-    expect(() =>
+  it('aprovar com técnico inexistente ou não-técnico retorna 400', async () => {
+    await expect(
       service.aprovar(3, ricardo, { prioridade: 'ALTA', tecnicoId: 1 }),
-    ).toThrow(BadRequestException);
-    expect(() =>
+    ).rejects.toThrow(BadRequestException);
+    await expect(
       service.aprovar(3, ricardo, { prioridade: 'ALTA', tecnicoId: 999 }),
-    ).toThrow(BadRequestException);
+    ).rejects.toThrow(BadRequestException);
   });
 
-  it('aprovar fora do estado AGUARDANDO_APROVACAO retorna 400', () => {
-    expect(() =>
+  it('aprovar fora do estado AGUARDANDO_APROVACAO retorna 400', async () => {
+    await expect(
       service.aprovar(1, ricardo, { prioridade: 'ALTA', tecnicoId: 3 }),
-    ).toThrow(BadRequestException);
+    ).rejects.toThrow(BadRequestException);
   });
 
-  it('iniciar fora de REVISADO retorna 400', () => {
-    expect(() => service.iniciar(3, ricardo)).toThrow(BadRequestException);
+  it('iniciar fora de REVISADO retorna 400', async () => {
+    await expect(service.iniciar(3, ricardo)).rejects.toThrow(BadRequestException);
   });
 
-  it('técnico não atribuído não pode iniciar REVISADO sem dono', () => {
-    expect(() => service.iniciar(4, marta)).toThrow(ForbiddenException);
+  it('técnico não atribuído não pode iniciar REVISADO sem dono', async () => {
+    await expect(service.iniciar(4, marta)).rejects.toThrow(ForbiddenException);
   });
 
-  it('gestor/admin pode iniciar REVISADO sem dono', () => {
-    expect(service.iniciar(4, ricardo).chamado.status).toBe('EM_ANDAMENTO');
-    expect(service.listar(tiago, {}).chamados).toHaveLength(5);
-    const revisado = service.aprovar(5, ricardo, {
+  it('gestor/admin pode iniciar REVISADO sem dono', async () => {
+    expect((await service.iniciar(4, ricardo)).chamado.status).toBe('EM_ANDAMENTO');
+    expect((await service.listar(tiago, {})).chamados).toHaveLength(5);
+    const revisado = await service.aprovar(5, ricardo, {
       prioridade: 'BAIXA',
       tecnicoId: 3,
     });
     expect(revisado.chamado.status).toBe('REVISADO');
-    expect(service.iniciar(5, tiago).chamado.status).toBe('EM_ANDAMENTO');
+    expect((await service.iniciar(5, tiago)).chamado.status).toBe('EM_ANDAMENTO');
   });
 
-  it('concluir de outro (não atribuído) retorna 403', () => {
-    expect(() =>
+  it('concluir de outro (não atribuído) retorna 403', async () => {
+    await expect(
       service.concluir(2, joao, { descricao: 'x', materiais: 'y' }),
-    ).toThrow(ForbiddenException);
+    ).rejects.toThrow(ForbiddenException);
   });
 
-  it('administrador pode concluir qualquer EM_ANDAMENTO', () => {
-    const res = service.concluir(2, tiago, {
+  it('administrador pode concluir qualquer EM_ANDAMENTO', async () => {
+    const res = await service.concluir(2, tiago, {
       descricao: 'Vazamento resolvido',
       materiais: 'vedante',
     });
     expect(res.chamado.status).toBe('CONCLUIDO');
   });
 
-  it('filtra por status, categoria, técnico, prédio, busca e período', () => {
-    expect(service.listar(tiago, { status: 'CONCLUIDO' }).chamados.map((c) => c.id)).toEqual([1]);
-    expect(service.listar(tiago, { categoria: 'ELETRICA' }).chamados.map((c) => c.id)).toEqual([1]);
-    expect(service.listar(tiago, { tecnicoId: 4 }).chamados.map((c) => c.id)).toEqual([2]);
-    expect(service.listar(tiago, { predio: 'Bloco B' }).chamados.map((c) => c.id)).toEqual([4]);
-    expect(service.listar(tiago, { q: 'vazamento' }).chamados.map((c) => c.id)).toEqual([2]);
-    expect(service.listar(tiago, { q: 'recepção' }).chamados.map((c) => c.id)).toEqual([4]);
+  it('filtra por status, categoria, técnico, prédio, busca e período', async () => {
+    expect((await service.listar(tiago, { status: 'CONCLUIDO' })).chamados.map((c: any) => c.id)).toEqual([1]);
+    expect((await service.listar(tiago, { categoria: 'ELETRICA' })).chamados.map((c: any) => c.id)).toEqual([1]);
+    expect((await service.listar(tiago, { tecnicoId: 4 })).chamados.map((c: any) => c.id)).toEqual([2]);
+    expect((await service.listar(tiago, { predio: 'Bloco B' })).chamados.map((c: any) => c.id)).toEqual([4]);
+    expect((await service.listar(tiago, { q: 'vazamento' })).chamados.map((c: any) => c.id)).toEqual([2]);
+    expect((await service.listar(tiago, { q: 'recepção' })).chamados.map((c: any) => c.id)).toEqual([4]);
     const de = new Date(Date.now() - 6 * 3_600_000).toISOString();
     const ate = new Date(Date.now() - 3 * 3_600_000).toISOString();
-    expect(service.listar(tiago, { de, ate }).chamados.map((c) => c.id)).toEqual([5]);
+    expect((await service.listar(tiago, { de, ate })).chamados.map((c: any) => c.id)).toEqual([5]);
   });
 });

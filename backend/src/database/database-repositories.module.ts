@@ -47,7 +47,12 @@ const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
       useFactory: (ds?: DataSource) => (ds ? ds.getRepository(AnexoDespesaEntity) : ({} as any)),
       inject: isTest ? [] : [DataSource],
     },
+    {
+      provide: 'DATA_SOURCE',
+      useFactory: (ds?: DataSource) => ds ?? ({} as any),
+      inject: isTest ? [] : [DataSource],
+    },
   ],
-  exports: ['USUARIO_REPO', 'LOCAL_REPO', 'CHAMADO_REPO', 'HISTORICO_REPO', 'TOKEN_RESET_REPO', 'DESPESA_REPO', 'ANEXO_DESPESA_REPO'],
+  exports: ['USUARIO_REPO', 'LOCAL_REPO', 'CHAMADO_REPO', 'HISTORICO_REPO', 'TOKEN_RESET_REPO', 'DESPESA_REPO', 'ANEXO_DESPESA_REPO', 'DATA_SOURCE'],
 })
 export class DatabaseRepositoriesModule {}
