@@ -88,7 +88,7 @@ export function Layout() {
       to: '/relatorios/despesas',
       label: 'Relatórios',
       icon: BarChart3,
-      visivel: usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR',
+      visivel: usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR',
       end: false,
     },
     {

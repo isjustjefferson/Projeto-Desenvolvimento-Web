@@ -19,6 +19,7 @@ import { AnexoDespesaEntity } from '../database/entities/anexo-despesa.entity.js
 import { mapDespesaToContrato } from '../database/mappers/despesa.mapper.js';
 import { mapChamadoToContrato } from '../database/mappers/chamado.mapper.js';
 import { mapUsuarioToContrato } from '../database/mappers/usuario.mapper.js';
+import { papelParaRole } from '../database/mappers/papel.mapper.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import { classificarChamado } from './criticidade.js';
 import type {
@@ -32,7 +33,7 @@ import type {
   RejeitarDespesaDto,
 } from './dto/chamados.dto.js';
 
-const STATUS_SOLICITANTE: Status[] = [
+const STATUS_CONDOMINO: Status[] = [
   'AGUARDANDO_APROVACAO',
   'EM_ANDAMENTO',
   'CONCLUIDO',
@@ -129,7 +130,7 @@ export class ChamadosService {
         }) as any,
         foto: dados.foto ?? null,
         criadoPorId: usuario.id,
-        tecnicoId: null,
+        prestadorId: null,
         criadoEm: agora,
         atualizadoEm: agora,
         historico: [
@@ -263,16 +264,16 @@ export class ChamadosService {
       if (chamado.status !== 'AGUARDANDO_APROVACAO') {
         throw new BadRequestException('Apenas chamados em aguardando aprovação podem ser aprovados.');
       }
-      const tecnico = this.store.getUsuarioInternoPorId(dados.tecnicoId);
-      if (!tecnico || tecnico.role !== 'TECNICO') {
-        throw new BadRequestException('Informe um técnico válido.');
+      const prestador = this.store.getUsuarioInternoPorId(dados.prestadorId);
+      if (!prestador || prestador.role !== 'PRESTADOR') {
+        throw new BadRequestException('Informe um prestador válido.');
       }
       return this.transicionar(
         chamado,
         autenticado,
         'REVISADO',
-        `Aprovado com prioridade ${dados.prioridade} e atribuído ao técnico`,
-        { prioridade: dados.prioridade, tecnicoId: dados.tecnicoId } as any,
+        `Aprovado com prioridade ${dados.prioridade} e atribuído ao prestador`,
+        { prioridade: dados.prioridade, prestadorId: dados.prestadorId } as any,
       );
     }
     const chamadoEnt = await this.chamadoRepo.findOne({
@@ -285,16 +286,16 @@ export class ChamadosService {
         'Apenas chamados em aguardando aprovação podem ser aprovados.',
       );
     }
-    const tecnico = await this.usuarioRepo.findOne({ where: { id: dados.tecnicoId } as any });
-    if (!tecnico || (tecnico as any).role !== 'TECNICO') {
-      throw new BadRequestException('Informe um técnico válido.');
+    const prestadorEnt = await this.usuarioRepo.findOne({ where: { id: dados.prestadorId } as any });
+    if (!prestadorEnt || papelParaRole((prestadorEnt as any).papel) !== 'PRESTADOR') {
+      throw new BadRequestException('Informe um prestador válido.');
     }
     const result = await this.transicionarRepo(
       chamadoEnt as any,
       autenticado,
       'REVISADO',
-      `Aprovado com prioridade ${dados.prioridade} e atribuído ao técnico`,
-      { prioridade: dados.prioridade, tecnicoId: dados.tecnicoId },
+      `Aprovado com prioridade ${dados.prioridade} e atribuído ao prestador`,
+      { prioridade: dados.prioridade, tecnicoId: dados.prestadorId },
     );
     return { ok: true, chamado: this.prepararChamadoParaRespostaContrato(mapChamadoToContrato(result as any), autenticado) };
   }
@@ -305,7 +306,7 @@ export class ChamadosService {
       if (chamado.status !== 'REVISADO') {
         throw new BadRequestException('Apenas chamados revisados podem ser iniciados.');
       }
-      this.validarDonoTecnico(chamado, autenticado);
+      this.validarDonoPrestador(chamado, autenticado);
       return this.transicionar(chamado, autenticado, 'EM_ANDAMENTO');
     }
     const chamadoEnt = await this.chamadoRepo.findOne({
@@ -333,7 +334,7 @@ export class ChamadosService {
       if (chamado.status !== 'EM_ANDAMENTO') {
         throw new BadRequestException('Apenas chamados em andamento podem ser concluídos.');
       }
-      this.validarDonoTecnico(chamado, autenticado);
+      this.validarDonoPrestador(chamado, autenticado);
       const despesas = this.store.getDespesasPorChamado(chamado.id);
       const pendentes = despesas.filter((d) => d.status === 'PENDENTE');
       if (pendentes.length > 0) {
@@ -375,27 +376,27 @@ export class ChamadosService {
   // ---- Helpers ----
 
   private noEscopo(c: Chamado, usuario: UsuarioInterno): boolean {
-    if (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') return true;
-    if (usuario.role === 'SOLICITANTE') {
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') return true;
+    if (usuario.role === 'CONDOMINO') {
       return (
-        c.criadoPorId === usuario.id && STATUS_SOLICITANTE.includes(c.status)
+        c.criadoPorId === usuario.id && STATUS_CONDOMINO.includes(c.status)
       );
     }
-    // TECNICO: disponíveis (REVISADO) ou atribuídos a ele
-    return c.status === 'REVISADO' || c.tecnicoId === usuario.id;
+    // PRESTADOR: disponíveis (REVISADO) ou atribuídos a ele
+    return c.status === 'REVISADO' || c.prestadorId === usuario.id;
   }
 
   private podeVer(c: Chamado, usuario: UsuarioInterno): boolean {
-    if (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') return true;
-    if (usuario.role === 'SOLICITANTE') return c.criadoPorId === usuario.id;
-    return c.tecnicoId === usuario.id || c.status === 'REVISADO';
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') return true;
+    if (usuario.role === 'CONDOMINO') return c.criadoPorId === usuario.id;
+    return c.prestadorId === usuario.id || c.status === 'REVISADO';
   }
 
   private atendeFiltros(c: Chamado, f: FiltrosChamadosDto): boolean {
     if (f.status && c.status !== f.status) return false;
     if (f.prioridade && c.prioridade !== f.prioridade) return false;
     if (f.categoria && c.categoria !== f.categoria) return false;
-    if (f.tecnicoId && c.tecnicoId !== f.tecnicoId) return false;
+    if (f.prestadorId && c.prestadorId !== f.prestadorId) return false;
     if (f.predio && c.local.predio.toLowerCase() !== f.predio.toLowerCase()) {
       return false;
     }
@@ -415,11 +416,11 @@ export class ChamadosService {
     return true;
   }
 
-  private validarDonoTecnico(c: Chamado, usuario: UsuarioInterno): void {
+  private validarDonoPrestador(c: Chamado, usuario: UsuarioInterno): void {
     if (
-      usuario.role !== 'GESTOR' &&
+      usuario.role !== 'SINDICO' &&
       usuario.role !== 'ADMINISTRADOR' &&
-      c.tecnicoId !== usuario.id
+      c.prestadorId !== usuario.id
     ) {
       throw new ForbiddenException(
         'Este chamado não está atribuído a você.',
@@ -503,7 +504,7 @@ export class ChamadosService {
     if (!this.podeVer(chamado, usuario)) {
       throw new NotFoundException('Chamado não encontrado.');
     }
-    if (usuario.role === 'SOLICITANTE') {
+    if (usuario.role === 'CONDOMINO') {
       throw new ForbiddenException('Sem permissão para visualizar despesas.');
     }
     const despesasEnt = await this.despesaRepo.find({
@@ -743,8 +744,8 @@ export class ChamadosService {
     despesaId: number,
     usuario: UsuarioInterno,
   ): Promise<{ ok: true; despesa: Despesa }> {
-    if (usuario.role !== 'GESTOR' && usuario.role !== 'ADMINISTRADOR') {
-      throw new ForbiddenException('Apenas gestor ou administrador podem aprovar.');
+    if (usuario.role !== 'SINDICO' && usuario.role !== 'ADMINISTRADOR') {
+      throw new ForbiddenException('Apenas síndico ou administrador podem aprovar.');
     }
     const chamado = this.buscar(chamadoId);
     const despesaEnt = await this.despesaRepo.findOne({
@@ -774,8 +775,8 @@ export class ChamadosService {
     usuario: UsuarioInterno,
     dto: RejeitarDespesaDto,
   ): Promise<{ ok: true; despesa: Despesa }> {
-    if (usuario.role !== 'GESTOR' && usuario.role !== 'ADMINISTRADOR') {
-      throw new ForbiddenException('Apenas gestor ou administrador podem rejeitar.');
+    if (usuario.role !== 'SINDICO' && usuario.role !== 'ADMINISTRADOR') {
+      throw new ForbiddenException('Apenas síndico ou administrador podem rejeitar.');
     }
     const chamado = this.buscar(chamadoId);
     const despesaEnt = await this.despesaRepo.findOne({
@@ -808,9 +809,9 @@ export class ChamadosService {
   }
 
   private podeGerenciarDespesas(c: Chamado, usuario: UsuarioInterno): boolean {
-    if (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') return true;
-    if (usuario.role === 'TECNICO') {
-      return c.tecnicoId === usuario.id;
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') return true;
+    if (usuario.role === 'PRESTADOR') {
+      return c.prestadorId === usuario.id;
     }
     return false;
   }
@@ -834,7 +835,7 @@ export class ChamadosService {
     usuario: UsuarioInterno,
     incluirConteudoAnexos = true,
   ): Promise<Chamado> {
-    if (usuario.role === 'SOLICITANTE') {
+    if (usuario.role === 'CONDOMINO') {
       const despesasEnt = await this.despesaRepo.find({ where: { chamadoId: chamado.id } as any });
       const despesas = despesasEnt.map((d: any) => mapDespesaToContrato(d, false) as any);
       const resumoFinanceiro = this.calcularResumo(despesas);
@@ -866,7 +867,7 @@ export class ChamadosService {
     usuario: UsuarioInterno,
     incluirConteudoAnexos = true,
   ): Chamado {
-    if (usuario.role === 'SOLICITANTE') {
+    if (usuario.role === 'CONDOMINO') {
       return {
         ...chamado,
         despesas: undefined,
@@ -892,7 +893,7 @@ export class ChamadosService {
   ): Chamado {
     const despesas = this.store.getDespesasPorChamado(chamado.id);
     const resumoFinanceiro = this.calcularResumo(despesas);
-    if (usuario.role === 'SOLICITANTE') {
+    if (usuario.role === 'CONDOMINO') {
       return {
         ...chamado,
         despesas: undefined,
@@ -945,18 +946,18 @@ export class ChamadosService {
   }
 
   private noEscopoContrato(c: any, usuario: UsuarioInterno): boolean {
-    if (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') return true;
-    if (usuario.role === 'SOLICITANTE') {
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') return true;
+    if (usuario.role === 'CONDOMINO') {
       return (
-        (c.criadoPor?.id ?? c.criadoPorId) === usuario.id && STATUS_SOLICITANTE.includes(c.status)
+        (c.criadoPor?.id ?? c.criadoPorId) === usuario.id && STATUS_CONDOMINO.includes(c.status)
       );
     }
     return c.status === 'REVISADO' || (c.tecnico?.id ?? c.tecnicoId) === usuario.id;
   }
 
   private podeVerContrato(c: any, usuario: UsuarioInterno): boolean {
-    if (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') return true;
-    if (usuario.role === 'SOLICITANTE') return (c.criadoPor?.id ?? c.criadoPorId) === usuario.id;
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') return true;
+    if (usuario.role === 'CONDOMINO') return (c.criadoPor?.id ?? c.criadoPorId) === usuario.id;
     return (c.tecnico?.id ?? c.tecnicoId) === usuario.id || c.status === 'REVISADO';
   }
 
@@ -964,9 +965,9 @@ export class ChamadosService {
     if (f.status && c.status !== f.status) return false;
     if (f.prioridade && c.prioridade !== f.prioridade) return false;
     if (f.categoria && c.categoria !== f.categoria) return false;
-    if (f.tecnicoId) {
-      const tid = (c as any).tecnico?.id ?? (c as any).tecnicoId;
-      if (tid !== f.tecnicoId) return false;
+    if ((f as any).prestadorId) {
+      const tid = (c as any).prestadorId ?? (c as any).tecnico?.id ?? (c as any).tecnicoId;
+      if (tid !== (f as any).prestadorId) return false;
     }
     if (f.predio && (c as any).local?.predio?.toLowerCase() !== f.predio.toLowerCase()) {
       return false;
@@ -989,7 +990,7 @@ export class ChamadosService {
 
   private validarDonoTecnicoContrato(c: any, usuario: UsuarioInterno): void {
     if (
-      usuario.role !== 'GESTOR' &&
+      usuario.role !== 'SINDICO' &&
       usuario.role !== 'ADMINISTRADOR' &&
       ((c as any).tecnico?.id ?? (c as any).tecnicoId) !== usuario.id
     ) {

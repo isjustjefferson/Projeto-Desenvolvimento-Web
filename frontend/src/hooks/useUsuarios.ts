@@ -25,11 +25,11 @@ export function useUsuarios() {
 
 interface Diretorio {
   usuarios: UsuarioResumo[];
-  tecnicos: UsuarioResumo[];
+  prestadores: UsuarioResumo[];
   nomeUsuario: (id: number | null | undefined) => string;
 }
 
-// Apoio de exibição (nomes e select de técnicos): falha aqui não pode quebrar
+// Apoio de exibição (nomes e select de prestadores): falha aqui não pode quebrar
 // a tela, então devolve lista vazia em vez de propagar erro.
 export function useDiretorio(): Diretorio {
   const { usuario } = useAuth();
@@ -44,7 +44,7 @@ export function useDiretorio(): Diretorio {
     const usuarios = data ?? [];
     return {
       usuarios,
-      tecnicos: usuarios.filter((u) => u.role === 'TECNICO'),
+      prestadores: usuarios.filter((u) => u.role === 'PRESTADOR'),
       nomeUsuario: (id: number | null | undefined) =>
         id ? usuarios.find((u) => u.id === id)?.nome || '—' : '—',
     };

@@ -1,47 +1,200 @@
 # Sistema de Gestão de Chamados de Manutenção
 
-## Escopo do Projeto
-O projeto consiste em uma plataforma web responsiva para centralizar, gerenciar e rastrear chamados de manutenção predial (elétrica, hidráulica, climatização, mobiliário, etc.). O objetivo é substituir fluxos informais de comunicação por um processo auditável e estruturado.
-
-O fluxo de vida do chamado segue uma esteira clara:
-1. **Identificação e Abertura:** O usuário identifica o problema e abre o chamado (via mobile ou desktop), detalhando local e categoria.
-2. **Triagem:** O gestor avalia a demanda, define a prioridade e faz a atribuição.
-3. **Atendimento:** O técnico assume o chamado e, após o conserto, registra a solução e os materiais utilizados.
-4. **Encerramento:** O gestor (ou o próprio usuário) encerra o chamado.
+Plataforma web responsiva para centralizar, gerenciar e rastrear chamados de manutenção condominial (elétrica, hidráulica, climatização, mobiliário, estrutural e outros). O objetivo é substituir a comunicação informal por um processo auditável: cada chamado tem dono, prioridade, histórico de movimentações e controle de despesas.
 
 ---
 
-## Levantamento de Requisitos
+## Fluxo do chamado
+
+```text
+AGUARDANDO_APROVACAO ──► REVISADO ──► EM_ANDAMENTO ──► CONCLUIDO
+  (abertura)            (triagem)     (atendimento)    (solução registrada)
+```
+
+1. **Abertura:** o condômino (ou o síndico) abre o chamado pelo celular ou desktop, informando categoria, local (prédio, andar, sala), descrição e, se quiser, uma foto. O sistema sugere uma criticidade automaticamente.
+2. **Triagem:** o síndico define a prioridade e atribui um prestador de serviços.
+3. **Atendimento:** o prestador inicia o serviço e lança as despesas (materiais, mão de obra), com anexos como nota fiscal e recibo.
+4. **Conclusão:** o prestador registra a solução e os materiais usados. Se houver despesa pendente de aprovação do síndico, a conclusão fica bloqueada.
+
+Toda transição de status gera um registro de histórico com autor, data/hora e observação.
+
+## Perfis de acesso
+
+| Perfil | O que pode fazer |
+| :--- | :--- |
+| **Condômino** | Abre chamados e acompanha apenas os próprios. |
+| **Prestador de Serviços** | Vê os chamados da sua especialidade e os atribuídos a ele; inicia, lança despesas e conclui. Pode ser profissional autônomo (CPF) ou empresa (CNPJ). |
+| **Síndico** | Faz a triagem (prioridade e atribuição), aprova ou rejeita despesas, abre chamados e acessa os relatórios. |
+| **Administrador** | Acesso total, inclusive gestão de usuários e cargos. |
+
+Na API, os perfis são `CONDOMINO`, `PRESTADOR`, `SINDICO` e `ADMINISTRADOR`.
+
+> **Atenção:** no banco de dados, o enum `papel` ainda usa os nomes antigos (`SOLICITANTE`, `TECNICO`, `GESTOR`), assim como a coluna `tecnico_id`. A conversão para os nomes novos é feita em `backend/src/database/mappers/papel.mapper.ts` até a migração do enum.
+
+---
+
+## O que já está implementado
+
+### Frontend (`frontend/`)
+- Login, cadastro, recuperação e redefinição de senha; gestão da própria conta (dados, foto, exclusão).
+- **Dashboard** com indicadores (abertos, concluídos, aguardando triagem, críticos pendentes), distribuição por status, prioridade e categoria, e a **fila de triagem do síndico** listando os chamados aguardando aprovação.
+- **Lista de chamados** com busca e filtros (status, prioridade, categoria e condômino), filtros compartilháveis pela URL, **alternância entre cards e lista compacta** e **paginação**.
+- Abertura de chamado com foto; detalhe do chamado com triagem, atendimento, conclusão, histórico e despesas (lançamento, anexos, aprovação e rejeição).
+- **Relatório de despesas** para síndico e administrador.
+- Gestão de usuários e cargos (administrador).
+- Controle de acesso por perfil nas rotas e na interface; validação das respostas da API com Zod.
+- Componente de campo monetário com máscara de R$ (`CampoMoeda`).
+
+### Backend (`backend/`)
+- API REST em NestJS sob o prefixo `/api`, com validação global dos dados de entrada.
+- Autenticação e autorização por perfil (guards `AuthGuard` e `RolesGuard`).
+- Regras de negócio do fluxo de chamados, histórico de movimentações e bloqueio de conclusão com despesas pendentes.
+- Sugestão automática de criticidade na abertura (classificador por regras e palavras-chave).
+- Despesas e anexos com aprovação/rejeição; relatório de despesas.
+- Integração com **PostgreSQL via TypeORM** (entidades, repositórios e mappers). A migração dos serviços para o banco está em andamento, e parte dos dados ainda passa pela camada em memória (`StoreService`).
+
+### Banco de dados (`db/`)
+- Modelo de dados completo (minimundo, conceitual, lógico e físico) em [`db/modelo-de-dados.md`](db/modelo-de-dados.md).
+- DDL em SQL separado por etapa (tipos, tabelas, chaves estrangeiras, CHECK da RN04, índices), incluindo despesas e anexos.
+- Script de provisionamento: [`db/scripts/iniciar-banco.ps1`](db/scripts/iniciar-banco.ps1).
+
+### QA (`qa/`)
+- [Plano de testes](qa/plano-de-testes.md) com matriz de rastreabilidade e massa de dados.
+- Coleção do Postman para testes de API e roteiro de testes E2E com Playwright. Veja [`qa/README.md`](qa/README.md).
+
+---
+
+## Situação dos requisitos
 
 ### Requisitos Funcionais (RF)
-* **RF01:** O sistema deve possuir cadastro e login segmentado por perfis (Solicitante, Técnico, Gestor e Administrador).
-* **RF02:** O sistema deve permitir a abertura de chamados com informações detalhadas: categoria (elétrica, hidráulica, etc.), local (prédio, andar, sala) e descrição do problema.
-* **RF03:** O sistema deve permitir a gestão de status do chamado (Aberto, Em triagem, Atribuído, Em andamento, Aguardando material, Resolvido, Encerrado).
-* **RF04:** O sistema deve manter um histórico de movimentações, registrando quem alterou o status, qual foi a mudança e a data/hora da ação.
-* **RF05:** O sistema deve apresentar um painel (dashboard) com métricas de chamados abertos, críticos pendentes, tempo médio de resolução (MTTR) e categorias/locais com mais ocorrências.
-* **RF06:** O sistema deve disponibilizar busca e filtros por período, local, categoria, técnico, prioridade e status.
+| Código | Requisito | Situação |
+| :--- | :--- | :--- |
+| RF01 | Cadastro e login segmentados por perfil | ✅ Implementado |
+| RF02 | Abertura de chamado com categoria, local e descrição | ✅ Implementado (com foto opcional) |
+| RF03 | Gestão de status do chamado | ✅ Implementado, com 4 status: Aguardando aprovação, Revisado, Em andamento e Concluído |
+| RF04 | Histórico de movimentações (quem, o quê, quando) | ✅ Implementado |
+| RF05 | Dashboard com métricas de chamados | 🟡 Parcial: abertos, críticos pendentes e categorias. Faltam o MTTR e o ranking de locais |
+| RF06 | Busca e filtros por período, local, categoria, prestador, prioridade e status | 🟡 Parcial: todos disponíveis na API; a tela ainda não filtra por período, local e prestador |
 
 ### Regras de Negócio (RN)
-* **RN01:** Um usuário Solicitante só pode visualizar e interagir com os seus próprios chamados.
-* **RN02:** Apenas o perfil Gestor tem permissão para elevar a prioridade de um chamado para "Crítica" ou atribuí-lo a um Técnico.
-* **RN03:** Um Técnico só pode alterar o status de chamados que estejam explicitamente atribuídos a ele.
-* **RN04:** O sistema deve bloquear o encerramento de um chamado caso não haja o registro em texto da solução aplicada e dos materiais utilizados.
+| Código | Regra | Situação |
+| :--- | :--- | :--- |
+| RN01 | O condômino só vê e interage com os próprios chamados | ✅ Implementado |
+| RN02 | Só o síndico define a prioridade (inclusive "Crítica") e atribui o prestador | ✅ Implementado |
+| RN03 | O prestador só altera chamados atribuídos a ele | ✅ Implementado |
+| RN04 | A conclusão exige o registro da solução e dos materiais | ✅ Implementado (API e CHECK no banco) |
 
 ### Requisitos Não Funcionais (RNF)
-* **RNF01:** A interface deve ser "mobile-first" e responsiva, facilitando a abertura de chamados via smartphone no local do problema.
-* **RNF02:** O sistema deve expor uma rota `/health` e gerar logs estruturados para ações críticas e transições de status.
-* **RNF03:** O repositório deve rodar testes automatizados (permissões e regras de transição de status) via pipeline de CI/CD em cada *Pull Request*.
+| Código | Requisito | Situação |
+| :--- | :--- | :--- |
+| RNF01 | Interface mobile-first e responsiva | ✅ Implementado |
+| RNF02 | Rota `/health` e logs estruturados | 🟡 Parcial: `/health` existe; faltam os logs estruturados |
+| RNF03 | Testes automatizados em CI/CD a cada Pull Request | 🟡 Parcial: testes unitários e e2e existem; o pipeline de CI ainda não foi configurado |
+
+O planejamento das próximas entregas está no [**BACKLOG.md**](BACKLOG.md).
 
 ---
 
-## Insights de Arquitetura e Decisões Iniciais
-* Arquitetura: Microsserviços.
-* Frontend: React, Vite, TypeScript, Tailwind CSS.
-* Backend / API: Node.js, TypeScript, NestJS
-* Banco de Dados: PostgreSQL.
-* Infraestrutura Local: Docker.
-* Testes / QA: Testes manuais exploratórios, Automação End-to-End (E2E) com Playwright e validação de API com Postman.
-  
+## Stack
+
+| Camada | Tecnologias |
+| :--- | :--- |
+| Frontend | React 18, Vite, TypeScript, Tailwind CSS, TanStack Query, React Router, Zod |
+| Backend | Node.js, NestJS, TypeScript, class-validator, bcrypt |
+| Banco de dados | PostgreSQL, TypeORM |
+| Testes | Vitest e Testing Library (frontend), Vitest e Supertest (backend), Postman, Playwright |
+
+Arquitetura atual: um monólito NestJS (API) e uma SPA React, em repositório único (monorepo).
+
+## Estrutura do repositório
+
+```text
+.
+├── backend/    API NestJS (src/ e testes e2e em test/)
+├── frontend/   SPA React + Vite
+├── db/         Modelo de dados, DDL e script de provisionamento
+├── qa/         Plano de testes, Postman e roteiro E2E
+└── BACKLOG.md  Ajustes e implementações planejados
+```
+
+---
+
+## Como rodar localmente
+
+**Pré-requisitos:** Node.js 22+, npm e PostgreSQL 14+.
+
+### 1. Banco de dados
+```powershell
+.\db\scripts\iniciar-banco.ps1
+```
+Detalhes e opções em [`db/README.md`](db/README.md).
+
+### 2. Backend
+```bash
+cd backend
+npm install
+# crie o .env seguindo backend/.env.example (DATABASE_URL ou DB_HOST/DB_USER/...)
+npm run start:dev
+```
+A API sobe em `http://localhost:3000/api`. Verifique com `GET /api/health`.
+
+### 3. Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+A interface abre em `http://localhost:5173`. O Vite redireciona `/api` para o backend.
+
+### Usuários de teste
+Todos usam a senha `123456`.
+
+| Usuário | E-mail | Perfil |
+| :--- | :--- | :--- |
+| Ana Souza | `ana@predial.com` | Condômino |
+| Carlos Lima | `carlos@predial.com` | Condômino |
+| João Eletricista | `joao@predial.com` | Prestador de Serviços (Elétrica) |
+| Marta Encanadora | `marta@predial.com` | Prestador de Serviços (Hidráulica) |
+| Ricardo Síndico | `ricardo@predial.com` | Síndico |
+| Tiago TI | `tiago@predial.com` | Administrador |
+
+### Testes
+```bash
+# backend
+cd backend
+npm test            # unitários
+npm run test:e2e    # end-to-end da API
+
+# frontend
+cd frontend
+npm test
+npm run lint
+```
+
+---
+
+## Principais rotas da API
+
+Todas sob `/api`. As rotas autenticadas exigem o header `x-usuario-id`.
+
+| Método | Rota | Acesso |
+| :--- | :--- | :--- |
+| GET | `/health` | Público |
+| POST | `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password` | Público |
+| GET, PATCH, DELETE | `/me` | Autenticado |
+| GET | `/usuarios/resumo` | Autenticado |
+| GET, POST, PATCH, DELETE | `/usuarios`, `/usuarios/:id/role`, `/usuarios/:id` | Administrador |
+| GET | `/chamados`, `/chamados/:id` | Autenticado (recorte por perfil) |
+| POST | `/chamados` | Condômino, Síndico, Administrador |
+| POST | `/chamados/:id/aprovar` | Síndico, Administrador |
+| POST | `/chamados/:id/iniciar` | Prestador, Síndico, Administrador |
+| POST | `/chamados/:id/concluir` | Prestador, Administrador |
+| GET, POST, PATCH, DELETE | `/chamados/:id/despesas` (e anexos) | Prestador, Síndico, Administrador |
+| POST | `/chamados/:id/despesas/:despesaId/aprovar` e `/rejeitar` | Síndico, Administrador |
+| GET | `/relatorios/despesas` | Síndico, Administrador |
+
+Filtros de `GET /chamados`: `status`, `prioridade`, `categoria`, `prestadorId`, `predio`, `q` (busca), `de` e `ate` (período).
+
 ---
 
 ## Colaboradores
@@ -53,7 +206,6 @@ O fluxo de vida do chamado segue uma esteira clara:
 | **Elton Santos** | Arquitetura e Infra | [@Elton-dev01](https://github.com/Elton-dev01) |
 | **Enderson Carvalho** | Desenvolvedor Fullstack | [@EndersonCarvalh0](https://github.com/EndersonCarvalh0) |
 | **Jefferson Felipe** | DBA | [@isjustjefferson](https://github.com/isjustjefferson) |
-| **Ricardo Fragoso** | Desenvolvedor Backend | [@TheCardo](https://github.com/TheCardo) |
 | **Vinícius Castro** | Desenvolvedor Frontend | [@vinicastro](https://github.com/vinicastro) |
 
 ---

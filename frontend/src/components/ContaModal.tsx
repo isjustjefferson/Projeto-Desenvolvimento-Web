@@ -127,6 +127,7 @@ export function ContaModal({
               className="input"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
+              placeholder="Seu nome completo"
             />
           </div>
         </div>

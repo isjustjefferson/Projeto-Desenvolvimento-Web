@@ -27,7 +27,9 @@ export function mapChamadoToContrato(c: ChamadoEntity) {
     criadoPorId: c.criadoPorId ?? c.criadoPor?.id,
     tecnicoId: c.tecnicoId ?? c.tecnico?.id ?? null,
     criadoPor: mapUsuarioToContrato(c.criadoPor),
-    tecnico: c.tecnico ? mapUsuarioToContrato(c.tecnico) : undefined,
+    // A coluna/relação no banco ainda se chama tecnico; na API, prestador
+    prestadorId: c.tecnicoId ?? null,
+    prestador: c.tecnico ? mapUsuarioToContrato(c.tecnico) : undefined,
     foto: bufferToBase64(c.foto),
     classificacao: (c.classificacao ?? null) as any,
     solucao: c.solucaoDescricao

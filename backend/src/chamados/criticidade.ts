@@ -88,7 +88,19 @@ const GRUPOS: GrupoTermos[] = [
   },
   {
     termos: ['sem energia', 'falta de energia', 'energia cortada', 'queda de energia'],
-    pontos: 15,
+    pontos: 30,
+  },
+  {
+    termos: [
+      'tomada',
+      'disjuntor',
+      'interruptor',
+      'soquete',
+      'arandela',
+      'benjamim',
+      'ponto de luz',
+    ],
+    pontos: -20,
   },
   {
     termos: [

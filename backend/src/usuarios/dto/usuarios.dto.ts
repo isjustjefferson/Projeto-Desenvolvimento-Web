@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 import type { Role } from '../../contrato.js';
 
-const ROLES: Role[] = ['SOLICITANTE', 'TECNICO', 'GESTOR', 'ADMINISTRADOR'];
+const ROLES: Role[] = ['CONDOMINO', 'PRESTADOR', 'SINDICO', 'ADMINISTRADOR'];
 
 export class CriarUsuarioDto {
   @IsString()

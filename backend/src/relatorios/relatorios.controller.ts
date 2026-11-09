@@ -13,7 +13,7 @@ import { RelatoriosService } from './relatorios.service.js';
 
 @Controller('relatorios')
 @UseGuards(AuthGuard, RolesGuard)
-@Roles('GESTOR', 'ADMINISTRADOR')
+@Roles('SINDICO', 'ADMINISTRADOR')
 export class RelatoriosController {
   constructor(private readonly relatorios: RelatoriosService) {}
 

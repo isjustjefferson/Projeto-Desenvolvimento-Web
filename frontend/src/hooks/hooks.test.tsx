@@ -37,7 +37,7 @@ vi.mock('../api/usuarios', () => ({
 // As queries rodam com sessão ativa — mesma condição do antigo ChamadosContext.
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
-    usuario: { id: 1, nome: 'Ana Souza', role: 'SOLICITANTE' },
+    usuario: { id: 1, nome: 'Ana Souza', role: 'CONDOMINO' },
   }),
 }));
 
@@ -106,7 +106,7 @@ describe('useChamados', () => {
       ...lista[0],
       status: 'REVISADO',
       prioridade: 'ALTA',
-      tecnicoId: 3,
+      prestadorId: 3,
     };
     vi.mocked(chamadosApi.aprovar).mockResolvedValue(aprovado);
     const { queryClient, wrapper } = montar();
@@ -118,7 +118,7 @@ describe('useChamados', () => {
       await result.current.mutateAsync({
         id: aprovado.id,
         prioridade: 'ALTA',
-        tecnicoId: 3,
+        prestadorId: 3,
       });
     });
 
@@ -139,14 +139,14 @@ describe('useUsuarios e useDiretorio', () => {
     expect(usuariosApi.listar).not.toHaveBeenCalled();
   });
 
-  it('diretório expõe só os técnicos e resolve nomes', async () => {
+  it('diretório expõe só os prestadores e resolve nomes', async () => {
     vi.mocked(usuariosApi.listarResumo).mockResolvedValue(resumo);
     const { wrapper } = montar();
 
     const { result } = renderHook(() => useDiretorio(), { wrapper });
 
-    await waitFor(() => expect(result.current.tecnicos.length).toBeGreaterThan(0));
-    expect(result.current.tecnicos.every((t) => t.role === 'TECNICO')).toBe(true);
+    await waitFor(() => expect(result.current.prestadores.length).toBeGreaterThan(0));
+    expect(result.current.prestadores.every((t) => t.role === 'PRESTADOR')).toBe(true);
     expect(result.current.nomeUsuario(3)).toBe('João Eletricista');
     expect(result.current.nomeUsuario(null)).toBe('—');
     expect(result.current.nomeUsuario(9999)).toBe('—');
@@ -157,7 +157,7 @@ describe('useUsuarios e useDiretorio', () => {
       id: 2,
       nome: 'Carlos Lima',
       email: 'carlos@predial.com',
-      role: 'TECNICO',
+      role: 'PRESTADOR',
       ativo: true,
     });
     const { queryClient, wrapper } = montar();
@@ -167,7 +167,7 @@ describe('useUsuarios e useDiretorio', () => {
 
     const { result } = renderHook(() => useAlterarCargo(), { wrapper });
     await act(async () => {
-      await result.current.mutateAsync({ id: 2, role: 'TECNICO' });
+      await result.current.mutateAsync({ id: 2, role: 'PRESTADOR' });
     });
 
     expect(queryClient.getQueryState(chaves.usuarios)?.isInvalidated).toBe(true);

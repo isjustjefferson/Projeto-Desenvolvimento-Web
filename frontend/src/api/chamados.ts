@@ -33,11 +33,11 @@ export async function criar(input: NovoChamadoInput): Promise<Chamado> {
 export async function aprovar(
   id: number,
   prioridade: Prioridade,
-  tecnicoId: number,
+  prestadorId: number,
 ): Promise<Chamado> {
   const res = await post(
     `/chamados/${id}/aprovar`,
-    { prioridade, tecnicoId },
+    { prioridade, prestadorId },
     respostaChamadoSchema,
   );
   return res.chamado;

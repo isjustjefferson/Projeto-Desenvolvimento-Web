@@ -13,7 +13,6 @@ import {
   Receipt,
   Sparkles,
   Trash2,
-  Upload,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -28,12 +27,12 @@ import {
 } from '../hooks/useChamados';
 import { useDiretorio } from '../hooks/useUsuarios';
 import { ApiError, mensagemDeErro } from '../api/client';
+import type { CriarDespesaInput } from '../api/despesas';
 import {
   categoriaDespesaLabel,
   categoriaLabel,
   formatarData,
   formatarMoeda,
-  parseMoedaParaCentavos,
   prioridadeLabel,
   statusDespesaColor,
   statusDespesaLabel,
@@ -42,8 +41,9 @@ import {
   tipoDocumentoFiscalLabel,
 } from '../helpers';
 import { PrioridadeBadge, StatusBadge } from '../components/Badge';
+import { FormularioDespesa } from '../components/FormularioDespesa';
 import { Modal } from '../components/Modal';
-import type { CategoriaDespesa, Prioridade, TipoDocumentoFiscal } from '../types';
+import type { Prioridade } from '../types';
 
 const prioridades: Prioridade[] = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'];
 
@@ -98,14 +98,6 @@ function baixarAnexo(anexo: AnexoArquivo) {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-const categoriasDespesa: CategoriaDespesa[] = [
-  'MATERIAL',
-  'MAO_DE_OBRA',
-  'SERVICO_TERCEIRO',
-  'DESLOCAMENTO',
-  'OUTROS',
-];
-
 function ChamadoNaoEncontrado() {
   return (
     <div className="card py-12 text-center text-gray-500">
@@ -131,34 +123,17 @@ export function ChamadoDetalhe() {
   const removerDespesa = useRemoverDespesa();
   const aprovarDespesa = useAprovarDespesa();
   const rejeitarDespesa = useRejeitarDespesa();
-  const { tecnicos, nomeUsuario } = useDiretorio();
+  const { prestadores, nomeUsuario } = useDiretorio();
 
   const [modalAprovar, setModalAprovar] = useState(false);
   const [modalConcluir, setModalConcluir] = useState(false);
   const [modalDespesa, setModalDespesa] = useState(false);
   const [modalRejeitar, setModalRejeitar] = useState(false);
   const [prioridadeSel, setPrioridadeSel] = useState<Prioridade>('MEDIA');
-  const [tecnicoSel, setTecnicoSel] = useState('');
+  const [prestadorSel, setPrestadorSel] = useState('');
   const [solDesc, setSolDesc] = useState('');
   const [solMat, setSolMat] = useState('');
   const [erroAcao, setErroAcao] = useState('');
-  const [despCat, setDespCat] = useState<CategoriaDespesa>('MATERIAL');
-  const [despDesc, setDespDesc] = useState('');
-  const [despValor, setDespValor] = useState('');
-  const [despFornecedor, setDespFornecedor] = useState('');
-  const [despNota, setDespNota] = useState('');
-  const [despData, setDespData] = useState('');
-  const [despAnexos, setDespAnexos] = useState<
-    Array<{
-      tipo: 'NOTA_FISCAL' | 'RECIBO' | 'COMPROVANTE_PAGAMENTO' | 'OUTRO';
-      tipoDocumentoFiscal?: 'NFE' | 'NFSE' | 'NFCE' | 'CUPOM_FISCAL' | 'RECIBO' | 'BOLETO_COMPROVANTE' | 'OUTRO';
-      nomeArquivo: string;
-      mimeType: string;
-      tamanhoBytes: number;
-      conteudo: string;
-    }>
-  >([]);
-  const [anexoTipoDoc, setAnexoTipoDoc] = useState<TipoDocumentoFiscal | ''>('');
   const [despesaRejeitarId, setDespesaRejeitarId] = useState<number | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
 
@@ -208,34 +183,34 @@ export function ChamadoDetalhe() {
   const c = chamado;
 
   const podeVer =
-    usuario.role === 'GESTOR' ||
+    usuario.role === 'SINDICO' ||
     usuario.role === 'ADMINISTRADOR' ||
-    (usuario.role === 'SOLICITANTE' && chamado.criadoPorId === usuario.id) ||
-    (usuario.role === 'TECNICO' &&
-      (chamado.tecnicoId === usuario.id || chamado.status === 'REVISADO'));
+    (usuario.role === 'CONDOMINO' && chamado.criadoPorId === usuario.id) ||
+    (usuario.role === 'PRESTADOR' &&
+      (chamado.prestadorId === usuario.id || chamado.status === 'REVISADO'));
 
   const podeAprovar =
-    (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') &&
+    (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') &&
     chamado.status === 'AGUARDANDO_APROVACAO';
   const podeIniciar =
-    (usuario.role === 'GESTOR' ||
-      usuario.role === 'TECNICO' ||
+    (usuario.role === 'SINDICO' ||
+      usuario.role === 'PRESTADOR' ||
       usuario.role === 'ADMINISTRADOR') &&
     chamado.status === 'REVISADO' &&
-    (usuario.role === 'GESTOR' ||
+    (usuario.role === 'SINDICO' ||
       usuario.role === 'ADMINISTRADOR' ||
-      chamado.tecnicoId === usuario.id);
+      chamado.prestadorId === usuario.id);
   const podeConcluir =
-    (usuario.role === 'TECNICO' || usuario.role === 'ADMINISTRADOR') &&
+    (usuario.role === 'PRESTADOR' || usuario.role === 'ADMINISTRADOR') &&
     chamado.status === 'EM_ANDAMENTO' &&
-    (usuario.role === 'ADMINISTRADOR' || chamado.tecnicoId === usuario.id);
+    (usuario.role === 'ADMINISTRADOR' || chamado.prestadorId === usuario.id);
 
   const podeGerenciarDespesas =
-    (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR') ||
-    (usuario.role === 'TECNICO' && chamado.tecnicoId === usuario.id);
+    (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') ||
+    (usuario.role === 'PRESTADOR' && chamado.prestadorId === usuario.id);
 
   const podeAprovarDespesas =
-    usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR';
+    usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR';
 
   const despesas = chamado.despesas || [];
   const resumo = chamado.resumoFinanceiro || {
@@ -253,13 +228,13 @@ export function ChamadoDetalhe() {
   // Ações disparadas de um modal reportam o erro via toast: o banner `erroAcao`
   // fica renderizado fora do modal e estaria escondido atrás do overlay.
   async function aprovar() {
-    if (!tecnicoSel || aprovarChamado.isPending) return;
+    if (!prestadorSel || aprovarChamado.isPending) return;
     setErroAcao('');
     try {
       await aprovarChamado.mutateAsync({
         id: c.id,
         prioridade: prioridadeSel,
-        tecnicoId: Number(tecnicoSel),
+        prestadorId: Number(prestadorSel),
       });
       setModalAprovar(false);
       toast.success('Chamado aprovado e liberado para atendimento.');
@@ -297,73 +272,17 @@ export function ChamadoDetalhe() {
     }
   }
 
+  // O formulário é desmontado ao fechar o modal, então sempre abre em branco
   function abrirNovaDespesa() {
-    setDespCat('MATERIAL');
-    setDespDesc('');
-    setDespValor('');
-    setDespFornecedor('');
-    setDespNota('');
-    setDespData('');
-    setDespAnexos([]);
-    setAnexoTipoDoc('');
     setErroAcao('');
     setModalDespesa(true);
   }
 
-  async function adicionarAnexoDespesaArquivo(arquivo: File) {
-    if (!arquivo) return;
-    if (arquivo.size > 5 * 1024 * 1024) {
-      toast.error('Anexo excede o limite de 5MB.');
-      return;
-    }
-    const mime = arquivo.type || 'application/octet-stream';
-    if (!['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'].includes(mime)) {
-      toast.error('Tipo de arquivo não permitido.');
-      return;
-    }
-    if (despAnexos.length >= 5) {
-      toast.error('Máximo de 5 anexos por despesa.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const conteudo = String(reader.result || '');
-      setDespAnexos((prev) => [
-        ...prev,
-        {
-          tipo: mime === 'application/pdf' ? 'NOTA_FISCAL' : 'COMPROVANTE_PAGAMENTO',
-          tipoDocumentoFiscal: anexoTipoDoc || undefined,
-          nomeArquivo: arquivo.name,
-          mimeType: mime,
-          tamanhoBytes: arquivo.size,
-          conteudo,
-        },
-      ]);
-    };
-    reader.readAsDataURL(arquivo);
-  }
-
-  async function salvarDespesa() {
-    if (!despDesc.trim() || !despValor || criarDespesa.isPending) return;
-    const valorCentavos = parseMoedaParaCentavos(despValor);
-    if (valorCentavos <= 0) {
-      toast.error('Informe um valor válido.');
-      return;
-    }
+  async function salvarDespesa(input: CriarDespesaInput) {
+    if (criarDespesa.isPending) return;
     setErroAcao('');
     try {
-      await criarDespesa.mutateAsync({
-        chamadoId: c.id,
-        input: {
-          categoria: despCat,
-          descricao: despDesc.trim(),
-          fornecedor: despFornecedor.trim() || undefined,
-          numeroNota: despNota.trim() || undefined,
-          dataEmissao: despData || undefined,
-          valorCentavos,
-          anexos: despAnexos,
-        },
-      });
+      await criarDespesa.mutateAsync({ chamadoId: c.id, input });
       setModalDespesa(false);
       toast.success('Despesa lançada.');
     } catch (err) {
@@ -482,7 +401,7 @@ export function ChamadoDetalhe() {
               ))}
             </ul>
             <p className="mt-2 text-[11px] text-gray-500">
-              Sugestão do sistema. A prioridade final é definida pelo gestor na
+              Sugestão do sistema. A prioridade final é definida pelo síndico na
               aprovação.
             </p>
           </div>
@@ -516,13 +435,13 @@ export function ChamadoDetalhe() {
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Solicitante</div>
+            <div className="text-xs text-gray-500">Condômino</div>
             <div className="font-medium">{nomeUsuario(chamado.criadoPorId)}</div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Técnico</div>
+            <div className="text-xs text-gray-500">Prestador</div>
             <div className="font-medium">
-              {chamado.tecnicoId ? nomeUsuario(chamado.tecnicoId) : 'Não atribuído'}
+              {chamado.prestadorId ? nomeUsuario(chamado.prestadorId) : 'Não atribuído'}
             </div>
           </div>
           <div>
@@ -608,7 +527,7 @@ export function ChamadoDetalhe() {
             <div className="font-semibold text-red-700">{formatarMoeda(resumo.rejeitadoCentavos)}</div>
           </div>
         </div>
-        {usuario.role === 'SOLICITANTE' ? (
+        {usuario.role === 'CONDOMINO' ? (
           <p className="text-xs text-gray-500">Apenas o total aprovado é exibido.</p>
         ) : despesas.length === 0 ? (
           <p className="text-sm text-gray-400">Nenhuma despesa lançada.</p>
@@ -747,14 +666,14 @@ export function ChamadoDetalhe() {
             )}
           </div>
           <div>
-            <label className="label">Atribuir ao técnico</label>
+            <label className="label">Atribuir ao prestador</label>
             <select
               className="input"
-              value={tecnicoSel}
-              onChange={(e) => setTecnicoSel(e.target.value)}
+              value={prestadorSel}
+              onChange={(e) => setPrestadorSel(e.target.value)}
             >
-              <option value="">Selecione o técnico</option>
-              {tecnicos.map((t) => (
+              <option value="">Selecione o prestador</option>
+              {prestadores.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.nome}
                   {t.especialidade ? ` (${t.especialidade})` : ''}
@@ -765,7 +684,7 @@ export function ChamadoDetalhe() {
           <button
             onClick={() => void aprovar()}
             className="btn-primary w-full"
-            disabled={!tecnicoSel || aprovarChamado.isPending}
+            disabled={!prestadorSel || aprovarChamado.isPending}
           >
             {aprovarChamado.isPending ? 'Aprovando…' : 'Aprovar e atribuir'}
           </button>
@@ -780,6 +699,7 @@ export function ChamadoDetalhe() {
               className="input min-h-[90px]"
               value={solDesc}
               onChange={(e) => setSolDesc(e.target.value)}
+              maxLength={2000}
               placeholder="Descreva como o problema foi resolvido"
               required
             />
@@ -807,82 +727,17 @@ export function ChamadoDetalhe() {
       </Modal>
 
       <Modal open={modalDespesa} onClose={() => setModalDespesa(false)} title="Adicionar despesa">
-        <div className="space-y-3">
-          <div>
-            <label className="label">Categoria</label>
-            <select className="input" value={despCat} onChange={(e) => setDespCat(e.target.value as CategoriaDespesa)}>
-              {categoriasDespesa.map((c) => (
-                <option key={c} value={c}>{categoriaDespesaLabel[c]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label">Descrição</label>
-            <input className="input" value={despDesc} onChange={(e) => setDespDesc(e.target.value)} placeholder="Ex: Compra de peças" />
-          </div>
-          <div>
-            <label className="label">Valor (R$)</label>
-            <input className="input" value={despValor} onChange={(e) => setDespValor(e.target.value)} placeholder="Ex: 150,00" />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="label">Fornecedor</label>
-              <input className="input" value={despFornecedor} onChange={(e) => setDespFornecedor(e.target.value)} />
-            </div>
-            <div>
-              <label className="label">Nº da Nota</label>
-              <input className="input" value={despNota} onChange={(e) => setDespNota(e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <label className="label">Data de emissão</label>
-            <input type="date" className="input" value={despData} onChange={(e) => setDespData(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Tipo de documento fiscal (opcional)</label>
-            <select className="input" value={anexoTipoDoc} onChange={(e) => setAnexoTipoDoc(e.target.value as TipoDocumentoFiscal | '')}>
-              <option value="">Não classificar</option>
-              <option value="NFE">NF-e (NFe)</option>
-              <option value="NFSE">NFS-e</option>
-              <option value="NFCE">NFC-e</option>
-              <option value="CUPOM_FISCAL">Cupom Fiscal</option>
-              <option value="RECIBO">Recibo</option>
-              <option value="BOLETO_COMPROVANTE">Comprovante/Boleto</option>
-              <option value="OUTRO">Outro</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Anexos (NF/comprovante)</label>
-            <label className="btn-secondary inline-flex cursor-pointer !px-2 !py-1 text-xs">
-              <Upload className="h-3 w-3" /> Adicionar arquivo
-              <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void adicionarAnexoDespesaArquivo(f);
-                e.target.value = '';
-              }} />
-            </label>
-            {despAnexos.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {despAnexos.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs">
-                    <span className="truncate">{a.nomeArquivo}</span>
-                    <button onClick={() => setDespAnexos((p) => p.filter((_, idx) => idx !== i))} className="text-red-500">Remover</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <button onClick={() => void salvarDespesa()} className="btn-primary w-full" disabled={!despDesc.trim() || !despValor || criarDespesa.isPending}>
-            {criarDespesa.isPending ? 'Salvando…' : 'Salvar despesa'}
-          </button>
-        </div>
+        <FormularioDespesa
+          salvando={criarDespesa.isPending}
+          onSalvar={salvarDespesa}
+        />
       </Modal>
 
       <Modal open={modalRejeitar} onClose={() => setModalRejeitar(false)} title="Rejeitar despesa">
         <div className="space-y-3">
           <div>
             <label className="label">Motivo</label>
-            <textarea className="input min-h-[80px]" value={motivoRejeicao} onChange={(e) => setMotivoRejeicao(e.target.value)} placeholder="Informe o motivo da rejeição" />
+            <textarea className="input min-h-[80px]" value={motivoRejeicao} onChange={(e) => setMotivoRejeicao(e.target.value)} maxLength={500} placeholder="Informe o motivo da rejeição" />
           </div>
           <button onClick={() => void rejeitarDespesaAcao()} className="btn-primary w-full" disabled={!motivoRejeicao.trim() || rejeitarDespesa.isPending}>
             {rejeitarDespesa.isPending ? 'Rejeitando…' : 'Rejeitar'}

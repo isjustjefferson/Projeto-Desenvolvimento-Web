@@ -9,6 +9,6 @@ export function useRelatorioDespesas(filtros: FiltrosRelatorioDespesas) {
   return useQuery({
     queryKey: chaves.relatorioDespesas(chave),
     queryFn: () => relatorioDespesas(filtros),
-    enabled: Boolean(usuario && (usuario.role === 'GESTOR' || usuario.role === 'ADMINISTRADOR')),
+    enabled: Boolean(usuario && (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR')),
   });
 }

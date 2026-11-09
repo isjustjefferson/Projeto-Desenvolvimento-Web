@@ -25,7 +25,7 @@ describe('Auth (e2e)', () => {
     expect(res.body.usuario).toMatchObject({
       id: 1,
       email: 'ana@predial.com',
-      role: 'SOLICITANTE',
+      role: 'CONDOMINO',
     });
     expect(res.body.usuario.senha).toBeUndefined();
     expect(res.body.usuario.senhaHash).toBeUndefined();
@@ -45,7 +45,7 @@ describe('Auth (e2e)', () => {
       .expect(401);
   });
 
-  it('register cria conta SOLICITANTE e permite login', async () => {
+  it('register cria conta CONDOMINO e permite login', async () => {
     await request(app.getHttpServer())
       .post('/api/auth/register')
       .send({
@@ -60,7 +60,7 @@ describe('Auth (e2e)', () => {
       .post('/api/auth/login')
       .send({ email: 'maria@teste.com', senha: 'abcdef' })
       .expect(200);
-    expect(login.body.usuario.role).toBe('SOLICITANTE');
+    expect(login.body.usuario.role).toBe('CONDOMINO');
     expect(login.body.usuario.unidade).toBe('Bloco C, Ap 10');
   });
 
@@ -127,7 +127,7 @@ describe('Auth (e2e)', () => {
       .get('/api/me')
       .set('x-usuario-id', '5')
       .expect(200);
-    expect(res.body.usuario).toMatchObject({ id: 5, role: 'GESTOR' });
+    expect(res.body.usuario).toMatchObject({ id: 5, role: 'SINDICO' });
   });
 
   it('PATCH /me atualiza nome/foto', async () => {

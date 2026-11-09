@@ -49,7 +49,7 @@ export class ChamadosController {
   }
 
   @Post()
-  @Roles('SOLICITANTE', 'GESTOR', 'ADMINISTRADOR')
+  @Roles('CONDOMINO', 'SINDICO', 'ADMINISTRADOR')
   criar(
     @Body() dto: CriarChamadoDto,
     @UsuarioAtual() usuario: UsuarioInterno,
@@ -58,7 +58,7 @@ export class ChamadosController {
   }
 
   @Post(':id/aprovar')
-  @Roles('GESTOR', 'ADMINISTRADOR')
+  @Roles('SINDICO', 'ADMINISTRADOR')
   aprovar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AprovarChamadoDto,
@@ -68,7 +68,7 @@ export class ChamadosController {
   }
 
   @Post(':id/iniciar')
-  @Roles('GESTOR', 'TECNICO', 'ADMINISTRADOR')
+  @Roles('SINDICO', 'PRESTADOR', 'ADMINISTRADOR')
   iniciar(
     @Param('id', ParseIntPipe) id: number,
     @UsuarioAtual() usuario: UsuarioInterno,
@@ -77,7 +77,7 @@ export class ChamadosController {
   }
 
   @Post(':id/concluir')
-  @Roles('TECNICO', 'ADMINISTRADOR')
+  @Roles('PRESTADOR', 'ADMINISTRADOR')
   concluir(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ConcluirChamadoDto,
@@ -95,7 +95,7 @@ export class ChamadosController {
   }
 
   @Post(':id/despesas')
-  @Roles('TECNICO', 'GESTOR', 'ADMINISTRADOR')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
   criarDespesa(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CriarDespesaDto,
@@ -105,7 +105,7 @@ export class ChamadosController {
   }
 
   @Patch(':id/despesas/:despesaId')
-  @Roles('TECNICO', 'GESTOR', 'ADMINISTRADOR')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
   editarDespesa(
     @Param('id', ParseIntPipe) id: number,
     @Param('despesaId', ParseIntPipe) despesaId: number,
@@ -116,7 +116,7 @@ export class ChamadosController {
   }
 
   @Delete(':id/despesas/:despesaId')
-  @Roles('TECNICO', 'GESTOR', 'ADMINISTRADOR')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
   removerDespesa(
     @Param('id', ParseIntPipe) id: number,
     @Param('despesaId', ParseIntPipe) despesaId: number,
@@ -126,7 +126,7 @@ export class ChamadosController {
   }
 
   @Post(':id/despesas/:despesaId/anexos')
-  @Roles('TECNICO', 'GESTOR', 'ADMINISTRADOR')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
   anexarDespesa(
     @Param('id', ParseIntPipe) id: number,
     @Param('despesaId', ParseIntPipe) despesaId: number,
@@ -137,7 +137,7 @@ export class ChamadosController {
   }
 
   @Delete(':id/despesas/:despesaId/anexos/:anexoId')
-  @Roles('TECNICO', 'GESTOR', 'ADMINISTRADOR')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
   removerAnexoDespesa(
     @Param('id', ParseIntPipe) id: number,
     @Param('despesaId', ParseIntPipe) despesaId: number,
@@ -148,7 +148,7 @@ export class ChamadosController {
   }
 
   @Post(':id/despesas/:despesaId/aprovar')
-  @Roles('GESTOR', 'ADMINISTRADOR')
+  @Roles('SINDICO', 'ADMINISTRADOR')
   aprovarDespesa(
     @Param('id', ParseIntPipe) id: number,
     @Param('despesaId', ParseIntPipe) despesaId: number,
@@ -158,7 +158,7 @@ export class ChamadosController {
   }
 
   @Post(':id/despesas/:despesaId/rejeitar')
-  @Roles('GESTOR', 'ADMINISTRADOR')
+  @Roles('SINDICO', 'ADMINISTRADOR')
   rejeitarDespesa(
     @Param('id', ParseIntPipe) id: number,
     @Param('despesaId', ParseIntPipe) despesaId: number,

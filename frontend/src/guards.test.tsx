@@ -88,7 +88,7 @@ describe('PublicOnly', () => {
   });
 
   it('empurra o usuário logado para o dashboard', () => {
-    sessao.usuario = usuarioSessao('SOLICITANTE');
+    sessao.usuario = usuarioSessao('CONDOMINO');
     renderGuard(
       <PublicOnly>
         <p>tela pública</p>
@@ -111,7 +111,7 @@ describe('RequireRoles', () => {
   });
 
   it('redireciona para a home quando o perfil não está na lista', () => {
-    sessao.usuario = usuarioSessao('SOLICITANTE');
+    sessao.usuario = usuarioSessao('CONDOMINO');
     renderGuard(
       <RequireRoles roles={['ADMINISTRADOR']}>
         <p>conteúdo restrito</p>

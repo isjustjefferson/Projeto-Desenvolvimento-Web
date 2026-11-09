@@ -17,15 +17,17 @@ import {
   especialidadeParaCategoria,
   pode,
   statusVisiveisPorRole,
-  tecnicoSemEspecialidade,
+  prestadorSemEspecialidade,
 } from '../rbac';
 import {
   categoriaLabel,
   formatarData,
   prioridadeLabel,
   prioridadeColor,
+  roleLabel,
   statusLabel,
   statusColor,
+  tempoRelativo,
 } from '../helpers';
 import { PrioridadeBadge, StatusBadge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
@@ -103,6 +105,18 @@ export function Dashboard() {
 
   const podeVerTriagem = usuario ? pode(usuario.role, 'triar') : false;
 
+  // Fila de atendimento: quem espera há mais tempo vem primeiro
+  const filaTriagem = useMemo(
+    () =>
+      visiveis
+        .filter((c) => c.status === 'AGUARDANDO_APROVACAO')
+        .sort(
+          (a, b) =>
+            new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime(),
+        ),
+    [visiveis],
+  );
+
   const filtrados = useMemo(
     () =>
       visiveis
@@ -118,7 +132,7 @@ export function Dashboard() {
     [visiveis, filtroStatus, filtroPrioridade],
   );
 
-  const semEspecialidade = usuario ? tecnicoSemEspecialidade(usuario) : false;
+  const semEspecialidade = usuario ? prestadorSemEspecialidade(usuario) : false;
 
   const listaChamados = filtrados.slice(0, 8);
 
@@ -184,10 +198,10 @@ export function Dashboard() {
   );
 
   const escopoLabel = (() => {
-    if (usuario.role === 'SOLICITANTE') {
+    if (usuario.role === 'CONDOMINO') {
       return 'Exibindo apenas os chamados abertos por você.';
     }
-    if (usuario.role === 'TECNICO') {
+    if (usuario.role === 'PRESTADOR') {
       const cat = especialidadeParaCategoria(usuario.especialidade);
       return cat
         ? `Exibindo os chamados de ${categoriaLabel[cat]} e os atribuídos a você.`
@@ -201,7 +215,7 @@ export function Dashboard() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Geral</h1>
         <p className="text-sm text-gray-500">
-          Painel do sistema · {usuario.nome} ({usuario.role})
+          Painel do sistema · {usuario.nome} ({roleLabel[usuario.role]})
         </p>
         <p className="mt-0.5 text-xs text-gray-400">{escopoLabel}</p>
       </div>
@@ -209,7 +223,7 @@ export function Dashboard() {
       {semEspecialidade && (
         <div className="card border-amber-200 bg-amber-50 text-sm text-amber-800">
           Sua especialidade não está definida. Você está vendo apenas os chamados
-          atribuídos a você — fale com o gestor para definir sua especialidade.
+          atribuídos a você — fale com o síndico para definir sua especialidade.
         </div>
       )}
 
@@ -322,20 +336,59 @@ export function Dashboard() {
 
       <div className={`grid gap-6 ${podeVerTriagem ? 'lg:grid-cols-2' : ''}`}>
         {podeVerTriagem && (
-          <div className="card flex flex-col items-center justify-center text-center">
-            <span className="mb-2 inline-flex rounded-lg bg-brand-500 p-3 text-white">
-              <Users className="h-6 w-6" />
-            </span>
-            <h2 className="text-sm font-semibold text-gray-700">
-              Fila de Triagem do Gestor
-            </h2>
-            <p className="mt-1 text-3xl font-bold text-gray-900">
-              {dados.triagem}
-            </p>
-            <p className="text-xs text-gray-500">
-              chamados aguardando aprovação
-            </p>
-          </div>
+          <section aria-labelledby="titulo-fila-triagem" className="card">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex rounded-lg bg-brand-500 p-2 text-white">
+                  <Users className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2
+                    id="titulo-fila-triagem"
+                    className="font-semibold text-gray-800"
+                  >
+                    Fila de Triagem do Síndico
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    <span className="font-bold text-gray-900">
+                      {dados.triagem}
+                    </span>{' '}
+                    aguardando aprovação · mais antigos primeiro
+                  </p>
+                </div>
+              </div>
+              {filaTriagem.length > 0 && (
+                <Link
+                  to="/chamados?status=AGUARDANDO_APROVACAO"
+                  className="shrink-0 text-sm font-medium text-brand-700 hover:underline"
+                >
+                  Ver todos
+                </Link>
+              )}
+            </div>
+            <ul className="space-y-2">
+              {filaTriagem.slice(0, 5).map((c) => (
+                <li key={c.id}>
+                  <Link
+                    to={`/chamados/${c.id}`}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2 text-sm transition hover:border-brand-300 hover:bg-gray-100"
+                  >
+                    <span className="min-w-0 truncate font-medium text-gray-700">
+                      #{c.id} {c.titulo}
+                    </span>
+                    <span className="shrink-0 text-xs text-gray-500">
+                      {categoriaLabel[c.categoria]} · {tempoRelativo(c.criadoEm)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+              {filaTriagem.length === 0 && (
+                <li className="text-sm text-gray-400">
+                  Nenhum chamado aguardando aprovação.
+                </li>
+              )}
+            </ul>
+          </section>
         )}
 
         <div className="card">
@@ -434,7 +487,7 @@ export function Dashboard() {
               <tr className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-400">
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Título</th>
-                <th className="px-4 py-3">Solicitante</th>
+                <th className="px-4 py-3">Condômino</th>
                 <th className="px-4 py-3">Categoria</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Prioridade</th>

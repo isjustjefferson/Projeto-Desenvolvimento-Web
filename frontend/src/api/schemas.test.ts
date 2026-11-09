@@ -48,7 +48,7 @@ describe('schemas aceitam os payloads reais da api', () => {
 
 describe('schemas aceitam os casos de borda do contrato', () => {
   it('aceita prioridade null (chamado recém-criado aguardando aprovação)', () => {
-    const novo = { ...chamadoReal, prioridade: null, tecnicoId: null };
+    const novo = { ...chamadoReal, prioridade: null, prestadorId: null };
     expect(chamadoSchema.safeParse(novo).success).toBe(true);
   });
 
@@ -70,8 +70,8 @@ describe('schemas aceitam os casos de borda do contrato', () => {
   });
 
   it('aceita usuário sem unidade, especialidade e setor', () => {
-    const basico = { id: 9, nome: 'Nova', email: 'nova@predial.com', role: 'GESTOR', ativo: true };
-    expect(usuarioResumoSchema.safeParse({ id: 9, nome: 'Nova', role: 'GESTOR' }).success).toBe(
+    const basico = { id: 9, nome: 'Nova', email: 'nova@predial.com', role: 'SINDICO', ativo: true };
+    expect(usuarioResumoSchema.safeParse({ id: 9, nome: 'Nova', role: 'SINDICO' }).success).toBe(
       true,
     );
     expect(respostaUsuarioSchema.safeParse({ ok: true, usuario: basico }).success).toBe(true);

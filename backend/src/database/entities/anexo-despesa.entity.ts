@@ -12,6 +12,8 @@ export class AnexoDespesaEntity {
 
   @ManyToOne('DespesaEntity', 'anexos')
   @JoinColumn({ name: 'despesa_id' })
+  // Relation<> evita emitir a classe na metadata: despesa.entity importa esta
+  // entidade de volta, e no ESM a referência ainda não existiria ao carregar.
   despesa!: Relation<DespesaEntity>;
 
   @Column({ type: 'enum', enum: ['NOTA_FISCAL', 'RECIBO', 'COMPROVANTE_PAGAMENTO', 'OUTRO'], name: 'tipo', nullable: false })

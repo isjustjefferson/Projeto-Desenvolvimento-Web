@@ -43,7 +43,7 @@ export function RegisterPage() {
   return (
     <AuthShell
       titulo="Criar conta"
-      subtitulo="Cadastre-se como Solicitante / Morador"
+      subtitulo="Cadastre-se como Condômino"
     >
       <form onSubmit={enviar} className="space-y-4">
         {erro && (

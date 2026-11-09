@@ -26,7 +26,7 @@
 param(
     [string] $NomeBanco    = 'predial',
     [string] $NomePapel     = 'predial',
-    [string] $Host          = 'localhost',
+    [string] $Host1        = 'localhost',
     [int]    $Porta         = 5432,
     [string] $UsuarioAdmin  = 'postgres',
     [string] $SenhaAdmin    = $env:PGPASSWORD,
@@ -38,7 +38,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $raizBanco = Split-Path -Parent $PSScriptRoot
-$dirSql    = Join-Path $raizBanco 'db'
+#$dirSql    = Join-Path $raizBanco 'db'
+$dirSql    = $raizBanco
 
 function Write-Etapa {
     param([string] $Mensagem)
@@ -75,7 +76,7 @@ function Invoke-Sql {
     }
 
     $argsPsql = @(
-        '-h', $Host, '-p', $Porta, '-U', $Usuario, '-d', $Banco,
+        '-h', $Host1, '-p', $Porta, '-U', $Usuario, '-d', $Banco,
         '-v', 'ON_ERROR_STOP=1', '-t', '-A', '-F', '|',
         '-c', $Sql
     )
@@ -103,7 +104,7 @@ function Invoke-ArquivoSql {
         Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue
     }
 
-    $saida = & psql '-h' $Host '-p' $Porta '-U' $UsuarioAdmin '-d' $Banco `
+    $saida = & psql '-h' $Host1 '-p' $Porta '-U' $UsuarioAdmin '-d' $Banco `
                       '-v' 'ON_ERROR_STOP=1' '-f' $Caminho 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw ($saida | Out-String).Trim()
@@ -113,7 +114,7 @@ function Invoke-ArquivoSql {
 }
 
 # ---------------------------------------------------------------------------
-Write-Host "Provisionando banco '$NomeBanco' em $Host`:$Porta" -ForegroundColor White
+Write-Host "Provisionando banco '$NomeBanco' em $Host1`:$Porta" -ForegroundColor White
 
 if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
     throw "psql não encontrado no PATH. Instale o PostgreSQL 14+ ou adicione o diretório bin ao PATH."
@@ -153,7 +154,9 @@ $senhaEfetiva = $SenhaPapel
 $senhaGerada  = $false
 if (-not $senhaEfetiva) {
     $bytes        = New-Object byte[] 18
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+    #[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $rng.GetBytes($bytes)
     $senhaEfetiva = [Convert]::ToBase64String($bytes).Replace('+', 'a').Replace('/', 'b').TrimEnd('=')
     $senhaGerada   = $true
 }

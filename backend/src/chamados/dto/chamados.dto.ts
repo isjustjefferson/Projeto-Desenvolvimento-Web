@@ -111,8 +111,8 @@ export class AprovarChamadoDto {
   @IsIn(PRIORIDADES, { message: 'Prioridade inválida.' })
   prioridade!: Prioridade;
 
-  @IsInt({ message: 'Informe um técnico válido.' })
-  tecnicoId!: number;
+  @IsInt({ message: 'Informe um prestador válido.' })
+  prestadorId!: number;
 }
 
 export class ConcluirChamadoDto {
@@ -141,8 +141,8 @@ export class FiltrosChamadosDto {
 
   @IsOptional()
   @Type(() => Number)
-  @IsInt({ message: 'tecnicoid inválido.' })
-  tecnicoId?: number;
+  @IsInt({ message: 'prestadorId inválido.' })
+  prestadorId?: number;
 
   @IsOptional()
   @IsString()

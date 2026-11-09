@@ -11,6 +11,7 @@ import type { UsuarioPublico, UsuarioResumo } from '../contrato.js';
 import { StoreService } from '../dados/store.service.js';
 import { UsuarioEntity } from '../database/entities/usuario.entity.js';
 import { mapUsuarioToContrato } from '../database/mappers/usuario.mapper.js';
+import { papelParaRole, roleParaPapel } from '../database/mappers/papel.mapper.js';
 import { senhaPadrao } from '../dados/seed.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import type { AlterarRoleDto, CriarUsuarioDto } from './dto/usuarios.dto.js';
@@ -48,7 +49,7 @@ export class UsuariosService {
       usuarios: usuarios.map((u) => ({
         id: u.id,
         nome: u.nome,
-        role: u.papel,
+        role: papelParaRole(u.papel),
         especialidade: u.especialidade ?? undefined,
       })),
     };
@@ -58,14 +59,14 @@ export class UsuariosService {
     const email = dados.email.trim().toLowerCase();
     if (this.usaStore()) {
       if (this.store.getUsuarioPorEmail(email)) throw new ConflictException('Este e-mail já está cadastrado.');
-      const role = dados.role ?? 'SOLICITANTE';
+      const role = dados.role ?? 'CONDOMINO';
       const novo: UsuarioInterno = {
         id: this.store.incProximoIdUsuario(),
         nome: dados.nome.trim(),
         email,
         role,
-        especialidade: role === 'TECNICO' ? dados.especialidade?.trim() : undefined,
-        setor: role !== 'TECNICO' ? dados.setor?.trim() : undefined,
+        especialidade: role === 'PRESTADOR' ? dados.especialidade?.trim() : undefined,
+        setor: role !== 'PRESTADOR' ? dados.setor?.trim() : undefined,
         ativo: true,
         criadoEm: new Date().toISOString(),
         senhaHash: bcrypt.hashSync(dados.senha || senhaPadrao, SALT_ROUNDS),
@@ -76,13 +77,13 @@ export class UsuariosService {
     if (await this.usuarioRepo.findOne({ where: { email } })) {
       throw new ConflictException('Este e-mail já está cadastrado.');
     }
-    const role = dados.role ?? 'SOLICITANTE';
+    const role = dados.role ?? 'CONDOMINO';
     const entidade = this.usuarioRepo.create({
       nome: dados.nome.trim(),
       email,
-      papel: role,
-      especialidade: role === 'TECNICO' ? (dados.especialidade?.trim() ?? null) : null,
-      setor: role !== 'TECNICO' ? (dados.setor?.trim() ?? null) : null,
+      papel: roleParaPapel(role),
+      especialidade: role === 'PRESTADOR' ? (dados.especialidade?.trim() ?? null) : null,
+      setor: role !== 'PRESTADOR' ? (dados.setor?.trim() ?? null) : null,
       ativo: true,
       senhaHash: bcrypt.hashSync(dados.senha || senhaPadrao, SALT_ROUNDS),
     });
@@ -108,7 +109,7 @@ export class UsuariosService {
       const admins = await this.usuarioRepo.count({ where: { papel: 'ADMINISTRADOR' } });
       if (admins <= 1) throw new BadRequestException('Não é possível remover o último administrador.');
     }
-    alvo.papel = dados.role;
+    alvo.papel = roleParaPapel(dados.role);
     const salvo = await this.usuarioRepo.save(alvo);
     return { ok: true, usuario: mapUsuarioToContrato(salvo) };
   }

@@ -21,30 +21,30 @@ describe('UsuariosService', () => {
     expect(res.usuarios[0]).not.toHaveProperty('senhaHash');
   });
 
-  it('cria TECNICO com especialidade e senha padrao', async () => {
+  it('cria usuário PRESTADOR com especialidade e senha padrão', async () => {
     const res = await service.criar({
-      nome: 'Fabio Manutencao',
+      nome: 'Fábio Manutenção',
       email: 'fabio@predial.com',
-      role: 'TECNICO',
-      especialidade: 'Climatizacao',
+      role: 'PRESTADOR',
+      especialidade: 'Climatização',
     });
     expect(res.usuario).toMatchObject({
       id: 7,
-      role: 'TECNICO',
-      especialidade: 'Climatizacao',
+      role: 'PRESTADOR',
+      especialidade: 'Climatização',
       ativo: true,
     });
     const interno = store.getUsuarioInternoPorId(7);
     expect(bcrypt.compareSync(senhaPadrao, interno!.senhaHash)).toBe(true);
   });
 
-  it('cria SOLICITANTE por padrao e guarda setor', async () => {
+  it('cria usuário CONDOMINO por padrão e guarda setor', async () => {
     const res = await service.criar({
       nome: 'Denise',
       email: 'denise@predial.com',
       setor: 'Administracao',
     });
-    expect(res.usuario.role).toBe('SOLICITANTE');
+    expect(res.usuario.role).toBe('CONDOMINO');
     expect(res.usuario.especialidade).toBeUndefined();
     expect(res.usuario.setor).toBe('Administracao');
   });
@@ -55,27 +55,27 @@ describe('UsuariosService', () => {
     );
   });
 
-  it('promove e rebaixa um usuario', async () => {
-    const promovido = await service.alterarRole(1, { role: 'GESTOR' }, 6);
-    expect(promovido.usuario.role).toBe('GESTOR');
-    const rebaixado = await service.alterarRole(1, { role: 'SOLICITANTE' }, 6);
-    expect(rebaixado.usuario.role).toBe('SOLICITANTE');
+  it('promove e rebaixa um usuário', async () => {
+    const promovido = await service.alterarRole(1, { role: 'SINDICO' }, 6);
+    expect(promovido.usuario.role).toBe('SINDICO');
+    const rebaixado = await service.alterarRole(1, { role: 'CONDOMINO' }, 6);
+    expect(rebaixado.usuario.role).toBe('CONDOMINO');
   });
 
-  it('bloqueia alterar cargo de usuario inexistente', async () => {
-    await expect(service.alterarRole(999, { role: 'GESTOR' }, 6)).rejects.toThrow(
+  it('bloqueia alterar cargo de usuário inexistente', async () => {
+    await expect(service.alterarRole(999, { role: 'SINDICO' }, 6)).rejects.toThrow(
       'Usuário não encontrado.',
     );
   });
 
-  it('bloqueia acao sobre a propria conta', async () => {
-    await expect(service.alterarRole(6, { role: 'GESTOR' }, 6)).rejects.toThrow(
+  it('bloqueia ação sobre a própria conta', async () => {
+    await expect(service.alterarRole(6, { role: 'SINDICO' }, 6)).rejects.toThrow(
       'Você não pode realizar esta ação na própria conta.',
     );
   });
 
-  it('bloqueia rebaixar/excluir o ultimo administrador', async () => {
-    await expect(service.alterarRole(6, { role: 'GESTOR' }, 5)).rejects.toThrow(
+  it('bloqueia rebaixar/excluir o último administrador', async () => {
+    await expect(service.alterarRole(6, { role: 'SINDICO' }, 5)).rejects.toThrow(
       'Não é possível remover o último administrador.',
     );
     await expect(service.excluir(6, 5)).rejects.toThrow(
@@ -89,8 +89,8 @@ describe('UsuariosService', () => {
       email: 'admin2@predial.com',
       role: 'ADMINISTRADOR',
     });
-    const res = await service.alterarRole(6, { role: 'GESTOR' }, 7);
-    expect(res.usuario.role).toBe('GESTOR');
+    const res = await service.alterarRole(6, { role: 'SINDICO' }, 7);
+    expect(res.usuario.role).toBe('SINDICO');
   });
 
   it('exclui usuario e impede auto-exclusao', async () => {

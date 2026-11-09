@@ -70,8 +70,8 @@ export function useAprovarChamado() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (v: { id: number; prioridade: Prioridade; tecnicoId: number }) =>
-      chamadosApi.aprovar(v.id, v.prioridade, v.tecnicoId),
+    mutationFn: (v: { id: number; prioridade: Prioridade; prestadorId: number }) =>
+      chamadosApi.aprovar(v.id, v.prioridade, v.prestadorId),
     onSuccess: (chamado) => aplicarRetorno(queryClient, chamado),
   });
 }

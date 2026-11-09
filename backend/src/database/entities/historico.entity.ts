@@ -12,6 +12,8 @@ export class HistoricoEntity {
 
   @ManyToOne('ChamadoEntity', 'historicos')
   @JoinColumn({ name: 'chamado_id' })
+  // Relation<> evita emitir a classe na metadata: chamado.entity importa esta
+  // entidade de volta, e no ESM a referência ainda não existiria ao carregar.
   chamado!: Relation<ChamadoEntity>;
 
   @Column({ type: 'integer', name: 'usuario_id', nullable: false })
