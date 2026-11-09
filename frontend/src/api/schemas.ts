@@ -222,9 +222,33 @@ export const respostaChamadoSchema = z.object({
   chamado: chamadoSchema,
 });
 
+export const paginacaoSchema = z.object({
+  pagina: z.number(),
+  limite: z.number(),
+  total: z.number(),
+  totalPaginas: z.number(),
+});
+
+export const resumoChamadosSchema = z.object({
+  total: z.number(),
+  abertos: z.number(),
+  concluidos: z.number(),
+  triagem: z.number(),
+  porStatus: z.record(z.string(), z.number()),
+  porCategoria: z.record(z.string(), z.number()),
+  porPrioridadeAtiva: z.record(z.string(), z.number()),
+  criticasPendentes: z.number(),
+});
+
 export const respostaChamadosSchema = z.object({
   ok: okLiteral,
   chamados: z.array(chamadoSchema),
+  paginacao: paginacaoSchema,
+});
+
+export const respostaResumoChamadosSchema = z.object({
+  ok: okLiteral,
+  resumo: resumoChamadosSchema,
 });
 
 export const respostaDespesaSchema = z.object({

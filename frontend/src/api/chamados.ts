@@ -1,6 +1,15 @@
-import type { Chamado, Prioridade } from '../types';
+import type {
+  Chamado,
+  PaginaChamados,
+  Prioridade,
+  ResumoChamados,
+} from '../types';
 import { get, post } from './client';
-import { respostaChamadoSchema, respostaChamadosSchema } from './schemas';
+import {
+  respostaChamadoSchema,
+  respostaChamadosSchema,
+  respostaResumoChamadosSchema,
+} from './schemas';
 
 export interface NovoChamadoInput {
   titulo: string;
@@ -15,9 +24,45 @@ export interface SolucaoInput {
   materiais: string;
 }
 
-export async function listar(): Promise<Chamado[]> {
-  const res = await get('/chamados', respostaChamadosSchema);
-  return res.chamados;
+export interface FiltrosChamados {
+  status?: Chamado['status'];
+  prioridade?: Prioridade;
+  categoria?: Chamado['categoria'];
+  prestadorId?: number;
+  predio?: string;
+  q?: string;
+  de?: string;
+  ate?: string;
+  criadoPorId?: number;
+  aba?: 'disponiveis' | 'meus';
+  pagina?: number;
+  limite?: number;
+  ordem?: 'asc' | 'desc';
+}
+
+function montarQuery(filtros: FiltrosChamados): string {
+  const params = new URLSearchParams();
+  for (const [chave, valor] of Object.entries(filtros)) {
+    if (valor === undefined || valor === null || valor === '') continue;
+    params.set(chave, String(valor));
+  }
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+export async function listar(
+  filtros: FiltrosChamados = {},
+): Promise<PaginaChamados> {
+  const res = await get(
+    `/chamados${montarQuery(filtros)}`,
+    respostaChamadosSchema,
+  );
+  return { chamados: res.chamados, paginacao: res.paginacao };
+}
+
+export async function resumo(): Promise<ResumoChamados> {
+  const res = await get('/chamados/resumo', respostaResumoChamadosSchema);
+  return res.resumo;
 }
 
 export async function obter(id: number): Promise<Chamado> {

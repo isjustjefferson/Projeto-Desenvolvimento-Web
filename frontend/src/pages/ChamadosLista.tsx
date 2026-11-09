@@ -6,19 +6,19 @@ import { useChamados } from '../hooks/useChamados';
 import { useDiretorio } from '../hooks/useUsuarios';
 import { useVisualizacao, type Visualizacao } from '../hooks/useVisualizacao';
 import { mensagemDeErro } from '../api/client';
+import type { FiltrosChamados } from '../api/chamados';
 import {
-  chamadosVisiveis,
   pode,
   statusVisiveisPorRole,
   prestadorSemEspecialidade,
 } from '../rbac';
-import { categoriaLabel, paginar, prioridadeLabel, statusLabel } from '../helpers';
+import { categoriaLabel, prioridadeLabel, statusLabel } from '../helpers';
 import { ChamadoCard, ChamadoLinha } from '../components/ChamadoItem';
 import { EmptyState } from '../components/EmptyState';
 import { Paginacao } from '../components/Paginacao';
-import type { Status } from '../types';
+import type { Categoria, Prioridade, Status } from '../types';
 
-const POR_PAGINA = 8;
+const POR_PAGINA = 6;
 
 const opcoesVisualizacao: { valor: Visualizacao; rotulo: string; icone: typeof List }[] = [
   { valor: 'cards', rotulo: 'Visualização em cards', icone: LayoutGrid },
@@ -27,8 +27,7 @@ const opcoesVisualizacao: { valor: Visualizacao; rotulo: string; icone: typeof L
 
 export function ChamadosLista() {
   const { usuario } = useAuth();
-  const { data: chamados = [], isPending, error } = useChamados();
-  const { nomeUsuario } = useDiretorio();
+  const { usuarios = [], nomeUsuario } = useDiretorio();
   const [params, setParams] = useSearchParams();
   const [busca, setBusca] = useState('');
   const [aba, setAba] = useState<'disponiveis' | 'meus'>('disponiveis');
@@ -65,56 +64,40 @@ export function ChamadosLista() {
   const setFiltroPrioridade = definirFiltroUrl('prioridade');
   const setFiltroCategoria = definirFiltroUrl('categoria');
 
-  const visiveis = useMemo(() => {
-    if (!usuario) return [];
-    return chamadosVisiveis(chamados, usuario)
-      .filter((c) => {
-        // Prestador: aba de disponíveis (da especialidade dele, ainda sem prestador)
-        // ou de meus atribuídos
-        if (usuario.role === 'PRESTADOR') {
-          if (aba === 'disponiveis') {
-            if (c.prestadorId) return false;
-          } else {
-            if (c.prestadorId !== usuario.id) return false;
-          }
-        }
-
-        // Síndico: filtrar por próprios chamados ou por condômino
-        if (usuario.role === 'SINDICO') {
-          if (aba === 'meus') {
-            if (c.criadoPorId !== usuario.id) return false;
-          }
-        }
-
-        // Filtros manuais
-        if (filtroStatus && c.status !== filtroStatus) return false;
-        if (filtroPrioridade && c.prioridade !== filtroPrioridade) return false;
-        if (filtroCategoria && c.categoria !== filtroCategoria) return false;
-        if (filtroCondomino) {
-          if (c.criadoPorId !== Number(filtroCondomino)) return false;
-        }
-        if (busca) {
-          const termo = busca.toLowerCase();
-          const match =
-            c.titulo.toLowerCase().includes(termo) ||
-            c.descricao.toLowerCase().includes(termo) ||
-            c.local.predio.toLowerCase().includes(termo);
-          if (!match) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime());
-  }, [chamados, usuario, aba, filtroStatus, filtroPrioridade, filtroCategoria, busca, filtroCondomino]);
-
   // Mudou a busca, um filtro ou a aba: a página guardada é de outro recorte,
   // então volta para a primeira (sem efeito colateral de re-render).
-  const chaveRecorte = [aba, filtroStatus, filtroPrioridade, filtroCategoria, filtroCondomino, busca].join('|');
+  const chaveRecorte = [
+    aba,
+    filtroStatus,
+    filtroPrioridade,
+    filtroCategoria,
+    filtroCondomino,
+    busca,
+  ].join('|');
   const [paginacao, setPaginacao] = useState({ chave: chaveRecorte, pagina: 1 });
-  const pagina = paginar(
-    visiveis,
-    paginacao.chave === chaveRecorte ? paginacao.pagina : 1,
-    POR_PAGINA,
-  );
+  const paginaAtual =
+    paginacao.chave === chaveRecorte ? paginacao.pagina : 1;
+  const filtros: FiltrosChamados = {
+    aba:
+      usuario?.role === 'PRESTADOR' || usuario?.role === 'SINDICO'
+        ? aba
+        : undefined,
+    status: filtroStatus ? (filtroStatus as Status) : undefined,
+    prioridade: filtroPrioridade
+      ? (filtroPrioridade as Prioridade)
+      : undefined,
+    categoria: filtroCategoria
+      ? (filtroCategoria as Categoria)
+      : undefined,
+    criadoPorId: filtroCondomino ? Number(filtroCondomino) : undefined,
+    q: busca.trim() || undefined,
+    pagina: paginaAtual,
+    limite: POR_PAGINA,
+    ordem: 'desc',
+  };
+  const { data, isPending, error } = useChamados(filtros);
+  const chamados = data?.chamados ?? [];
+  const meta = data?.paginacao;
   const irParaPagina = (n: number) => {
     setPaginacao({ chave: chaveRecorte, pagina: n });
     window.scrollTo?.({ top: 0, behavior: 'smooth' });
@@ -126,13 +109,14 @@ export function ChamadosLista() {
     busca || filtroStatus || filtroPrioridade || filtroCategoria || filtroCondomino,
   );
 
-  const condominos = useMemo(() => {
-    const ids = new Set<number>();
-    for (const c of chamados) ids.add(c.criadoPorId);
-    return Array.from(ids)
-      .map((id) => ({ id, nome: nomeUsuario(id) }))
-      .sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [chamados, nomeUsuario]);
+  const condominos = useMemo(
+    () =>
+      usuarios
+        .filter((u) => u.role !== 'PRESTADOR')
+        .map((u) => ({ id: u.id, nome: u.nome }))
+        .sort((a, b) => a.nome.localeCompare(b.nome)),
+    [usuarios],
+  );
 
   return (
     <div className="space-y-4">
@@ -302,7 +286,7 @@ export function ChamadosLista() {
         <div className="card py-12 text-center text-red-500">
           {mensagemDeErro(error, 'Não foi possível carregar os chamados.')}
         </div>
-      ) : visiveis.length === 0 ? (
+      ) : chamados.length === 0 ? (
         <div className="card">
           <EmptyState
             icon={Inbox}
@@ -346,21 +330,21 @@ export function ChamadosLista() {
         <>
           {visualizacao === 'cards' ? (
             <div className="space-y-3">
-              {pagina.itens.map((c) => (
+              {chamados.map((c) => (
                 <ChamadoCard key={c.id} chamado={c} nomeUsuario={nomeUsuario} />
               ))}
             </div>
           ) : (
             <div className="card !p-0 divide-y divide-gray-100 overflow-hidden">
-              {pagina.itens.map((c) => (
+              {chamados.map((c) => (
                 <ChamadoLinha key={c.id} chamado={c} />
               ))}
             </div>
           )}
           <Paginacao
-            pagina={pagina.pagina}
-            totalPaginas={pagina.totalPaginas}
-            total={pagina.total}
+            pagina={meta?.pagina ?? paginaAtual}
+            totalPaginas={meta?.totalPaginas ?? 1}
+            total={meta?.total ?? chamados.length}
             onMudar={irParaPagina}
           />
         </>

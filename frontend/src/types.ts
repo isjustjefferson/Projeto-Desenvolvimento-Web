@@ -15,6 +15,8 @@ import type {
   usuarioResumoSchema,
   usuarioSchema,
   despesaSchema,
+  paginacaoSchema,
+  resumoChamadosSchema,
 } from './api/schemas';
 
 // Os tipos de payload vêm dos schemas Zod (fonte única da verdade e validação
@@ -49,6 +51,15 @@ export type Chamado = z.infer<typeof chamadoSchema>;
 export type Despesa = z.infer<typeof despesaSchema>;
 
 export type ResumoFinanceiro = z.infer<typeof resumoFinanceiroSchema>;
+
+export type Paginacao = z.infer<typeof paginacaoSchema>;
+
+export type ResumoChamados = z.infer<typeof resumoChamadosSchema>;
+
+export interface PaginaChamados {
+  chamados: Chamado[];
+  paginacao: Paginacao;
+}
 
 export interface AuthState {
   usuario: Usuario | null;

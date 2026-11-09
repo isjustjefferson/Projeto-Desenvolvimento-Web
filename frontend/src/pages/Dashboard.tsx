@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -8,12 +8,11 @@ import {
   Inbox,
   Users,
 } from 'lucide-react';
-import { useChamados } from '../hooks/useChamados';
+import { useChamados, useResumoChamados } from '../hooks/useChamados';
 import { useDiretorio } from '../hooks/useUsuarios';
 import { useAuth } from '../context/AuthContext';
 import { mensagemDeErro } from '../api/client';
 import {
-  chamadosVisiveis,
   especialidadeParaCategoria,
   pode,
   statusVisiveisPorRole,
@@ -50,91 +49,43 @@ const prioridadeIconeCor: Record<Prioridade, string> = {
 };
 
 export function Dashboard() {
-  const { data: chamados = [], isPending, error, refetch } = useChamados();
   const { usuario } = useAuth();
   const { nomeUsuario } = useDiretorio();
   const navigate = useNavigate();
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroPrioridade, setFiltroPrioridade] = useState('');
-
-  // Chamados que o perfil pode enxergar (recorte por papel/especialidade)
-  const visiveis = useMemo(
-    () => (usuario ? chamadosVisiveis(chamados, usuario) : []),
-    [chamados, usuario],
-  );
-
-  const dados = useMemo(() => {
-    if (!usuario) {
-      return {
-        abertos: 0,
-        concluidos: 0,
-        triagem: 0,
-        porStatus: {} as Record<string, number>,
-        porCategoria: {} as Record<string, number>,
-        porPrioridadeAtiva: {} as Record<Prioridade, number>,
-        criticasPendentes: 0,
-      };
-    }
-    const porStatus = visiveis.reduce<Record<string, number>>((acc, c) => {
-      acc[c.status] = (acc[c.status] || 0) + 1;
-      return acc;
-    }, {});
-    const porCategoria = visiveis.reduce<Record<string, number>>((acc, c) => {
-      acc[c.categoria] = (acc[c.categoria] || 0) + 1;
-      return acc;
-    }, {});
-    const porPrioridadeAtiva = prioridades.reduce(
-      (acc, p) => {
-        acc[p] = visiveis.filter(
-          (c) => c.prioridade === p && c.status !== 'CONCLUIDO',
-        ).length;
-        return acc;
-      },
-      {} as Record<Prioridade, number>,
-    );
-    return {
-      abertos: visiveis.filter((c) => c.status !== 'CONCLUIDO').length,
-      concluidos: visiveis.filter((c) => c.status === 'CONCLUIDO').length,
-      triagem: porStatus['AGUARDANDO_APROVACAO'] || 0,
-      porStatus,
-      porCategoria,
-      porPrioridadeAtiva,
-      criticasPendentes: porPrioridadeAtiva['CRITICA'],
-    };
-  }, [visiveis, usuario]);
-
   const podeVerTriagem = usuario ? pode(usuario.role, 'triar') : false;
 
-  // Fila de atendimento: quem espera há mais tempo vem primeiro
-  const filaTriagem = useMemo(
-    () =>
-      visiveis
-        .filter((c) => c.status === 'AGUARDANDO_APROVACAO')
-        .sort(
-          (a, b) =>
-            new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime(),
-        ),
-    [visiveis],
+  const resumoConsulta = useResumoChamados();
+  const tabela = useChamados({
+    limite: 8,
+    ordem: 'desc',
+    status: filtroStatus ? (filtroStatus as Status) : undefined,
+    prioridade: filtroPrioridade
+      ? (filtroPrioridade as Prioridade)
+      : undefined,
+  });
+  const filaConsulta = useChamados(
+    { status: 'AGUARDANDO_APROVACAO', ordem: 'asc', limite: 5 },
+    { enabled: podeVerTriagem },
   );
 
-  const filtrados = useMemo(
-    () =>
-      visiveis
-        .filter((c) => {
-          if (filtroStatus && c.status !== filtroStatus) return false;
-          if (filtroPrioridade && c.prioridade !== filtroPrioridade) return false;
-          return true;
-        })
-        .sort(
-          (a, b) =>
-            new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime(),
-        ),
-    [visiveis, filtroStatus, filtroPrioridade],
-  );
-
+  const dados = resumoConsulta.data ?? {
+    total: 0,
+    abertos: 0,
+    concluidos: 0,
+    triagem: 0,
+    porStatus: {} as Record<string, number>,
+    porCategoria: {} as Record<string, number>,
+    porPrioridadeAtiva: {} as Record<Prioridade, number>,
+    criticasPendentes: 0,
+  };
+  const listaChamados = tabela.data?.chamados ?? [];
+  const totalFiltrado = tabela.data?.paginacao.total ?? 0;
+  const filaTriagem = filaConsulta.data?.chamados ?? [];
   const semEspecialidade = usuario ? prestadorSemEspecialidade(usuario) : false;
-
-  const listaChamados = filtrados.slice(0, 8);
+  const isPending = resumoConsulta.isPending || tabela.isPending;
+  const error = resumoConsulta.error ?? tabela.error;
 
   if (!usuario) return null;
 
@@ -152,7 +103,14 @@ export function Dashboard() {
         <p className="text-red-500">
           {mensagemDeErro(error, 'Não foi possível carregar os chamados.')}
         </p>
-        <button onClick={() => void refetch()} className="btn-secondary">
+        <button
+          onClick={() => {
+            void resumoConsulta.refetch();
+            void tabela.refetch();
+            if (podeVerTriagem) void filaConsulta.refetch();
+          }}
+          className="btn-secondary"
+        >
           Tentar novamente
         </button>
       </div>
@@ -357,7 +315,7 @@ export function Dashboard() {
                   </p>
                 </div>
               </div>
-              {filaTriagem.length > 0 && (
+              {dados.triagem > 0 && (
                 <Link
                   to="/chamados?status=AGUARDANDO_APROVACAO"
                   className="shrink-0 text-sm font-medium text-brand-700 hover:underline"
@@ -382,7 +340,7 @@ export function Dashboard() {
                   </Link>
                 </li>
               ))}
-              {filaTriagem.length === 0 && (
+              {dados.triagem === 0 && (
                 <li className="text-sm text-gray-400">
                   Nenhum chamado aguardando aprovação.
                 </li>
@@ -433,7 +391,7 @@ export function Dashboard() {
               Lista e Filtro de Chamados
             </h2>
             <p className="text-xs text-gray-500">
-              {filtrados.length} de {visiveis.length} chamados
+              {totalFiltrado} de {dados.total} chamados
             </p>
           </div>
           <Link to="/chamados" className="btn-secondary">

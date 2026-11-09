@@ -6,23 +6,40 @@ import {
 } from '@tanstack/react-query';
 import * as chamadosApi from '../api/chamados';
 import * as despesasApi from '../api/despesas';
-import type { NovoChamadoInput, SolucaoInput } from '../api/chamados';
+import type {
+  FiltrosChamados,
+  NovoChamadoInput,
+  SolucaoInput,
+} from '../api/chamados';
 import type { CriarDespesaInput, EditarDespesaInput, AnexarDespesaInput } from '../api/despesas';
 import { useAuth } from '../context/AuthContext';
 import { chaves } from '../query/keys';
-import type { Chamado, Prioridade } from '../types';
+import type { Chamado, PaginaChamados, Prioridade } from '../types';
 
 // Substitui o antigo ChamadosContext: leitura via useQuery (cache, revalidação
 // e estados prontos) e escrita via useMutation (invalidação automática — sumiu
 // o recarregar() manual em cada página).
 
 // Só busca com sessão ativa, para não disparar 401 (→ logout) em tela sem usuário.
-export function useChamados() {
+export function useChamados(
+  filtros: FiltrosChamados = {},
+  opcoes: { enabled?: boolean } = {},
+) {
   const { usuario } = useAuth();
 
   return useQuery({
-    queryKey: chaves.chamados,
-    queryFn: chamadosApi.listar,
+    queryKey: chaves.listaChamados(filtros),
+    queryFn: () => chamadosApi.listar(filtros),
+    enabled: Boolean(usuario) && (opcoes.enabled ?? true),
+  });
+}
+
+export function useResumoChamados() {
+  const { usuario } = useAuth();
+
+  return useQuery({
+    queryKey: chaves.resumoChamados,
+    queryFn: chamadosApi.resumo,
     enabled: Boolean(usuario),
   });
 }
@@ -35,22 +52,43 @@ export function useChamado(id: number | undefined) {
     queryKey: chaves.chamado(id ?? 0),
     queryFn: () => chamadosApi.obter(id as number),
     enabled: id !== undefined && Boolean(usuario),
-    // Abrindo um chamado a partir da lista, reaproveita o que já está em cache
-    // em vez de buscar de novo (era o que o getChamado() do context fazia).
-    initialData: () =>
-      queryClient
-        .getQueryData<Chamado[]>(chaves.chamados)
-        ?.find((c) => c.id === id),
-    initialDataUpdatedAt: () =>
-      queryClient.getQueryState<Chamado[]>(chaves.chamados)?.dataUpdatedAt,
+    // Abrindo um chamado a partir de uma lista, reaproveita o que já está em
+    // cache em vez de buscar de novo.
+    initialData: () => {
+      if (id === undefined) return undefined;
+      const paginas = queryClient.getQueriesData<PaginaChamados>({
+        queryKey: chaves.listasChamados,
+      });
+      for (const [, pagina] of paginas) {
+        const chamado = pagina?.chamados.find((c) => c.id === id);
+        if (chamado) return chamado;
+      }
+      return undefined;
+    },
+    initialDataUpdatedAt: () => {
+      const paginas = queryClient.getQueriesData<PaginaChamados>({
+        queryKey: chaves.listasChamados,
+      });
+      return Math.max(
+        0,
+        ...paginas.map(
+          ([chave]) => queryClient.getQueryState(chave)?.dataUpdatedAt ?? 0,
+        ),
+      );
+    },
   });
 }
 
+function invalidarListas(qc: QueryClient) {
+  void qc.invalidateQueries({ queryKey: chaves.listasChamados });
+  void qc.invalidateQueries({ queryKey: chaves.resumoChamados, exact: true });
+}
+
 // O backend já devolve o chamado atualizado: grava o detalhe na hora e deixa
-// só a listagem ser refetchada (exata, para não sobrescrever o detalhe novo).
+// só a listagem/resumo serem refetchados.
 function aplicarRetorno(qc: QueryClient, chamado: Chamado) {
   qc.setQueryData(chaves.chamado(chamado.id), chamado);
-  void qc.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+  invalidarListas(qc);
 }
 
 export function useCriarChamado() {
@@ -58,11 +96,7 @@ export function useCriarChamado() {
 
   return useMutation({
     mutationFn: (input: NovoChamadoInput) => chamadosApi.criar(input),
-    onSuccess: () =>
-      void queryClient.invalidateQueries({
-        queryKey: chaves.chamados,
-        exact: true,
-      }),
+    onSuccess: () => invalidarListas(queryClient),
   });
 }
 
@@ -103,7 +137,7 @@ export function useCriarDespesa() {
       despesasApi.criarDespesa(v.chamadoId, v.input),
     onSuccess: (_d, v) => {
       void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
-      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      invalidarListas(queryClient);
       void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
     },
   });
@@ -117,7 +151,7 @@ export function useEditarDespesa() {
       despesasApi.editarDespesa(v.chamadoId, v.despesaId, v.input),
     onSuccess: (_d, v) => {
       void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
-      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      invalidarListas(queryClient);
       void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
     },
   });
@@ -131,7 +165,7 @@ export function useRemoverDespesa() {
       despesasApi.removerDespesa(v.chamadoId, v.despesaId),
     onSuccess: (_r, v) => {
       void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
-      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      invalidarListas(queryClient);
       void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
     },
   });
@@ -145,7 +179,7 @@ export function useAnexarDespesa() {
       despesasApi.anexarDespesa(v.chamadoId, v.despesaId, v.input),
     onSuccess: (_d, v) => {
       void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
-      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      invalidarListas(queryClient);
       void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
     },
   });
@@ -159,7 +193,7 @@ export function useRemoverAnexoDespesa() {
       despesasApi.removerAnexoDespesa(v.chamadoId, v.despesaId, v.anexoId),
     onSuccess: (_d, v) => {
       void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
-      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      invalidarListas(queryClient);
       void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
     },
   });
@@ -173,7 +207,7 @@ export function useAprovarDespesa() {
       despesasApi.aprovarDespesa(v.chamadoId, v.despesaId),
     onSuccess: (_d, v) => {
       void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
-      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      invalidarListas(queryClient);
       void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
     },
   });
@@ -187,7 +221,7 @@ export function useRejeitarDespesa() {
       despesasApi.rejeitarDespesa(v.chamadoId, v.despesaId, v.motivo),
     onSuccess: (_d, v) => {
       void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
-      void queryClient.invalidateQueries({ queryKey: chaves.chamados, exact: true });
+      invalidarListas(queryClient);
       void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
     },
   });
