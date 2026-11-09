@@ -40,6 +40,11 @@ export class ChamadosController {
     return this.chamados.listar(usuario, filtros);
   }
 
+  @Get('resumo')
+  resumo(@UsuarioAtual() usuario: UsuarioInterno) {
+    return this.chamados.resumo(usuario);
+  }
+
   @Get(':id')
   obter(
     @Param('id', ParseIntPipe) id: number,

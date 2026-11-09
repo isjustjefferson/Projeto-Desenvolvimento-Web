@@ -159,6 +159,24 @@ export interface Chamado {
   resumoFinanceiro?: ResumoFinanceiro;
 }
 
+export interface PaginacaoChamados {
+  pagina: number;
+  limite: number;
+  total: number;
+  totalPaginas: number;
+}
+
+export interface ResumoChamados {
+  total: number;
+  abertos: number;
+  concluidos: number;
+  triagem: number;
+  porStatus: Partial<Record<Status, number>>;
+  porCategoria: Partial<Record<Categoria, number>>;
+  porPrioridadeAtiva: Record<Prioridade, number>;
+  criticasPendentes: number;
+}
+
 export interface NovoChamadoInput {
   titulo: string;
   descricao: string;

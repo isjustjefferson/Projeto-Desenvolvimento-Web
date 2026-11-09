@@ -6,8 +6,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as crypto from 'node:crypto';
-import type { DataSource, Repository } from 'typeorm';
-import type { AnexoDespesa, Chamado, Despesa, ResumoFinanceiro, Status } from '../contrato.js';
+import { Brackets, In, type DataSource, type Repository, type SelectQueryBuilder } from 'typeorm';
+import type {
+  AnexoDespesa,
+  Categoria,
+  Chamado,
+  Despesa,
+  PaginacaoChamados,
+  Prioridade,
+  ResumoChamados,
+  ResumoFinanceiro,
+  Status,
+} from '../contrato.js';
 import { anexoSemConteudo, despesaSemConteudo } from '../common/anexos.js';
 import { StoreService } from '../dados/store.service.js';
 import { ChamadoEntity } from '../database/entities/chamado.entity.js';
@@ -38,6 +48,22 @@ const STATUS_CONDOMINO: Status[] = [
   'CONCLUIDO',
 ];
 
+const STATUS_PRESTADOR: Status[] = ['REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'];
+
+const CATEGORIAS: Categoria[] = [
+  'ELETRICA',
+  'HIDRAULICA',
+  'CLIMATIZACAO',
+  'MOBILIARIO',
+  'ESTRUTURAL',
+  'OUTROS',
+];
+
+const PRIORIDADES: Prioridade[] = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'];
+
+const LIMITE_PADRAO = 20;
+const LIMITE_MAXIMO = 100;
+
 const MIME_PERMITIDOS = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
 const TAMANHO_MAX_ANEXO = 5 * 1024 * 1024;
 const MAX_ANEXOS_POR_DESPESA = 5;
@@ -58,24 +84,145 @@ export class ChamadosService {
   async listar(
     usuario: UsuarioInterno,
     filtros: FiltrosChamadosDto,
-  ): Promise<{ ok: true; chamados: Chamado[] }> {
+  ): Promise<{
+    ok: true;
+    chamados: Chamado[];
+    paginacao: PaginacaoChamados;
+  }> {
     if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
-      const chamados = this.store
+      const encontrados = this.store
         .getChamados()
         .filter((c) => this.noEscopo(c, usuario))
-        .filter((c) => this.atendeFiltros(c, filtros))
-        .map((c) => this.prepararChamadoParaResposta(c, usuario, false));
-      return { ok: true, chamados };
+        .filter((c) => this.atendeAba(c, usuario, filtros.aba))
+        .filter((c) => this.atendeFiltros(c, filtros));
+      const { itens, paginacao } = this.paginar(encontrados, filtros);
+      return {
+        ok: true,
+        chamados: itens.map((c) =>
+          this.prepararChamadoParaResposta(c, usuario, false),
+        ),
+        paginacao,
+      };
     }
-    const chamadosEnt = await this.chamadoRepo.find({
-      relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
-    } as any);
+
+    const ordem = filtros.ordem === 'desc' ? 'DESC' : 'ASC';
+    const qb = this.chamadoRepo
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.local', 'local')
+      .leftJoinAndSelect('c.criadoPor', 'criadoPor')
+      .leftJoinAndSelect('c.tecnico', 'tecnico');
+    this.aplicarEscopoQuery(qb, usuario, filtros.aba);
+    this.aplicarFiltrosQuery(qb, filtros);
+
+    const total = await qb.getCount();
+    const { pagina, limite, totalPaginas } = this.calcularPaginacao(
+      total,
+      filtros,
+    );
+    const chamadosEnt = await qb
+      .orderBy('c.criadoEm', ordem)
+      .addOrderBy('c.id', ordem)
+      .skip((pagina - 1) * limite)
+      .take(limite)
+      .getMany();
+
+    const ids = chamadosEnt.map((c) => c.id);
+    const historicos = ids.length
+      ? await this.historicoRepo.find({
+          where: { chamadoId: In(ids) } as any,
+          order: { dataHora: 'DESC', id: 'DESC' } as any,
+        })
+      : [];
+    const historicosPorChamado = new Map<number, any[]>();
+    for (const historico of historicos as any[]) {
+      const lista = historicosPorChamado.get(historico.chamadoId) ?? [];
+      lista.push(historico);
+      historicosPorChamado.set(historico.chamadoId, lista);
+    }
+    for (const chamado of chamadosEnt as any[]) {
+      chamado.historicos = historicosPorChamado.get(chamado.id) ?? [];
+    }
+
     const chamados = chamadosEnt
       .map((c: any) => mapChamadoToContrato(c))
-      .filter((c: any) => this.noEscopoContrato(c, usuario))
-      .filter((c: any) => this.atendeFiltrosContrato(c, filtros))
-      .map((c: any) => this.prepararChamadoParaRespostaContrato(c as any, usuario, false));
-    return { ok: true, chamados: chamados as any };
+      .map((c: any) =>
+        this.prepararChamadoParaRespostaContrato(c as any, usuario, false),
+      );
+    return {
+      ok: true,
+      chamados: chamados as any,
+      paginacao: { pagina, limite, total, totalPaginas },
+    };
+  }
+
+  async resumo(usuario: UsuarioInterno): Promise<{
+    ok: true;
+    resumo: ResumoChamados;
+  }> {
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      const visiveis = this.store
+        .getChamados()
+        .filter((c) => this.noEscopoResumo(c, usuario));
+      return { ok: true, resumo: this.calcularResumoChamados(visiveis) };
+    }
+
+    const qb = this.chamadoRepo.createQueryBuilder('c');
+    this.aplicarEscopoResumoQuery(qb, usuario);
+
+    const porStatusRaw = await qb
+      .clone()
+      .select('c.status', 'status')
+      .addSelect('COUNT(*)', 'total')
+      .groupBy('c.status')
+      .getRawMany<{ status: Status; total: string }>();
+    const porCategoriaRaw = await qb
+      .clone()
+      .select('c.categoria', 'categoria')
+      .addSelect('COUNT(*)', 'total')
+      .groupBy('c.categoria')
+      .getRawMany<{ categoria: Categoria; total: string }>();
+    const porPrioridadeRaw = await qb
+      .clone()
+      .select('c.prioridade', 'prioridade')
+      .addSelect('COUNT(*)', 'total')
+      .andWhere('c.status != :concluido', { concluido: 'CONCLUIDO' })
+      .andWhere('c.prioridade IS NOT NULL')
+      .groupBy('c.prioridade')
+      .getRawMany<{ prioridade: Prioridade; total: string }>();
+
+    const porStatus: Partial<Record<Status, number>> = {};
+    for (const linha of porStatusRaw) {
+      porStatus[linha.status] = Number(linha.total);
+    }
+    const porCategoria: Partial<Record<Categoria, number>> = {};
+    for (const linha of porCategoriaRaw) {
+      porCategoria[linha.categoria] = Number(linha.total);
+    }
+    const porPrioridadeAtiva = Object.fromEntries(
+      PRIORIDADES.map((prioridade) => [prioridade, 0]),
+    ) as Record<Prioridade, number>;
+    for (const linha of porPrioridadeRaw) {
+      porPrioridadeAtiva[linha.prioridade] = Number(linha.total);
+    }
+
+    const total = Object.values(porStatus).reduce(
+      (soma, valor) => soma + (valor ?? 0),
+      0,
+    );
+    const concluidos = porStatus.CONCLUIDO ?? 0;
+    return {
+      ok: true,
+      resumo: {
+        total,
+        abertos: total - concluidos,
+        concluidos,
+        triagem: porStatus.AGUARDANDO_APROVACAO ?? 0,
+        porStatus,
+        porCategoria,
+        porPrioridadeAtiva,
+        criticasPendentes: porPrioridadeAtiva.CRITICA,
+      },
+    };
   }
 
   async obterPorId(id: number, usuario: UsuarioInterno): Promise<{ ok: true; chamado: Chamado }> {
@@ -391,11 +538,257 @@ export class ChamadosService {
     return c.prestadorId === usuario.id || c.status === 'REVISADO';
   }
 
+  private atendeAba(
+    c: Chamado,
+    usuario: UsuarioInterno,
+    aba?: FiltrosChamadosDto['aba'],
+  ): boolean {
+    if (!aba) return true;
+    if (usuario.role === 'PRESTADOR') {
+      if (aba === 'disponiveis') {
+        if (c.prestadorId || c.status !== 'REVISADO') return false;
+        const categoria = this.categoriaDoPrestador(usuario);
+        return categoria !== null && c.categoria === categoria;
+      }
+      return c.prestadorId === usuario.id;
+    }
+    if (aba === 'meus' && usuario.role !== 'CONDOMINO') {
+      return c.criadoPorId === usuario.id;
+    }
+    return true;
+  }
+
+  private noEscopoResumo(c: Chamado, usuario: UsuarioInterno): boolean {
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') {
+      return true;
+    }
+    if (usuario.role === 'CONDOMINO') {
+      return (
+        c.criadoPorId === usuario.id && STATUS_CONDOMINO.includes(c.status)
+      );
+    }
+    if (!STATUS_PRESTADOR.includes(c.status)) return false;
+    const categoria = this.categoriaDoPrestador(usuario);
+    return (
+      c.prestadorId === usuario.id ||
+      (categoria !== null && c.categoria === categoria)
+    );
+  }
+
+  private categoriaDoPrestador(usuario: UsuarioInterno): Categoria | null {
+    if (usuario.role !== 'PRESTADOR' || !usuario.especialidade) return null;
+    const normalizada = usuario.especialidade
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toUpperCase();
+    return CATEGORIAS.find((categoria) => categoria === normalizada) ?? null;
+  }
+
+  private calcularPaginacao(
+    total: number,
+    filtros: FiltrosChamadosDto,
+  ): { pagina: number; limite: number; total: number; totalPaginas: number } {
+    const limite = Math.min(filtros.limite ?? LIMITE_PADRAO, LIMITE_MAXIMO);
+    const totalPaginas = Math.max(1, Math.ceil(total / limite));
+    const pagina = Math.min(filtros.pagina ?? 1, totalPaginas);
+    return { pagina, limite, total, totalPaginas };
+  }
+
+  private paginar(
+    chamados: Chamado[],
+    filtros: FiltrosChamadosDto,
+  ): { itens: Chamado[]; paginacao: PaginacaoChamados } {
+    const { pagina, limite, total, totalPaginas } = this.calcularPaginacao(
+      chamados.length,
+      filtros,
+    );
+    const direcao = filtros.ordem === 'desc' ? -1 : 1;
+    const ordenados = chamados.slice().sort((a, b) => {
+      const diferenca =
+        new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime() ||
+        a.id - b.id;
+      return diferenca * direcao;
+    });
+    return {
+      itens: ordenados.slice((pagina - 1) * limite, pagina * limite),
+      paginacao: { pagina, limite, total, totalPaginas },
+    };
+  }
+
+  private calcularResumoChamados(chamados: Chamado[]): ResumoChamados {
+    const porStatus: Partial<Record<Status, number>> = {};
+    const porCategoria: Partial<Record<Categoria, number>> = {};
+    const porPrioridadeAtiva = Object.fromEntries(
+      PRIORIDADES.map((prioridade) => [prioridade, 0]),
+    ) as Record<Prioridade, number>;
+    for (const chamado of chamados) {
+      porStatus[chamado.status] = (porStatus[chamado.status] ?? 0) + 1;
+      porCategoria[chamado.categoria] =
+        (porCategoria[chamado.categoria] ?? 0) + 1;
+      if (
+        chamado.status !== 'CONCLUIDO' &&
+        chamado.prioridade !== null
+      ) {
+        porPrioridadeAtiva[chamado.prioridade] += 1;
+      }
+    }
+    const concluidos = porStatus.CONCLUIDO ?? 0;
+    return {
+      total: chamados.length,
+      abertos: chamados.length - concluidos,
+      concluidos,
+      triagem: porStatus.AGUARDANDO_APROVACAO ?? 0,
+      porStatus,
+      porCategoria,
+      porPrioridadeAtiva,
+      criticasPendentes: porPrioridadeAtiva.CRITICA,
+    };
+  }
+
+  private aplicarEscopoQuery(
+    qb: SelectQueryBuilder<ChamadoEntity>,
+    usuario: UsuarioInterno,
+    aba?: FiltrosChamadosDto['aba'],
+  ): void {
+    qb.setParameters({
+      uid: usuario.id,
+      revisado: 'REVISADO',
+      statusCondomino: STATUS_CONDOMINO,
+      statusPrestador: STATUS_PRESTADOR,
+    });
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') {
+      if (aba === 'meus') {
+        qb.andWhere('c.criadoPorId = :uid');
+      }
+      return;
+    }
+    if (usuario.role === 'CONDOMINO') {
+      qb.andWhere('c.criadoPorId = :uid').andWhere(
+        'c.status IN (:...statusCondomino)',
+      );
+      return;
+    }
+    if (aba === 'disponiveis') {
+      qb.andWhere('c.status = :revisado').andWhere(
+        'c.tecnicoId IS NULL',
+      );
+      const categoria = this.categoriaDoPrestador(usuario);
+      if (categoria) {
+        qb.andWhere('c.categoria = :categoriaPrestador', {
+          categoriaPrestador: categoria,
+        });
+      } else {
+        qb.andWhere('1 = 0');
+      }
+      return;
+    }
+    if (aba === 'meus') {
+      qb.andWhere('c.tecnicoId = :uid').andWhere(
+        'c.status IN (:...statusPrestador)',
+      );
+      return;
+    }
+    qb.andWhere(
+      new Brackets((where) =>
+        where
+          .where('c.status = :revisado')
+          .orWhere('c.tecnicoId = :uid'),
+      ),
+    );
+  }
+
+  private aplicarEscopoResumoQuery(
+    qb: SelectQueryBuilder<ChamadoEntity>,
+    usuario: UsuarioInterno,
+  ): void {
+    qb.setParameters({
+      uid: usuario.id,
+      statusCondomino: STATUS_CONDOMINO,
+      statusPrestador: STATUS_PRESTADOR,
+    });
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') {
+      return;
+    }
+    if (usuario.role === 'CONDOMINO') {
+      qb.andWhere('c.criadoPorId = :uid').andWhere(
+        'c.status IN (:...statusCondomino)',
+      );
+      return;
+    }
+    qb.andWhere('c.status IN (:...statusPrestador)');
+    const categoria = this.categoriaDoPrestador(usuario);
+    if (categoria) {
+      qb.andWhere(
+        new Brackets((where) =>
+          where
+            .where('c.tecnicoId = :uid')
+            .orWhere('c.categoria = :categoriaPrestador', {
+              categoriaPrestador: categoria,
+            }),
+        ),
+      );
+    } else {
+      qb.andWhere('c.tecnicoId = :uid');
+    }
+  }
+
+  private aplicarFiltrosQuery(
+    qb: SelectQueryBuilder<ChamadoEntity>,
+    f: FiltrosChamadosDto,
+  ): void {
+    if (f.status) qb.andWhere('c.status = :status', { status: f.status });
+    if (f.prioridade) {
+      qb.andWhere('c.prioridade = :prioridade', {
+        prioridade: f.prioridade,
+      });
+    }
+    if (f.categoria) {
+      qb.andWhere('c.categoria = :categoria', { categoria: f.categoria });
+    }
+    if (f.prestadorId !== undefined) {
+      qb.andWhere('c.tecnicoId = :prestadorId', {
+        prestadorId: f.prestadorId,
+      });
+    }
+    if (f.criadoPorId !== undefined) {
+      qb.andWhere('c.criadoPorId = :criadoPorId', {
+        criadoPorId: f.criadoPorId,
+      });
+    }
+    if (f.predio) {
+      qb.andWhere('LOWER(local.predio) = LOWER(:predio)', {
+        predio: f.predio,
+      });
+    }
+    const termo = f.q?.trim().toLowerCase();
+    if (termo) {
+      const busca = `%${termo}%`;
+      qb.andWhere(
+        new Brackets((where) =>
+          where
+            .where('LOWER(c.titulo) LIKE :busca', { busca })
+            .orWhere('LOWER(c.descricao) LIKE :busca')
+            .orWhere('LOWER(local.predio) LIKE :busca'),
+        ),
+      );
+    }
+    if (f.de) {
+      qb.andWhere('c.criadoEm >= :de', { de: f.de });
+    }
+    if (f.ate) {
+      qb.andWhere('c.criadoEm <= :ate', { ate: f.ate });
+    }
+  }
+
   private atendeFiltros(c: Chamado, f: FiltrosChamadosDto): boolean {
     if (f.status && c.status !== f.status) return false;
     if (f.prioridade && c.prioridade !== f.prioridade) return false;
     if (f.categoria && c.categoria !== f.categoria) return false;
     if (f.prestadorId && c.prestadorId !== f.prestadorId) return false;
+    if (f.criadoPorId !== undefined && c.criadoPorId !== f.criadoPorId) {
+      return false;
+    }
     if (f.predio && c.local.predio.toLowerCase() !== f.predio.toLowerCase()) {
       return false;
     }

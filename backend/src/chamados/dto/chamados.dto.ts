@@ -10,6 +10,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
   ValidateNested,
@@ -159,6 +160,32 @@ export class FiltrosChamadosDto {
   @IsOptional()
   @IsISO8601({}, { message: 'Data "até" inválida (use ISO 8601).' })
   ate?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'criadoPorId inválido.' })
+  criadoPorId?: number;
+
+  @IsOptional()
+  @IsIn(['disponiveis', 'meus'], { message: 'Aba inválida.' })
+  aba?: 'disponiveis' | 'meus';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Página inválida.' })
+  @Min(1, { message: 'Página inválida.' })
+  pagina?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Limite inválido.' })
+  @Min(1, { message: 'Limite inválido.' })
+  @Max(100, { message: 'Limite máximo de 100.' })
+  limite?: number;
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'], { message: 'Ordem inválida.' })
+  ordem?: 'asc' | 'desc';
 }
 
 export class AnexoDespesaDto {
