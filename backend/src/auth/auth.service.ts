@@ -79,7 +79,7 @@ export class AuthService {
     const entidade = this.usuarioRepo.create({
       nome: dados.nome.trim(),
       email,
-      papel: 'SOLICITANTE',
+      papel: 'CONDOMINO',
       localizacao: dados.unidade.trim(),
       unidade: dados.unidade.trim(),
       setor: dados.unidade.trim(),

@@ -11,8 +11,8 @@ export class UsuarioEntity {
   @Column({ type: 'varchar', length: 180, name: 'email', nullable: false, unique: true })
   email!: string;
 
-  @Column({ type: 'enum', enum: ['SOLICITANTE', 'TECNICO', 'GESTOR', 'ADMINISTRADOR'], name: 'papel', nullable: false })
-  papel!: 'SOLICITANTE' | 'TECNICO' | 'GESTOR' | 'ADMINISTRADOR';
+  @Column({ type: 'enum', enum: ['CONDOMINO', 'PRESTADOR', 'SINDICO', 'ADMINISTRADOR'], name: 'papel', nullable: false })
+  papel!: 'CONDOMINO' | 'PRESTADOR' | 'SINDICO' | 'ADMINISTRADOR';
 
   @Column({ type: 'varchar', length: 120, name: 'localizacao', nullable: true })
   localizacao!: string | null;

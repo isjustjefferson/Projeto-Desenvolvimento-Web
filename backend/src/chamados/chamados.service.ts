@@ -19,7 +19,6 @@ import { AnexoDespesaEntity } from '../database/entities/anexo-despesa.entity.js
 import { mapDespesaToContrato } from '../database/mappers/despesa.mapper.js';
 import { mapChamadoToContrato } from '../database/mappers/chamado.mapper.js';
 import { mapUsuarioToContrato } from '../database/mappers/usuario.mapper.js';
-import { papelParaRole } from '../database/mappers/papel.mapper.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import { classificarChamado } from './criticidade.js';
 import type {
@@ -287,7 +286,7 @@ export class ChamadosService {
       );
     }
     const prestadorEnt = await this.usuarioRepo.findOne({ where: { id: dados.prestadorId } as any });
-    if (!prestadorEnt || papelParaRole((prestadorEnt as any).papel) !== 'PRESTADOR') {
+    if (!prestadorEnt || (prestadorEnt as any).papel !== 'PRESTADOR') {
       throw new BadRequestException('Informe um prestador válido.');
     }
     const result = await this.transicionarRepo(

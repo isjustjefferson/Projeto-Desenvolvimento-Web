@@ -2,14 +2,13 @@ import type { UsuarioPublico } from '../../contrato.js';
 import type { UsuarioInterno } from '../../dados/seed.js';
 import { UsuarioEntity } from '../entities/usuario.entity.js';
 import { bufferToBase64 } from './bytes.mapper.js';
-import { papelParaRole } from './papel.mapper.js';
 
 export function mapUsuarioToContrato(u: UsuarioEntity): UsuarioPublico {
   return {
     id: u.id,
     nome: u.nome,
     email: u.email,
-    role: papelParaRole(u.papel),
+    role: u.papel,
     localizacao: u.localizacao ?? undefined,
     unidade: u.unidade ?? undefined,
     setor: u.setor ?? undefined,
