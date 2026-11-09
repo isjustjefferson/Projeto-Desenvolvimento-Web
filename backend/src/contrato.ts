@@ -30,6 +30,7 @@ export interface UsuarioPublico {
   nome: string;
   email: string;
   role: Role;
+  localizacao?: string;
   unidade?: string;
   especialidade?: string;
   setor?: string;

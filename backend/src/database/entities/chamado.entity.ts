@@ -1,7 +1,7 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, type Relation } from 'typeorm';
 import { LocalEntity } from './local.entity.js';
 import { UsuarioEntity } from './usuario.entity.js';
-import { HistoricoEntity } from './historico.entity.js';
+import type { HistoricoEntity } from './historico.entity.js';
 
 @Entity('chamados')
 export class ChamadoEntity {
@@ -62,6 +62,6 @@ export class ChamadoEntity {
   @Column({ type: 'timestamptz', name: 'atualizado_em', nullable: false, default: () => 'now()' })
   atualizadoEm!: Date;
 
-  @OneToMany(() => HistoricoEntity, (h) => h.chamado)
-  historicos!: HistoricoEntity[];
+  @OneToMany('HistoricoEntity', 'chamado')
+  historicos!: Relation<HistoricoEntity[]>;
 }

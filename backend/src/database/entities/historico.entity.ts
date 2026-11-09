@@ -1,5 +1,5 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { ChamadoEntity } from './chamado.entity.js';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation } from 'typeorm';
+import type { ChamadoEntity } from './chamado.entity.js';
 import { UsuarioEntity } from './usuario.entity.js';
 
 @Entity('historicos')
@@ -10,9 +10,9 @@ export class HistoricoEntity {
   @Column({ type: 'integer', name: 'chamado_id', nullable: false })
   chamadoId!: number;
 
-  @ManyToOne(() => ChamadoEntity)
+  @ManyToOne('ChamadoEntity', 'historicos')
   @JoinColumn({ name: 'chamado_id' })
-  chamado!: ChamadoEntity;
+  chamado!: Relation<ChamadoEntity>;
 
   @Column({ type: 'integer', name: 'usuario_id', nullable: false })
   usuarioId!: number;

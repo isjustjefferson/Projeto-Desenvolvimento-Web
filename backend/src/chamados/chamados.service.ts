@@ -68,7 +68,7 @@ export class ChamadosService {
       return { ok: true, chamados };
     }
     const chamadosEnt = await this.chamadoRepo.find({
-      relations: ['local', 'criadoPor', 'tecnico', 'historicos'],
+      relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
     } as any);
     const chamados = chamadosEnt
       .map((c: any) => mapChamadoToContrato(c))
@@ -88,7 +88,7 @@ export class ChamadosService {
     }
     const chamadoEnt = await this.chamadoRepo.findOne({
       where: { id },
-      relations: ['local', 'criadoPor', 'tecnico', 'historicos'],
+      relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
     } as any);
     if (!chamadoEnt) {
       throw new NotFoundException('Chamado não encontrado.');
@@ -214,7 +214,7 @@ export class ChamadosService {
         await histRepo.save(hist);
         return await chamadoRepo.findOne({
           where: { id: (salvo as any).id },
-          relations: ['local', 'criadoPor', 'tecnico', 'historicos'],
+          relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
         } as any);
       });
     } else {
@@ -245,7 +245,7 @@ export class ChamadosService {
       } as any));
       result = await this.chamadoRepo.findOne({
         where: { id: (salvo as any).id },
-        relations: ['local', 'criadoPor', 'tecnico', 'historicos'],
+        relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
       } as any);
     }
 
@@ -277,7 +277,7 @@ export class ChamadosService {
     }
     const chamadoEnt = await this.chamadoRepo.findOne({
       where: { id },
-      relations: ['local', 'criadoPor', 'tecnico', 'historicos'],
+      relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
     } as any);
     if (!chamadoEnt) throw new NotFoundException('Chamado não encontrado.');
     if (chamadoEnt.status !== 'AGUARDANDO_APROVACAO') {
@@ -310,7 +310,7 @@ export class ChamadosService {
     }
     const chamadoEnt = await this.chamadoRepo.findOne({
       where: { id },
-      relations: ['local', 'criadoPor', 'tecnico', 'historicos'],
+      relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
     } as any);
     if (!chamadoEnt) throw new NotFoundException('Chamado não encontrado.');
     if (chamadoEnt.status !== 'REVISADO') {
@@ -346,7 +346,7 @@ export class ChamadosService {
     }
     const chamadoEnt = await this.chamadoRepo.findOne({
       where: { id },
-      relations: ['local', 'criadoPor', 'tecnico', 'historicos'],
+      relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
     } as any);
     if (!chamadoEnt) throw new NotFoundException('Chamado não encontrado.');
     if (chamadoEnt.status !== 'EM_ANDAMENTO') {
@@ -357,7 +357,7 @@ export class ChamadosService {
     this.validarDonoTecnicoContrato(mapChamadoToContrato(chamadoEnt as any), autenticado);
     const despesasEnt = await this.despesaRepo.find({
       where: { chamadoId: chamadoEnt.id },
-      relations: ['anexos'] as any,
+      relations: { anexos: true } as any,
     });
     const pendentes = despesasEnt.filter((d: any) => d.status === 'PENDENTE');
     if (pendentes.length > 0) {
@@ -454,7 +454,7 @@ export class ChamadosService {
       await histRepo.save(hist);
       return await chamadoRepo.findOne({
         where: { id: (chamadoEnt as any).id },
-        relations: ['local', 'criadoPor', 'tecnico', 'historicos'],
+        relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
       } as any);
     };
     if ((this.dataSource as any)?.transaction) {
@@ -508,7 +508,7 @@ export class ChamadosService {
     }
     const despesasEnt = await this.despesaRepo.find({
       where: { chamadoId: chamado.id },
-      relations: ['anexos'] as any,
+      relations: { anexos: true } as any,
       order: { id: 'ASC' },
     });
     const despesas = despesasEnt.map((d) => mapDespesaToContrato(d, false) as any);
@@ -599,7 +599,7 @@ export class ChamadosService {
     }
     const despesaEntRes = (await this.despesaRepo.findOne({
       where: { id: despesaId },
-      relations: ['anexos'] as any,
+      relations: { anexos: true } as any,
     }));
     const despesaEnt: DespesaEntity | null = Array.isArray(despesaEntRes) ? (despesaEntRes[0] as any) : (despesaEntRes as any);
     if (!despesaEnt || despesaEnt.chamadoId !== chamado.id) {
@@ -732,7 +732,7 @@ export class ChamadosService {
     await this.despesaRepo.save(despesaEnt);
     const fullRes = (await this.despesaRepo.findOne({
       where: { id: (despesaEnt as any).id },
-      relations: ['anexos'] as any,
+      relations: { anexos: true } as any,
     }));
     const full: DespesaEntity | null = Array.isArray(fullRes) ? (fullRes[0] as any) : (fullRes as any);
     return { ok: true, despesa: mapDespesaToContrato(full as any, false) as any };
@@ -764,7 +764,7 @@ export class ChamadosService {
     despesaEnt.motivoRejeicao = null as any;
     despesaEnt.atualizadoEm = agora;
     await this.despesaRepo.save(despesaEnt);
-    const fullEnt = await (this.despesaRepo as any).findOne({ where: { id: (despesaEnt as any).id }, relations: ['anexos'] });
+    const fullEnt = await (this.despesaRepo as any).findOne({ where: { id: (despesaEnt as any).id }, relations: { anexos: true } });
     return { ok: true, despesa: mapDespesaToContrato(Array.isArray(fullEnt) ? fullEnt[0] : fullEnt, false) as any };
   }
 
@@ -795,7 +795,7 @@ export class ChamadosService {
     despesaEnt.aprovadoEm = agora;
     despesaEnt.atualizadoEm = agora;
     await this.despesaRepo.save(despesaEnt);
-    const fullEnt = await (this.despesaRepo as any).findOne({ where: { id: (despesaEnt as any).id }, relations: ['anexos'] });
+    const fullEnt = await (this.despesaRepo as any).findOne({ where: { id: (despesaEnt as any).id }, relations: { anexos: true } });
     return { ok: true, despesa: mapDespesaToContrato(Array.isArray(fullEnt) ? fullEnt[0] : fullEnt, false) as any };
   }
 
@@ -849,7 +849,7 @@ export class ChamadosService {
         },
       };
     }
-    const despesasEnt = await this.despesaRepo.find({ where: { chamadoId: chamado.id }, relations: ['anexos'] as any });
+    const despesasEnt = await this.despesaRepo.find({ where: { chamadoId: chamado.id }, relations: { anexos: true } as any });
     const despesas = despesasEnt.map((d: any) => mapDespesaToContrato(d, false) as any);
     const resumoFinanceiro = this.calcularResumo(despesas);
     return {

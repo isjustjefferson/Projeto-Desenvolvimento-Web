@@ -9,17 +9,18 @@
 
 ## Banco de Dados
 
-O banco de dados PostgreSQL pode ser provisionado com os scripts em [`../db/`](../db/README.md).
+O PostgreSQL é provisionado pelos scripts em [`../db/`](../db/README.md) (fonte da verdade, `synchronize: false`).
 
-1. Copie `.env.example` para `.env` e configure a conexão:
-   ```env
-   DATABASE_URL=postgresql://predial:senha@localhost:5432/predial
-   ```
-2. Provisione o schema:
-   ```powershell
-   ..\db\scripts\iniciar-banco.ps1
-   ```
-3. O TypeORM está configurado com `synchronize: false` e `autoLoadEntities: false`. Os arquivos em `db/` são a fonte da verdade.
+**Local (dev):**
+1. Copie `.env.example` para `.env` e configure `DATABASE_URL` (ou `DB_*`).
+2. Provisione o schema: `..\db\scripts\iniciar-banco.ps1`
+
+**Nuvem (Supabase/Neon/RDS etc.):**
+1. Crie o banco no provedor e obtenha a connection string (prefira conexão direta para TypeORM server-side).
+2. Configure `backend/.env`: `DATABASE_URL=...sslmode=require` e `DB_SSL=require`.
+3. Aplique os scripts de `db/` na ordem documentada em [`../db/DEPLOY_NUVEM_SUPABASE.md`](../db/DEPLOY_NUVEM_SUPABASE.md).
+
+> Não commite credenciais. O TypeORM usa `synchronize: false`/`autoLoadEntities: false`.
     <p align="center">
 <a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
 <a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>

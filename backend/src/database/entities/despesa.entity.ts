@@ -1,7 +1,7 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, type Relation } from 'typeorm';
 import { ChamadoEntity } from './chamado.entity.js';
 import { UsuarioEntity } from './usuario.entity.js';
-import { AnexoDespesaEntity } from './anexo-despesa.entity.js';
+import type { AnexoDespesaEntity } from './anexo-despesa.entity.js';
 
 @Entity('despesas')
 export class DespesaEntity {
@@ -74,6 +74,6 @@ export class DespesaEntity {
   @Column({ type: 'timestamptz', name: 'atualizado_em', nullable: false, default: () => 'now()' })
   atualizadoEm!: Date;
 
-  @OneToMany(() => AnexoDespesaEntity, (a) => a.despesa)
-  anexos!: AnexoDespesaEntity[];
+  @OneToMany('AnexoDespesaEntity', 'despesa')
+  anexos!: Relation<AnexoDespesaEntity[]>;
 }

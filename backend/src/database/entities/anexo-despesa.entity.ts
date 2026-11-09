@@ -1,5 +1,5 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { DespesaEntity } from './despesa.entity.js';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation } from 'typeorm';
+import type { DespesaEntity } from './despesa.entity.js';
 import { UsuarioEntity } from './usuario.entity.js';
 
 @Entity('anexos_despesa')
@@ -10,9 +10,9 @@ export class AnexoDespesaEntity {
   @Column({ type: 'integer', name: 'despesa_id', nullable: false })
   despesaId!: number;
 
-  @ManyToOne(() => DespesaEntity)
+  @ManyToOne('DespesaEntity', 'anexos')
   @JoinColumn({ name: 'despesa_id' })
-  despesa!: DespesaEntity;
+  despesa!: Relation<DespesaEntity>;
 
   @Column({ type: 'enum', enum: ['NOTA_FISCAL', 'RECIBO', 'COMPROVANTE_PAGAMENTO', 'OUTRO'], name: 'tipo', nullable: false })
   tipo!: 'NOTA_FISCAL' | 'RECIBO' | 'COMPROVANTE_PAGAMENTO' | 'OUTRO';

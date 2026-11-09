@@ -15,7 +15,7 @@ function contexto(header?: string) {
 }
 
 describe('AuthGuard', () => {
-  const guard = new AuthGuard(new StoreService());
+  const guard = new AuthGuard(new StoreService(), {} as any);
 
   it('nega sem header x-usuario-id', async () => {
     const { ctx } = contexto(undefined);

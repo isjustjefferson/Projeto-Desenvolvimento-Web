@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { DatabaseModule } from './database.module.js';
 import { UsuarioEntity } from './entities/usuario.entity.js';
 import { LocalEntity } from './entities/local.entity.js';
 import { ChamadoEntity } from './entities/chamado.entity.js';
@@ -11,6 +12,7 @@ import { AnexoDespesaEntity } from './entities/anexo-despesa.entity.js';
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
 
 @Module({
+  imports: isTest ? [] : [DatabaseModule],
   providers: [
     {
       provide: 'USUARIO_REPO',
