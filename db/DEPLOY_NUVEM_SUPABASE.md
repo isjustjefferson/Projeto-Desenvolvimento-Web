@@ -38,6 +38,10 @@ Invoke-Expression "$base db/03b_chaves_despesas.sql"
 Invoke-Expression "$base db/04_check_rn04.sql"
 Invoke-Expression "$base db/05_indices.sql"
 Invoke-Expression "$base db/05b_indices_despesas.sql"
+Invoke-Expression "$base db/06_migracao_papel.sql"
+Invoke-Expression "$base db/07_seed_demo.sql"
+Invoke-Expression "$base db/08_orcamentos.sql"
+Invoke-Expression "$base db/09_nota_fiscal_ocr.sql"
 ```
 
 Alternativa: rodar os mesmos arquivos no **SQL Editor** do Supabase, na mesma ordem, conferindo erros.
@@ -45,7 +49,7 @@ Alternativa: rodar os mesmos arquivos no **SQL Editor** do Supabase, na mesma or
 ## 4) Verificação rápida
 ```sql
 SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;
--- Esperado incluir: usuarios, locais, chamados, historicos, tokens_reset, despesas, anexos_despesa
+-- Esperado incluir: usuarios, locais, chamados, historicos, tokens_reset, despesas, anexos_despesa, orcamentos
 SELECT count(*) FROM pg_constraint WHERE contype = 'f';
 SELECT count(*) FROM pg_constraint WHERE contype = 'c';
 ```
@@ -57,6 +61,6 @@ Com `DATABASE_URL` apontando para a nuvem:
 3. Valide que não há erros de SSL/conexão.
 
 ## 6) Observações do projeto
-- Parte do fluxo ainda pode depender de `StoreService`/seed em memória durante a migração gradual (Strangler Fig). Subir o Postgres na nuvem não carrega automaticamente dados desse seed.
+- Auth/usuários/chamados já usam o banco em execução normal; o seed em memória permanece apenas em testes. A seed demo (07_seed_demo.sql) pode ser reaplicada sem duplicar (ON CONFLICT).
 - Planeje carga inicial (ex.: usuário admin) via SQL controlado, sem expor segredos no repositório.
 - Testes automatizados: `npm test` e `npm run test:e2e` (há 1 falha e2e pré-existente conhecida).

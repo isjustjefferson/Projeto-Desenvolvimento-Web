@@ -21,6 +21,10 @@ db/
 ├── 04_check_rn04.sql              # CHECK da regra RN04
 ├── 05_indices.sql                 # Índices principais
 ├── 05b_indices_despesas.sql       # Índices de despesas
+06_migracao_papel.sql          # migra enum papel (perfis novos)
+07_seed_demo.sql               # seed demo (locais/chamados/historicos)
+08_orcamentos.sql              # tabela orcamentos
+09_nota_fiscal_ocr.sql         # colunas OCR em anexos_despesa
 └── scripts/
     └── iniciar-banco.ps1          # Script de provisionamento
 ```
@@ -85,6 +89,10 @@ psql -U postgres -v ON_ERROR_STOP=1 -f db/03b_chaves_despesas.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/04_check_rn04.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/05_indices.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/05b_indices_despesas.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/06_migracao_papel.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/07_seed_demo.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/08_orcamentos.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/09_nota_fiscal_ocr.sql
 ```
 
 > **Importante:** Sempre use `-v ON_ERROR_STOP=1`. Sem isso, o `psql` continua após erro e retorna sucesso.
