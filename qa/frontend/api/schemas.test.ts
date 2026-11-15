@@ -11,7 +11,7 @@ import {
   respostaUsuarioSchema,
   respostaUsuariosSchema,
   usuarioResumoSchema,
-} from './schemas';
+} from '../../../frontend/src/api/schemas';
 
 // As fixtures são payloads reais capturados da API em execução (seed), não
 // inventados. Se o backend mudar de forma incompatível, ajuste as fixtures de

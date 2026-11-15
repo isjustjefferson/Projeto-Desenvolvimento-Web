@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { dataLocalIso } from '../helpers';
-import { FormularioDespesa } from './FormularioDespesa';
+import { dataLocalIso } from '../../../frontend/src/helpers';
+import { FormularioDespesa } from '../../../frontend/src/components/FormularioDespesa';
 
 const semNbsp = (s: string) => s.replace(/\u00a0/g, ' ');
 

@@ -2,23 +2,23 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Chamado, Status, Usuario } from '../types';
-import { ChamadosLista } from './ChamadosLista';
+import type { Chamado, Status, Usuario } from '../../../frontend/src/types';
+import { ChamadosLista } from '../../../frontend/src/pages/ChamadosLista';
 
 const estado = vi.hoisted(() => ({
   usuario: null as Usuario | null,
   chamados: [] as Chamado[],
 }));
 
-vi.mock('../context/AuthContext', () => ({
+vi.mock('../../../frontend/src/context/AuthContext', () => ({
   useAuth: () => ({ usuario: estado.usuario }),
 }));
 
-vi.mock('../hooks/useChamados', () => ({
+vi.mock('../../../frontend/src/hooks/useChamados', () => ({
   useChamados: () => ({ data: estado.chamados, isPending: false, error: null }),
 }));
 
-vi.mock('../hooks/useUsuarios', () => ({
+vi.mock('../../../frontend/src/hooks/useUsuarios', () => ({
   useDiretorio: () => ({ nomeUsuario: (id: number) => `Usuário ${id}` }),
 }));
 

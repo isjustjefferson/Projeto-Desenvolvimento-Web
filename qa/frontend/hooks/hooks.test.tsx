@@ -2,22 +2,22 @@ import type { ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../api/client';
-import * as chamadosApi from '../api/chamados';
-import * as usuariosApi from '../api/usuarios';
-import { chaves } from '../query/keys';
-import { criarQueryClient } from '../query/client';
-import type { Chamado, UsuarioResumo } from '../types';
-import { useAprovarChamado, useChamado, useChamados } from './useChamados';
+import { ApiError } from '../../../frontend/src/api/client';
+import * as chamadosApi from '../../../frontend/src/api/chamados';
+import * as usuariosApi from '../../../frontend/src/api/usuarios';
+import { chaves } from '../../../frontend/src/query/keys';
+import { criarQueryClient } from '../../../frontend/src/query/client';
+import type { Chamado, UsuarioResumo } from '../../../frontend/src/types';
+import { useAprovarChamado, useChamado, useChamados } from '../../../frontend/src/hooks/useChamados';
 import {
   useAlterarCargo,
   useDiretorio,
   useUsuarios,
-} from './useUsuarios';
+} from '../../../frontend/src/hooks/useUsuarios';
 import chamadosFixture from '../api/__fixtures__/chamados.json';
 import resumoFixture from '../api/__fixtures__/resumo.json';
 
-vi.mock('../api/chamados', () => ({
+vi.mock('../../../frontend/src/api/chamados', () => ({
   listar: vi.fn(),
   obter: vi.fn(),
   criar: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock('../api/chamados', () => ({
   concluir: vi.fn(),
 }));
 
-vi.mock('../api/usuarios', () => ({
+vi.mock('../../../frontend/src/api/usuarios', () => ({
   listar: vi.fn(),
   listarResumo: vi.fn(),
   criar: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock('../api/usuarios', () => ({
 }));
 
 // As queries rodam com sessão ativa — mesma condição do antigo ChamadosContext.
-vi.mock('../context/AuthContext', () => ({
+vi.mock('../../../frontend/src/context/AuthContext', () => ({
   useAuth: () => ({
     usuario: { id: 1, nome: 'Ana Souza', role: 'CONDOMINO' },
   }),

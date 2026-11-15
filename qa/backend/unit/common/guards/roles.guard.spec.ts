@@ -1,8 +1,8 @@
 import { ForbiddenException, Type } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { describe, expect, it, vi } from 'vitest';
-import type { Role } from '../../contrato.js';
-import { RolesGuard } from './roles.guard.js';
+import type { Role } from '../../../../../backend/src/contrato.js';
+import { RolesGuard } from '../../../../../backend/src/common/guards/roles.guard.js';
 
 type Contexto = Parameters<RolesGuard['canActivate']>[0];
 

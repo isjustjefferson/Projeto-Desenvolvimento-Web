@@ -4,9 +4,9 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { StoreService } from '../dados/store.service.js';
-import type { UsuarioInterno } from '../dados/seed.js';
-import { ChamadosService } from './chamados.service.js';
+import { StoreService } from '../../../../backend/src/dados/store.service.js';
+import type { UsuarioInterno } from '../../../../backend/src/dados/seed.js';
+import { ChamadosService } from '../../../../backend/src/chamados/chamados.service.js';
 
 function despesaEntidade(overrides: Record<string, unknown> = {}) {
   return {

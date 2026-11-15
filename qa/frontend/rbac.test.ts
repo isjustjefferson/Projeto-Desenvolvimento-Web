@@ -5,8 +5,8 @@ import {
   pode,
   statusVisiveisPorRole,
   prestadorSemEspecialidade,
-} from './rbac';
-import type { Chamado, Usuario } from './types';
+} from '../../frontend/src/rbac';
+import type { Chamado, Usuario } from '../../frontend/src/types';
 
 function criarUsuario(
   overrides: Partial<Usuario> & Pick<Usuario, 'id' | 'role'>,

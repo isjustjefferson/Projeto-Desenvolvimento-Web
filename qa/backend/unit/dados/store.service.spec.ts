@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import bcrypt from 'bcrypt';
-import { StoreService } from './store.service.js';
-import { senhaPadrao } from './seed.js';
+import { StoreService } from '../../../../backend/src/dados/store.service.js';
+import { senhaPadrao } from '../../../../backend/src/dados/seed.js';
 
 describe('StoreService (seed em memória)', () => {
   const store = new StoreService();

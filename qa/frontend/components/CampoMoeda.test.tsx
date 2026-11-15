@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { CampoMoeda } from './CampoMoeda';
+import { CampoMoeda } from '../../../frontend/src/components/CampoMoeda';
 
 const semNbsp = (s: string) => s.replace(/\u00a0/g, ' ');
 

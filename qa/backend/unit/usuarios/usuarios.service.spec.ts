@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import bcrypt from 'bcrypt';
-import { StoreService } from '../dados/store.service.js';
-import { senhaPadrao } from '../dados/seed.js';
-import { UsuariosService } from './usuarios.service.js';
+import { StoreService } from '../../../../backend/src/dados/store.service.js';
+import { senhaPadrao } from '../../../../backend/src/dados/seed.js';
+import { UsuariosService } from '../../../../backend/src/usuarios/usuarios.service.js';
 
 describe('UsuariosService', () => {
   let store: StoreService;

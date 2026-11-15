@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classificarChamado } from './criticidade.js';
+import { classificarChamado } from '../../../../backend/src/chamados/criticidade.js';
 
 describe('classificarChamado', () => {
   it('classifica incêndio como CRITICA', () => {

@@ -1,0 +1,14 @@
+{
+  "extends": "../../frontend/tsconfig.json",
+  "compilerOptions": {
+    "typeRoots": ["../../frontend/node_modules/@types"],
+    "paths": {
+      "react": ["../../frontend/node_modules/@types/react/index.d.ts"],
+      "react/*": ["../../frontend/node_modules/@types/react/*"],
+      "react-dom": ["../../frontend/node_modules/@types/react-dom/index.d.ts"],
+      "react-dom/*": ["../../frontend/node_modules/@types/react-dom/*"],
+      "*": ["../../frontend/node_modules/*", "../../frontend/node_modules/@types/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

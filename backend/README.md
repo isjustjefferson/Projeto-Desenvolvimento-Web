@@ -61,6 +61,8 @@ $ npm run start:prod
 
 ## Run tests
 
+Os arquivos e configurações estão em [`../qa/backend/`](../qa/backend/). Os comandos abaixo continuam disponíveis a partir de `backend/`:
+
 ```bash
 # unit tests
 $ npm run test
@@ -131,4 +133,4 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
 ## Bugs / Observações
 
-- **test/chamados.e2e-spec.ts - POST /chamados bloqueia gestor e técnico**: Atualmente falha com `expected 403 "Forbidden", got 201 "Created"`. O teste já apresentava esse comportamento antes das alterações da Fase A (validado ao reverter temporariamente as alterações). Não foi introduzido nesta fase e precisa ser investigado separadamente.
+- **../qa/backend/e2e/chamados.e2e-spec.ts - POST /chamados bloqueia gestor e técnico**: Atualmente falha com `expected 403 "Forbidden", got 201 "Created"`. O teste já apresentava esse comportamento antes das alterações da Fase A (validado ao reverter temporariamente as alterações). Não foi introduzido nesta fase e precisa ser investigado separadamente.

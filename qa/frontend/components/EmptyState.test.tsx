@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Inbox } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
-import { EmptyState } from './EmptyState';
+import { EmptyState } from '../../../frontend/src/components/EmptyState';
 
 describe('EmptyState', () => {
   it('mostra título e descrição', () => {

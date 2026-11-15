@@ -1,0 +1,19 @@
+{
+  "extends": "../../backend/tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "noEmit": true,
+    "types": ["vitest/globals", "node"],
+    "typeRoots": ["../../backend/node_modules/@types", "../../backend/node_modules"],
+    "paths": {
+      "vitest": ["../../backend/node_modules/vitest/dist/index.d.ts"],
+      "@nestjs/common": ["../../backend/node_modules/@nestjs/common/index.d.ts"],
+      "@nestjs/core": ["../../backend/node_modules/@nestjs/core/index.d.ts"],
+      "@nestjs/testing": ["../../backend/node_modules/@nestjs/testing/index.d.ts"],
+      "@nestjs/platform-express": ["../../backend/node_modules/@nestjs/platform-express/index.d.ts"],
+      "bcrypt": ["../../backend/node_modules/@types/bcrypt/index.d.ts"],
+      "supertest": ["../../backend/node_modules/@types/supertest/index.d.ts"]
+    }
+  },
+  "include": ["unit/**/*.ts", "e2e/**/*.ts"]
+}

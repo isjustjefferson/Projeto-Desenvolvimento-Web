@@ -15,7 +15,7 @@ import {
   roleLabel,
   statusLabel,
   tempoRelativo,
-} from './helpers';
+} from '../../frontend/src/helpers';
 
 describe('formatarData', () => {
   it('retorna "-" quando não há data', () => {

@@ -2,8 +2,8 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type supertest from 'supertest';
-import { AppModule } from '../src/app.module.js';
-import { configurarApp } from '../src/app.config.js';
+import { AppModule } from '../../../backend/src/app.module.js';
+import { configurarApp } from '../../../backend/src/app.config.js';
 
 export type App = Parameters<typeof supertest>[0];
 

@@ -110,10 +110,10 @@ Arquitetura atual: um monólito NestJS (API) e uma SPA React, em repositório ú
 
 ```text
 .
-├── backend/    API NestJS (src/ e testes e2e em test/)
+├── backend/    API NestJS (src/)
 ├── frontend/   SPA React + Vite
 ├── db/         Modelo de dados, DDL e script de provisionamento
-├── qa/         Plano de testes, Postman e roteiro E2E
+├── qa/         Testes de backend/frontend, fixtures, configurações, Postman e plano de testes
 └── BACKLOG.md  Ajustes e implementações planejados
 ```
 
@@ -159,16 +159,14 @@ Todos usam a senha `123456`.
 | Tiago TI | `tiago@predial.com` | Administrador |
 
 ### Testes
-```bash
-# backend
-cd backend
-npm test            # unitários
-npm run test:e2e    # end-to-end da API
 
-# frontend
-cd frontend
-npm test
-npm run lint
+Os arquivos e configurações de testes ficam em [`qa/`](qa/README.md). Após instalar as dependências do backend e do frontend, execute a partir da raiz do repositório:
+
+```bash
+npm --prefix qa test                   # todas as suítes
+npm --prefix qa run test:backend       # unitários do backend
+npm --prefix qa run test:api           # integração da API
+npm --prefix qa run test:frontend      # componentes, hooks e páginas
 ```
 
 ---

@@ -1,7 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
-import { StoreService } from '../../dados/store.service.js';
-import { AuthGuard } from './auth.guard.js';
+import { StoreService } from '../../../../../backend/src/dados/store.service.js';
+import { AuthGuard } from '../../../../../backend/src/common/guards/auth.guard.js';
 
 type Contexto = Parameters<AuthGuard['canActivate']>[0];
 

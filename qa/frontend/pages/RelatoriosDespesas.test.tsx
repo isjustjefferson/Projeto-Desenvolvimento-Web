@@ -1,16 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { dataLocalIso } from '../helpers';
-import { RelatoriosDespesas } from './RelatoriosDespesas';
+import { dataLocalIso } from '../../../frontend/src/helpers';
+import { RelatoriosDespesas } from '../../../frontend/src/pages/RelatoriosDespesas';
 
-vi.mock('../context/AuthContext', () => ({
+vi.mock('../../../frontend/src/context/AuthContext', () => ({
   useAuth: () => ({
     usuario: { id: 5, nome: 'Ricardo', role: 'SINDICO' },
   }),
 }));
 
-vi.mock('../hooks/useRelatorios', () => ({
+vi.mock('../../../frontend/src/hooks/useRelatorios', () => ({
   useRelatorioDespesas: () => ({
     data: undefined,
     isPending: false,
@@ -19,7 +19,7 @@ vi.mock('../hooks/useRelatorios', () => ({
   }),
 }));
 
-vi.mock('../hooks/useUsuarios', () => ({
+vi.mock('../../../frontend/src/hooks/useUsuarios', () => ({
   useDiretorio: () => ({ usuarios: [] }),
 }));
 

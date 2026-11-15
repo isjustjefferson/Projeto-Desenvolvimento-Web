@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PublicOnly, RequireAuth, RequireRoles } from './App';
-import type { Usuario } from './types';
+import { PublicOnly, RequireAuth, RequireRoles } from '../../frontend/src/App';
+import type { Usuario } from '../../frontend/src/types';
 
 // Sessão controlada pelos testes — o AuthContext real é substituído.
 const sessao = vi.hoisted(() => ({
@@ -11,7 +11,7 @@ const sessao = vi.hoisted(() => ({
   carregando: false,
 }));
 
-vi.mock('./context/AuthContext', () => ({
+vi.mock('../../frontend/src/context/AuthContext', () => ({
   useAuth: () => sessao,
 }));
 
