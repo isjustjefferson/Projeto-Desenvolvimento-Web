@@ -10,6 +10,7 @@ import {
   formatarChaveNFe,
   formatarCpfCnpj,
   pagoPorLabel,
+  validarCpfCnpj,
 } from '../helpers';
 import type {
   CategoriaDespesa,
@@ -114,6 +115,9 @@ export function FormularioDespesa({ salvando, onSalvar }: Props) {
       digitosDocumento !== 14
     ) {
       return 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) completo.';
+    }
+    if (digitosDocumento > 0 && !validarCpfCnpj(documento)) {
+      return 'CPF/CNPJ inválido. Confira os dígitos informados.';
     }
     if (dataEmissao && dataEmissao > hoje) {
       return 'A data de emissão não pode ser no futuro.';
