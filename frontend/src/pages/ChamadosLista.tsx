@@ -18,7 +18,9 @@ import { EmptyState } from '../components/EmptyState';
 import { Paginacao } from '../components/Paginacao';
 import type { Categoria, Prioridade, Status } from '../types';
 
-const POR_PAGINA = 6;
+const LIMITES_POR_PAGINA = [6, 12, 24] as const;
+type LimitePorPagina = (typeof LIMITES_POR_PAGINA)[number];
+const POR_PAGINA: LimitePorPagina = 6;
 
 const opcoesVisualizacao: { valor: Visualizacao; rotulo: string; icone: typeof List }[] = [
   { valor: 'cards', rotulo: 'Visualização em cards', icone: LayoutGrid },
@@ -32,6 +34,7 @@ export function ChamadosLista() {
   const [busca, setBusca] = useState('');
   const [aba, setAba] = useState<'disponiveis' | 'meus'>('disponiveis');
   const [filtroCondomino, setFiltroCondomino] = useState('');
+  const [porPagina, setPorPagina] = useState<LimitePorPagina>(POR_PAGINA);
   const [visualizacao, setVisualizacao] = useVisualizacao();
 
   const statusDoPerfil = usuario
@@ -73,6 +76,7 @@ export function ChamadosLista() {
     filtroCategoria,
     filtroCondomino,
     busca,
+    porPagina,
   ].join('|');
   const [paginacao, setPaginacao] = useState({ chave: chaveRecorte, pagina: 1 });
   const paginaAtual =
@@ -92,7 +96,7 @@ export function ChamadosLista() {
     criadoPorId: filtroCondomino ? Number(filtroCondomino) : undefined,
     q: busca.trim() || undefined,
     pagina: paginaAtual,
-    limite: POR_PAGINA,
+    limite: porPagina,
     ordem: 'desc',
   };
   const { data, isPending, error } = useChamados(filtros);
@@ -136,7 +140,24 @@ export function ChamadosLista() {
             {usuario?.role === 'ADMINISTRADOR' && 'Gestão completa de chamados'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-gray-500">
+            <span className="hidden sm:inline">Por página</span>
+            <select
+              aria-label="Itens por página"
+              className="input !w-auto !px-2 !py-1.5"
+              value={porPagina}
+              onChange={(e) =>
+                setPorPagina(Number(e.target.value) as LimitePorPagina)
+              }
+            >
+              {LIMITES_POR_PAGINA.map((limite) => (
+                <option key={limite} value={limite}>
+                  {limite}
+                </option>
+              ))}
+            </select>
+          </label>
           <div
             role="group"
             aria-label="Modo de visualização"
