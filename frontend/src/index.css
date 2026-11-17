@@ -30,4 +30,29 @@
   .card {
     @apply rounded-xl border border-gray-200 bg-white p-5 shadow-sm;
   }
+
+  /* Tabela que vira lista de cards no celular (< 640px): cada linha é um bloco
+     e cada célula mostra o rótulo do seu data-label à esquerda e o valor à
+     direita. No desktop continua sendo uma tabela comum. */
+  @media (max-width: 639px) {
+    .tabela-responsiva thead {
+      @apply hidden;
+    }
+    .tabela-responsiva,
+    .tabela-responsiva tbody,
+    .tabela-responsiva tr,
+    .tabela-responsiva td {
+      @apply block w-full;
+    }
+    .tabela-responsiva tr {
+      @apply border-b border-gray-100 py-2;
+    }
+    .tabela-responsiva td {
+      @apply flex min-w-0 max-w-none items-center justify-between gap-3 !px-4 !py-1.5 text-right;
+    }
+    .tabela-responsiva td[data-label]::before {
+      content: attr(data-label);
+      @apply shrink-0 text-left text-xs font-semibold text-gray-500;
+    }
+  }
 }

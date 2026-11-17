@@ -240,7 +240,7 @@ export function Dashboard() {
       </div>
 
       {/* Gráficos */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="card">
           <h2 className="mb-3 font-semibold text-gray-800">
             Chamados por status
@@ -292,7 +292,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className={`grid gap-6 ${podeVerTriagem ? 'lg:grid-cols-2' : ''}`}>
+      <div className={`grid grid-cols-1 gap-6 ${podeVerTriagem ? 'lg:grid-cols-2' : ''}`}>
         {podeVerTriagem && (
           <section aria-labelledby="titulo-fila-triagem" className="card">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -440,7 +440,7 @@ export function Dashboard() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="tabela-responsiva w-full text-left text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-400">
                 <th className="px-4 py-3">ID</th>
@@ -458,10 +458,10 @@ export function Dashboard() {
                   key={c.id}
                   className="border-b border-gray-50 transition hover:bg-gray-100"
                 >
-                  <td className="px-4 py-3 font-bold text-gray-400">
+                  <td data-label="ID" className="px-4 py-3 font-bold text-gray-400">
                     #{c.id}
                   </td>
-                  <td className="max-w-[220px] px-4 py-3">
+                  <td data-label="Título" className="max-w-[220px] px-4 py-3">
                     <Link
                       to={`/chamados/${c.id}`}
                       className="font-medium text-brand-700 hover:underline"
@@ -469,19 +469,19 @@ export function Dashboard() {
                       {c.titulo}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
+                  <td data-label="Condômino" className="px-4 py-3 text-gray-600">
                     {nomeUsuario(c.criadoPorId)}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
+                  <td data-label="Categoria" className="px-4 py-3 text-gray-600">
                     {categoriaLabel[c.categoria]}
                   </td>
-                  <td className="px-4 py-3">
+                  <td data-label="Status" className="px-4 py-3">
                     <StatusBadge status={c.status} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td data-label="Prioridade" className="px-4 py-3">
                     <PrioridadeBadge prioridade={c.prioridade} sugestao={c.classificacao?.prioridadeSugerida} />
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500">
+                  <td data-label="Data" className="whitespace-nowrap px-4 py-3 text-xs text-gray-500">
                     {formatarData(c.criadoEm)}
                   </td>
                 </tr>

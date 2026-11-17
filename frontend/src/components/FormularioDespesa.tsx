@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { Upload } from 'lucide-react';
+import { Camera, Upload } from 'lucide-react';
 import type { CriarDespesaInput } from '../api/despesas';
 import {
   apenasDigitos,
@@ -12,6 +12,7 @@ import {
   pagoPorLabel,
   validarCpfCnpj,
 } from '../helpers';
+import { extrairChaveNFe, lerQrCodeDeImagem, tipoDaChave } from '../qrcode';
 import type {
   CategoriaDespesa,
   FormaPagamento,
@@ -19,6 +20,7 @@ import type {
   TipoDocumentoFiscal,
 } from '../types';
 import { CampoMoeda } from './CampoMoeda';
+import { LeitorQrCode } from './LeitorQrCode';
 
 type Anexo = NonNullable<CriarDespesaInput['anexos']>[number];
 type AnexoArquivo = Omit<Anexo, 'tipoDocumentoFiscal' | 'chaveNFe'>;
@@ -66,12 +68,29 @@ export function FormularioDespesa({ salvando, onSalvar }: Props) {
   const [tipoDoc, setTipoDoc] = useState<TipoDocumentoFiscal | ''>('');
   const [chaveNFe, setChaveNFe] = useState('');
   const [anexos, setAnexos] = useState<AnexoArquivo[]>([]);
+  const [lendoQr, setLendoQr] = useState(false);
   const [erro, setErro] = useState('');
 
   const hoje = dataLocalIso();
   const temChave = tipoDoc !== '' && TEM_CHAVE.includes(tipoDoc);
   const podeSalvar =
     Boolean(descricao.trim()) && valorCentavos > 0 && !salvando;
+
+  // Preenche tipo de documento e chave a partir do texto de um QR Code. Sem
+  // `avisar`, um QR que não é de nota é ignorado em silêncio (foto anexada).
+  function aplicarQrCode(texto: string, avisar = true) {
+    const chave = extrairChaveNFe(texto);
+    const tipo = chave ? tipoDaChave(chave) : null;
+    if (!chave || !tipo) {
+      if (avisar) {
+        toast.error('Este QR Code não traz a chave de acesso de uma NF-e ou NFC-e.');
+      }
+      return;
+    }
+    setTipoDoc(tipo);
+    setChaveNFe(formatarChaveNFe(chave));
+    toast.success('Chave de acesso preenchida pelo QR Code da nota.');
+  }
 
   function adicionarAnexo(arquivo: File) {
     if (arquivo.size > MAX_BYTES_ANEXO) {
@@ -86,6 +105,13 @@ export function FormularioDespesa({ salvando, onSalvar }: Props) {
     if (anexos.length >= MAX_ANEXOS) {
       toast.error('Máximo de 5 anexos por despesa.');
       return;
+    }
+    // Foto de cupom/nota: tenta achar o QR Code para preencher a chave sozinha,
+    // sem sobrescrever uma chave que o usuário já informou
+    if (mime.startsWith('image/') && !apenasDigitos(chaveNFe)) {
+      void lerQrCodeDeImagem(arquivo).then((texto) => {
+        if (texto) aplicarQrCode(texto, false);
+      });
     }
     const reader = new FileReader();
     reader.onload = () => {
@@ -317,6 +343,29 @@ export function FormularioDespesa({ salvando, onSalvar }: Props) {
             ))}
           </select>
         </div>
+      </div>
+      <div>
+        <span className="label">QR Code da nota (NFC-e)</span>
+        {lendoQr ? (
+          <LeitorQrCode
+            onLido={(texto) => {
+              setLendoQr(false);
+              aplicarQrCode(texto);
+            }}
+            onFechar={() => setLendoQr(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setLendoQr(true)}
+            className="btn-secondary w-full"
+          >
+            <Camera className="h-4 w-4" /> Ler QR Code com a câmera
+          </button>
+        )}
+        <p className="mt-1 text-xs text-gray-500">
+          Sem câmera? Anexe uma foto da nota abaixo: o QR Code é lido da imagem.
+        </p>
       </div>
       <div>
         <label htmlFor={`${id}-tipo-doc`} className="label">
