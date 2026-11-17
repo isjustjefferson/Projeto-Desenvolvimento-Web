@@ -212,6 +212,54 @@ export function formatarCpfCnpj(texto: string): string {
     .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, '$1.$2.$3/$4-$5');
 }
 
+function validarCpf(digitos: string): boolean {
+  if (digitos.length !== 11 || /^(\d)\1{10}$/.test(digitos)) return false;
+
+  const calcularDigito = (posicao: number) => {
+    let soma = 0;
+    for (let i = 0; i < posicao; i += 1) {
+      soma += Number(digitos[i]) * (posicao + 1 - i);
+    }
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+
+  return (
+    calcularDigito(9) === Number(digitos[9]) &&
+    calcularDigito(10) === Number(digitos[10])
+  );
+}
+
+function validarCnpj(digitos: string): boolean {
+  if (digitos.length !== 14 || /^(\d)\1{13}$/.test(digitos)) return false;
+
+  const calcularDigito = (pesos: number[]) => {
+    const soma = pesos.reduce(
+      (total, peso, i) => total + Number(digitos[i]) * peso,
+      0,
+    );
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+
+  return (
+    calcularDigito([5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) ===
+      Number(digitos[12]) &&
+    calcularDigito([6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) ===
+      Number(digitos[13])
+  );
+}
+
+// Valida CPF ou CNPJ pelos dígitos verificadores. O campo aceita documento
+// formatado; letras e outros símbolos invalidam o valor.
+export function validarCpfCnpj(texto: string): boolean {
+  if (!/^[\d.\-/\s]*$/.test(texto)) return false;
+  const digitos = apenasDigitos(texto);
+  if (digitos.length === 11) return validarCpf(digitos);
+  if (digitos.length === 14) return validarCnpj(digitos);
+  return false;
+}
+
 // Chave de acesso da NF-e/NFC-e: 44 dígitos, exibidos em blocos de 4.
 export function formatarChaveNFe(texto: string): string {
   return apenasDigitos(texto, 44).replace(/(\d{4})(?=\d)/g, '$1 ');

@@ -25,6 +25,7 @@ import type {
   Status,
   TipoAnexo,
 } from '../../contrato.js';
+import { IsDocumentoValido } from '../../common/validators/documento.validator.js';
 
 const CATEGORIAS: Categoria[] = [
   'ELETRICA',
@@ -249,6 +250,7 @@ export class CriarDespesaDto {
   @IsOptional()
   @IsString()
   @MaxLength(20)
+  @IsDocumentoValido()
   cnpj?: string;
 
   @IsOptional()
@@ -304,6 +306,7 @@ export class EditarDespesaDto {
   @IsOptional()
   @IsString()
   @MaxLength(20)
+  @IsDocumentoValido()
   cnpj?: string;
 
   @IsOptional()
