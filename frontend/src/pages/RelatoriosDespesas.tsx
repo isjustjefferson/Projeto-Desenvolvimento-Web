@@ -124,7 +124,7 @@ export function RelatoriosDespesas() {
         })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="card">
           <h2 className="mb-3 font-semibold text-gray-800">Por categoria</h2>
           <div className="space-y-2">
@@ -175,7 +175,7 @@ export function RelatoriosDespesas() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="tabela-responsiva w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-400">
                   <th className="px-4 py-3">Data</th>
@@ -194,18 +194,18 @@ export function RelatoriosDespesas() {
                   const docs = d.anexos?.filter((a) => a.tipoDocumentoFiscal).map((a) => a.tipoDocumentoFiscal).join(', ');
                   return (
                     <tr key={d.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-4 py-3 text-xs text-gray-500">{formatarData(d.criadoEm)}</td>
-                      <td className="px-4 py-3">
+                      <td data-label="Data" className="px-4 py-3 text-xs text-gray-500">{formatarData(d.criadoEm)}</td>
+                      <td data-label="Chamado" className="px-4 py-3">
                         <Link to={`/chamados/${d.chamadoId}`} className="text-brand-700 hover:underline">
                           #{d.chamadoNumero} {d.chamadoTitulo?.substring(0, 40)}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{u?.nome || '-'}</td>
-                      <td className="px-4 py-3 text-gray-600">{categoriaDespesaLabel[d.categoria] || d.categoria}</td>
-                      <td className="px-4 py-3 text-gray-600">{d.fornecedor || '-'}</td>
-                      <td className="px-4 py-3 font-semibold">{formatarMoeda(d.valorCentavos)}</td>
-                      <td className="px-4 py-3 text-xs">{statusDespesaLabel[d.status]}</td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{docs || (d.anexos?.length ? 'Anexo(s)' : 'Sem classif.')}</td>
+                      <td data-label="Registrado por" className="px-4 py-3 text-gray-600">{u?.nome || '-'}</td>
+                      <td data-label="Categoria" className="px-4 py-3 text-gray-600">{categoriaDespesaLabel[d.categoria] || d.categoria}</td>
+                      <td data-label="Fornecedor" className="px-4 py-3 text-gray-600">{d.fornecedor || '-'}</td>
+                      <td data-label="Valor" className="px-4 py-3 font-semibold">{formatarMoeda(d.valorCentavos)}</td>
+                      <td data-label="Status" className="px-4 py-3 text-xs">{statusDespesaLabel[d.status]}</td>
+                      <td data-label="Docs" className="px-4 py-3 text-xs text-gray-500">{docs || (d.anexos?.length ? 'Anexo(s)' : 'Sem classif.')}</td>
                     </tr>
                   );
                 })}

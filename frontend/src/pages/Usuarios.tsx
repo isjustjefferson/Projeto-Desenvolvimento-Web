@@ -111,7 +111,7 @@ function LinhaMorador({
           </div>
         </div>
       </td>
-      <td className="px-4 py-3">
+      <td data-label="Perfil" className="px-4 py-3">
         <span
           className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${roleColor[m.role]}`}
         >
@@ -122,10 +122,10 @@ function LinhaMorador({
           <div className="mt-1 text-[11px] text-gray-400">cargo base</div>
         )}
       </td>
-      <td className="px-4 py-3 text-gray-500">
+      <td data-label="Detalhe" className="px-4 py-3 text-gray-500">
         {m.unidade || m.setor || '—'}
       </td>
-      <td className="px-4 py-3">
+      <td data-label="Status" className="px-4 py-3">
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
             m.ativo ? 'bg-emerald-500 text-white' : 'bg-gray-500 text-white'
@@ -299,7 +299,7 @@ export function Usuarios() {
 
       <div className="card overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="tabela-responsiva w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs text-gray-500">
                 <th className="px-4 py-3 font-semibold">Usuário</th>
@@ -341,7 +341,7 @@ export function Usuarios() {
         <h2 className="mb-3 flex items-center gap-2 font-semibold text-gray-800">
           <Users className="h-4 w-4" /> Resumo de permissões
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-lg bg-gray-50 p-3 text-sm">
             <strong className="text-gray-700">Condômino</strong>
             <p className="text-xs text-gray-500">
