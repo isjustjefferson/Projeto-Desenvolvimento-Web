@@ -15,6 +15,7 @@ export const statusLabel: Record<Status, string> = {
   REVISADO: 'Revisado',
   EM_ANDAMENTO: 'Em Andamento',
   CONCLUIDO: 'Concluído',
+  RECUSADO: 'Recusado',
 };
 
 export const statusDespesaLabel: Record<StatusDespesa, string> = {
@@ -74,6 +75,7 @@ export const statusColor: Record<Status, string> = {
   REVISADO: 'bg-blue-500 text-white',
   EM_ANDAMENTO: 'bg-indigo-500 text-white',
   CONCLUIDO: 'bg-emerald-500 text-white',
+  RECUSADO: 'bg-red-500 text-white',
 };
 
 export const prioridadeLabel: Record<Prioridade, string> = {

@@ -25,6 +25,7 @@ export const STATUS_VALUES = [
   'REVISADO',
   'EM_ANDAMENTO',
   'CONCLUIDO',
+  'RECUSADO',
 ] as const;
 
 export const PRIORIDADE_VALUES = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'] as const;

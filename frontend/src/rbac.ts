@@ -3,10 +3,10 @@ import type { Categoria, Chamado, Role, Status, Usuario } from './types';
 // Centraliza as regras de acesso por perfil (RBAC).
 // Cada perfil enxerga um conjunto de status de chamados.
 export const statusVisiveisPorRole: Record<Role, Status[]> = {
-  CONDOMINO: ['AGUARDANDO_APROVACAO', 'EM_ANDAMENTO', 'CONCLUIDO'],
+  CONDOMINO: ['AGUARDANDO_APROVACAO', 'EM_ANDAMENTO', 'CONCLUIDO', 'RECUSADO'],
   PRESTADOR: ['REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'],
-  SINDICO: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'],
-  ADMINISTRADOR: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'],
+  SINDICO: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'RECUSADO'],
+  ADMINISTRADOR: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'RECUSADO'],
 };
 
 // Ações que cada perfil pode executar

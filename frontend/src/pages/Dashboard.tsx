@@ -37,6 +37,7 @@ const statuses: Status[] = [
   'REVISADO',
   'EM_ANDAMENTO',
   'CONCLUIDO',
+  'RECUSADO',
 ];
 
 const prioridades: Prioridade[] = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'];
