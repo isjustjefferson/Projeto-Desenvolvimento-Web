@@ -130,7 +130,7 @@ Tabelas normalizadas em 3ª Forma Normal:
 | `usuarios` | `id` (PK), `email` (UNIQUE) | `papel` define o perfil. `localizacao`, `especialidade` conforme papel |
 | `locais` | `id` (PK) | Normaliza `predio/andar/sala` evitando repetição |
 | `chamados` | `id` (PK) | `solucao_descricao`/`solucao_materiais` são opcionais. Só exigidos se `CONCLUIDO` |
-| `historicos` | `id` (PK) | Guarda `de_status` e `para_status` para manter histórico imutável |
+| `historicos` | `id` (PK) | Guarda `de_status` e `para_status` para manter histórico imutável; `observacao` registra o motivo quando `para_status = 'RECUSADO'` |
 | `tokens_reset` | `token` (PK) | Armazena tokens de recuperação |
 
 ---
@@ -141,7 +141,7 @@ Tabelas normalizadas em 3ª Forma Normal:
 
 ```sql
 CREATE TYPE papel       AS ENUM ('CONDOMINO','PRESTADOR','SINDICO','ADMINISTRADOR');
-CREATE TYPE status      AS ENUM ('AGUARDANDO_APROVACAO','REVISADO','EM_ANDAMENTO','CONCLUIDO');
+CREATE TYPE status      AS ENUM ('AGUARDANDO_APROVACAO','REVISADO','EM_ANDAMENTO','CONCLUIDO','RECUSADO');
 CREATE TYPE prioridade  AS ENUM ('BAIXA','MEDIA','ALTA','CRITICA');
 CREATE TYPE categoria   AS ENUM ('ELETRICA','HIDRAULICA','CLIMATIZACAO','MOBILIARIO','ESTRUTURAL','OUTROS');
 ```

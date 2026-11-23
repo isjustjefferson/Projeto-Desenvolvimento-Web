@@ -25,6 +25,7 @@ db/
 07_seed_demo.sql               # seed demo (locais/chamados/historicos)
 08_orcamentos.sql              # tabela orcamentos
 09_nota_fiscal_ocr.sql         # colunas OCR em anexos_despesa
+10_migracao_status_recusado.sql # status RECUSADO em bancos existentes
 └── scripts/
     └── iniciar-banco.ps1          # Script de provisionamento
 ```
@@ -62,7 +63,7 @@ O script irá:
 1. Criar o papel `predial` (ou gerar senha se não informada)
 2. Criar o banco `predial` com `UTF8`
 3. Aplicar os arquivos SQL na ordem correta
-4. Verificar: 8 tabelas, 28 índices, 14 FKs, 1 CHECK, 11 ENUMs, tabela `orcamentos` e colunas OCR
+4. Verificar: 8 tabelas, 28 índices, 14 FKs, 1 CHECK, 11 ENUMs, status `RECUSADO`, tabela `orcamentos` e colunas OCR
 
 **Variáveis opcionais:**
 
@@ -93,6 +94,7 @@ psql -U postgres -v ON_ERROR_STOP=1 -f db/06_migracao_papel.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/07_seed_demo.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/08_orcamentos.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/09_nota_fiscal_ocr.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/10_migracao_status_recusado.sql
 ```
 
 > **Importante:** Sempre use `-v ON_ERROR_STOP=1`. Sem isso, o `psql` continua após erro e retorna sucesso.

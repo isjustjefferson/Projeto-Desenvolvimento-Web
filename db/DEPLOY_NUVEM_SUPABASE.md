@@ -42,6 +42,7 @@ Invoke-Expression "$base db/06_migracao_papel.sql"
 Invoke-Expression "$base db/07_seed_demo.sql"
 Invoke-Expression "$base db/08_orcamentos.sql"
 Invoke-Expression "$base db/09_nota_fiscal_ocr.sql"
+Invoke-Expression "$base db/10_migracao_status_recusado.sql"
 ```
 
 Alternativa: rodar os mesmos arquivos no **SQL Editor** do Supabase, na mesma ordem, conferindo erros.
@@ -52,6 +53,8 @@ SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;
 -- Esperado incluir: usuarios, locais, chamados, historicos, tokens_reset, despesas, anexos_despesa, orcamentos
 SELECT count(*) FROM pg_constraint WHERE contype = 'f';
 SELECT count(*) FROM pg_constraint WHERE contype = 'c';
+SELECT enumlabel FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'status' ORDER BY enumsortorder;
+-- Deve incluir: AGUARDANDO_APROVACAO, REVISADO, EM_ANDAMENTO, CONCLUIDO, RECUSADO
 ```
 
 ## 5) Smoke test da aplicação

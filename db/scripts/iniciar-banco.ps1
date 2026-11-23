@@ -10,7 +10,7 @@
         01 tipos -> 01b tipos despesas -> 02 tabelas -> 02b tabelas despesas
         -> 03 FKs -> 03b FKs despesas -> 04 CHECK -> 05 índices
         -> 05b índices despesas -> 06 migração papel -> 08 orçamentos
-        -> 09 OCR
+        -> 09 OCR -> 10 status RECUSADO
 
 .EXAMPLE
     .\iniciar-banco.ps1
@@ -197,6 +197,7 @@ Invoke-ArquivoSql -Caminho (Join-Path $dirSql '05b_indices_despesas.sql')    -Ba
 Invoke-ArquivoSql -Caminho (Join-Path $dirSql '06_migracao_papel.sql')       -Banco $NomeBanco
 Invoke-ArquivoSql -Caminho (Join-Path $dirSql '08_orcamentos.sql')           -Banco $NomeBanco
 Invoke-ArquivoSql -Caminho (Join-Path $dirSql '09_nota_fiscal_ocr.sql')      -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '10_migracao_status_recusado.sql') -Banco $NomeBanco
 
 # ---------------------------------------------------------------------------
 if (-not $PularVerificacao) {
@@ -207,12 +208,13 @@ if (-not $PularVerificacao) {
     $fks        = Invoke-Sql -Sql "SELECT count(*) FROM pg_constraint WHERE contype = 'f';" -Banco $NomeBanco
     $checks     = Invoke-Sql -Sql "SELECT count(*) FROM pg_constraint WHERE contype = 'c' AND conname = 'chamados_conclusao_incompleta_chk';" -Banco $NomeBanco
     $tipos      = Invoke-Sql -Sql "SELECT count(DISTINCT t.oid) FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid WHERE t.typnamespace = 'public'::regnamespace;" -Banco $NomeBanco
+    $recusado   = Invoke-Sql -Sql "SELECT count(*) FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'status' AND e.enumlabel = 'RECUSADO';" -Banco $NomeBanco
     $orcamentos = Invoke-Sql -Sql "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orcamentos';" -Banco $NomeBanco
     $ocrColunas = Invoke-Sql -Sql "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'anexos_despesa' AND column_name IN ('valor_total_centavos', 'texto_ocr', 'ocr_extraido_em');" -Banco $NomeBanco
 
     $esperado = @{
         tabelas = 8; indices = 28; fks = 14; checks = 1; tipos = 11;
-        orcamentos = 1; ocrColunas = 3
+        recusado = 1; orcamentos = 1; ocrColunas = 3
     }
 
     $divergencias = @()
@@ -221,14 +223,14 @@ if (-not $PularVerificacao) {
             switch ($chave) {
                 'tabelas'    { $tabelas };    'indices' { $indice }
                 'fks'        { $fks };        'checks' { $checks }
-                'tipos'      { $tipos };
+                'tipos'      { $tipos };      'recusado' { $recusado }
                 'orcamentos' { $orcamentos }; 'ocrColunas' { $ocrColunas }
             }
         ).Trim())
         $rotulo = switch ($chave) {
             'tabelas'    { 'tabelas' };    'indices' { 'índices' }
             'fks'        { 'chaves estrangeiras' }; 'checks' { 'CHECK do RN04' }
-            'tipos'      { 'tipos ENUM' };
+            'tipos'      { 'tipos ENUM' }; 'recusado' { 'status RECUSADO' }
             'orcamentos' { 'tabela orcamentos' }; 'ocrColunas' { 'colunas OCR' }
         }
         if ($obtido -eq $esperado[$chave]) {
