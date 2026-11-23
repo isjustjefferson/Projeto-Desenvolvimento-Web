@@ -66,7 +66,7 @@ describe('avatarCor', () => {
 
 describe('rótulos', () => {
   it('cobre todos os valores dos enums usados na interface', () => {
-    expect(Object.keys(statusLabel)).toHaveLength(4);
+    expect(Object.keys(statusLabel)).toHaveLength(5);
     expect(Object.keys(prioridadeLabel)).toHaveLength(4);
     expect(Object.keys(roleLabel)).toHaveLength(4);
     expect(Object.keys(categoriaLabel)).toHaveLength(6);
