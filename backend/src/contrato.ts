@@ -7,7 +7,8 @@ export type Status =
   | 'AGUARDANDO_APROVACAO'
   | 'REVISADO'
   | 'EM_ANDAMENTO'
-  | 'CONCLUIDO';
+  | 'CONCLUIDO'
+  | 'RECUSADO';
 
 export type Prioridade = 'BAIXA' | 'MEDIA' | 'ALTA' | 'CRITICA';
 

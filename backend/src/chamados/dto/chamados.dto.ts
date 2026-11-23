@@ -43,6 +43,7 @@ const STATUS: Status[] = [
   'REVISADO',
   'EM_ANDAMENTO',
   'CONCLUIDO',
+  'RECUSADO',
 ];
 
 const CATEGORIAS_DESPESA: CategoriaDespesa[] = [

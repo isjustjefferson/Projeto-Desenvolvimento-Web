@@ -23,11 +23,11 @@ export class HistoricoEntity {
   @JoinColumn({ name: 'usuario_id' })
   usuario!: UsuarioEntity;
 
-  @Column({ type: 'enum', enum: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'], name: 'de_status', nullable: true })
-  deStatus!: 'AGUARDANDO_APROVACAO' | 'REVISADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | null;
+  @Column({ type: 'enum', enum: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'RECUSADO'], name: 'de_status', nullable: true })
+  deStatus!: 'AGUARDANDO_APROVACAO' | 'REVISADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'RECUSADO' | null;
 
-  @Column({ type: 'enum', enum: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'], name: 'para_status', nullable: false })
-  paraStatus!: 'AGUARDANDO_APROVACAO' | 'REVISADO' | 'EM_ANDAMENTO' | 'CONCLUIDO';
+  @Column({ type: 'enum', enum: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'RECUSADO'], name: 'para_status', nullable: false })
+  paraStatus!: 'AGUARDANDO_APROVACAO' | 'REVISADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'RECUSADO';
 
   @Column({ type: 'timestamptz', name: 'data_hora', nullable: false, default: () => 'now()' })
   dataHora!: Date;

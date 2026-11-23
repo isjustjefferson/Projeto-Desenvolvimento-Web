@@ -17,8 +17,8 @@ export class ChamadoEntity {
   @Column({ type: 'enum', enum: ['ELETRICA', 'HIDRAULICA', 'CLIMATIZACAO', 'MOBILIARIO', 'ESTRUTURAL', 'OUTROS'], name: 'categoria', nullable: false })
   categoria!: 'ELETRICA' | 'HIDRAULICA' | 'CLIMATIZACAO' | 'MOBILIARIO' | 'ESTRUTURAL' | 'OUTROS';
 
-  @Column({ type: 'enum', enum: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO'], name: 'status', nullable: false, default: 'AGUARDANDO_APROVACAO' })
-  status!: 'AGUARDANDO_APROVACAO' | 'REVISADO' | 'EM_ANDAMENTO' | 'CONCLUIDO';
+  @Column({ type: 'enum', enum: ['AGUARDANDO_APROVACAO', 'REVISADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'RECUSADO'], name: 'status', nullable: false, default: 'AGUARDANDO_APROVACAO' })
+  status!: 'AGUARDANDO_APROVACAO' | 'REVISADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'RECUSADO';
 
   @Column({ type: 'enum', enum: ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'], name: 'prioridade', nullable: true })
   prioridade!: 'BAIXA' | 'MEDIA' | 'ALTA' | 'CRITICA' | null;
