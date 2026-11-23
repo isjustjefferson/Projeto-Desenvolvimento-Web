@@ -7,7 +7,10 @@
     imprime o resultado da verificação.
 
     A ordem de aplicação é obrigatória e respeitada por este script:
-        01 tipos -> 02 tabelas -> 03 FKs -> 04 CHECK -> 05 índices
+        01 tipos -> 01b tipos despesas -> 02 tabelas -> 02b tabelas despesas
+        -> 03 FKs -> 03b FKs despesas -> 04 CHECK -> 05 índices
+        -> 05b índices despesas -> 06 migração papel -> 08 orçamentos
+        -> 09 OCR
 
 .EXAMPLE
     .\iniciar-banco.ps1
@@ -191,34 +194,42 @@ Invoke-ArquivoSql -Caminho (Join-Path $dirSql '03b_chaves_despesas.sql')      -B
 Invoke-ArquivoSql -Caminho (Join-Path $dirSql '04_check_rn04.sql')          -Banco $NomeBanco
 Invoke-ArquivoSql -Caminho (Join-Path $dirSql '05_indices.sql')             -Banco $NomeBanco
 Invoke-ArquivoSql -Caminho (Join-Path $dirSql '05b_indices_despesas.sql')    -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '06_migracao_papel.sql')       -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '08_orcamentos.sql')           -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '09_nota_fiscal_ocr.sql')      -Banco $NomeBanco
 
 # ---------------------------------------------------------------------------
 if (-not $PularVerificacao) {
     Write-Etapa 'Verificando a implantação'
 
-    $tabelas = Invoke-Sql -Sql "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" -Banco $NomeBanco
-    $indice  = Invoke-Sql -Sql "SELECT count(*) FROM pg_indexes WHERE schemaname = 'public';" -Banco $NomeBanco
-    $fks     = Invoke-Sql -Sql "SELECT count(*) FROM pg_constraint WHERE contype = 'f';" -Banco $NomeBanco
-    $checks  = Invoke-Sql -Sql "SELECT count(*) FROM pg_constraint WHERE contype = 'c' AND conname = 'chamados_conclusao_incompleta_chk';" -Banco $NomeBanco
-    $tipos   = Invoke-Sql -Sql "SELECT count(*) FROM pg_type WHERE typname IN ('papel','status','prioridade','categoria');" -Banco $NomeBanco
+    $tabelas    = Invoke-Sql -Sql "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" -Banco $NomeBanco
+    $indice     = Invoke-Sql -Sql "SELECT count(*) FROM pg_indexes WHERE schemaname = 'public';" -Banco $NomeBanco
+    $fks        = Invoke-Sql -Sql "SELECT count(*) FROM pg_constraint WHERE contype = 'f';" -Banco $NomeBanco
+    $checks     = Invoke-Sql -Sql "SELECT count(*) FROM pg_constraint WHERE contype = 'c' AND conname = 'chamados_conclusao_incompleta_chk';" -Banco $NomeBanco
+    $tipos      = Invoke-Sql -Sql "SELECT count(DISTINCT t.oid) FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid WHERE t.typnamespace = 'public'::regnamespace;" -Banco $NomeBanco
+    $orcamentos = Invoke-Sql -Sql "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orcamentos';" -Banco $NomeBanco
+    $ocrColunas = Invoke-Sql -Sql "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'anexos_despesa' AND column_name IN ('valor_total_centavos', 'texto_ocr', 'ocr_extraido_em');" -Banco $NomeBanco
 
     $esperado = @{
-        tabelas = 7; indices = 24; fks = 11; checks = 1; tipos = 10
+        tabelas = 8; indices = 28; fks = 14; checks = 1; tipos = 11;
+        orcamentos = 1; ocrColunas = 3
     }
 
     $divergencias = @()
     foreach ($chave in $esperado.Keys) {
         $obtido = [int]($(
             switch ($chave) {
-                'tabelas' { $tabelas }; 'indices' { $indice }
-                'fks'     { $fks };     'checks' { $checks }
-                'tipos'   { $tipos }
+                'tabelas'    { $tabelas };    'indices' { $indice }
+                'fks'        { $fks };        'checks' { $checks }
+                'tipos'      { $tipos };
+                'orcamentos' { $orcamentos }; 'ocrColunas' { $ocrColunas }
             }
         ).Trim())
         $rotulo = switch ($chave) {
-            'tabelas' { 'tabelas' }; 'indices' { 'índices' }
-            'fks'     { 'chaves estrangeiras' }; 'checks' { 'CHECK do RN04' }
-            'tipos'   { 'tipos ENUM' }
+            'tabelas'    { 'tabelas' };    'indices' { 'índices' }
+            'fks'        { 'chaves estrangeiras' }; 'checks' { 'CHECK do RN04' }
+            'tipos'      { 'tipos ENUM' };
+            'orcamentos' { 'tabela orcamentos' }; 'ocrColunas' { 'colunas OCR' }
         }
         if ($obtido -eq $esperado[$chave]) {
             Write-Ok "$rotulo`: $obtido"

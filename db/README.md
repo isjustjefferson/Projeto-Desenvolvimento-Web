@@ -62,7 +62,7 @@ O script irá:
 1. Criar o papel `predial` (ou gerar senha se não informada)
 2. Criar o banco `predial` com `UTF8`
 3. Aplicar os arquivos SQL na ordem correta
-4. Verificar: 7 tabelas, 24 índices, 11 FKs, 1 CHECK, 10 ENUMs
+4. Verificar: 8 tabelas, 28 índices, 14 FKs, 1 CHECK, 11 ENUMs, tabela `orcamentos` e colunas OCR
 
 **Variáveis opcionais:**
 
@@ -113,9 +113,9 @@ As variáveis de ambiente esperadas pelo backend:
 ## Verificação rápida
 
 ```sql
-SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'; -- 5
-SELECT count(*) FROM pg_constraint WHERE contype = 'f';                           -- 6
-SELECT count(*) FROM pg_constraint WHERE contype = 'c';                           -- 1 (CHECK RN04)
+SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';                                      -- 8
+SELECT count(*) FROM pg_constraint WHERE contype = 'f';                                                              -- 14
+SELECT count(*) FROM pg_constraint WHERE contype = 'c' AND conname = 'chamados_conclusao_incompleta_chk';             -- 1 (CHECK RN04)
 ```
 
 ---
