@@ -78,6 +78,22 @@ export type CategoriaDespesa =
 
 export type StatusDespesa = 'PENDENTE' | 'APROVADA' | 'REJEITADA';
 
+export type StatusOrcamento = 'PENDENTE' | 'APROVADO' | 'REJEITADO';
+
+export interface Orcamento {
+  id: number;
+  chamadoId: number;
+  prestadorId: number;
+  descricao: string;
+  valorCentavos: number;
+  status: StatusOrcamento;
+  motivoRejeicao?: string;
+  aprovadoPorId?: number;
+  aprovadoEm?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type FormaPagamento = 'DINHEIRO' | 'PIX' | 'CARTAO' | 'FATURADO';
 
 export type PagoPor = 'TECNICO' | 'EMPRESA';

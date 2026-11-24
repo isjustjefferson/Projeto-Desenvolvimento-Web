@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AnexoDespesaEntity } from './entities/anexo-despesa.entity.js';
 import { ChamadoEntity } from './entities/chamado.entity.js';
+import { OrcamentoEntity } from './entities/orcamento.entity.js';
 import { DespesaEntity } from './entities/despesa.entity.js';
 import { HistoricoEntity } from './entities/historico.entity.js';
 import { LocalEntity } from './entities/local.entity.js';
@@ -65,6 +66,7 @@ function buildConnectionOptions(): TypeOrmModuleOptions {
     TokenResetEntity,
     DespesaEntity,
     AnexoDespesaEntity,
+    OrcamentoEntity,
   ];
   const base: TypeOrmModuleOptions = {
     type: 'postgres',

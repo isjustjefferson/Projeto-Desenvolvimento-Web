@@ -12,6 +12,7 @@ import type {
   Categoria,
   Chamado,
   Despesa,
+  Orcamento,
   PaginacaoChamados,
   Prioridade,
   ResumoChamados,
@@ -26,7 +27,9 @@ import { LocalEntity } from '../database/entities/local.entity.js';
 import { UsuarioEntity } from '../database/entities/usuario.entity.js';
 import { DespesaEntity } from '../database/entities/despesa.entity.js';
 import { AnexoDespesaEntity } from '../database/entities/anexo-despesa.entity.js';
+import { OrcamentoEntity } from '../database/entities/orcamento.entity.js';
 import { mapDespesaToContrato } from '../database/mappers/despesa.mapper.js';
+import { mapOrcamentoToContrato } from '../database/mappers/orcamento.mapper.js';
 import { mapChamadoToContrato } from '../database/mappers/chamado.mapper.js';
 import { mapUsuarioToContrato } from '../database/mappers/usuario.mapper.js';
 import type { UsuarioInterno } from '../dados/seed.js';
@@ -37,10 +40,12 @@ import type {
   ConcluirChamadoDto,
   CriarChamadoDto,
   CriarDespesaDto,
+  CriarOrcamentoDto,
   EditarDespesaDto,
   FiltrosChamadosDto,
   RecusarChamadoDto,
   RejeitarDespesaDto,
+  RejeitarOrcamentoDto,
 } from './dto/chamados.dto.js';
 
 const STATUS_CONDOMINO: Status[] = [
@@ -80,6 +85,7 @@ export class ChamadosService {
     @Inject('USUARIO_REPO') private readonly usuarioRepo: Repository<UsuarioEntity>,
     @Inject('DESPESA_REPO') private readonly despesaRepo: Repository<DespesaEntity>,
     @Inject('ANEXO_DESPESA_REPO') private readonly anexoRepo: Repository<AnexoDespesaEntity>,
+    @Inject('ORCAMENTO_REPO') private readonly orcamentoRepo: Repository<OrcamentoEntity>,
     @Inject('DATA_SOURCE') private readonly dataSource: DataSource,
   ) {}
 
@@ -497,6 +503,7 @@ export class ChamadosService {
         throw new BadRequestException('Apenas chamados revisados podem ser iniciados.');
       }
       this.validarDonoPrestador(chamado, autenticado);
+      await this.validarSemOrcamentoPendente(id);
       return this.transicionar(chamado, autenticado, 'EM_ANDAMENTO');
     }
     const chamadoEnt = await this.chamadoRepo.findOne({
@@ -510,6 +517,7 @@ export class ChamadosService {
       );
     }
     this.validarDonoTecnicoContrato(mapChamadoToContrato(chamadoEnt as any), autenticado);
+    await this.validarSemOrcamentoPendente(id);
     const result = await this.transicionarRepo(chamadoEnt as any, autenticado, 'EM_ANDAMENTO');
     return { ok: true, chamado: this.prepararChamadoParaRespostaContrato(mapChamadoToContrato(result as any), autenticado) };
   }
@@ -929,6 +937,285 @@ export class ChamadosService {
     };
     this.store.salvarChamado(atualizado);
     return { ok: true, chamado: atualizado };
+  }
+
+  async listarOrcamentos(
+    id: number,
+    usuario: UsuarioInterno,
+  ): Promise<{ ok: true; orcamentos: Orcamento[] }> {
+    const chamado = await this.buscarChamadoContrato(id);
+    if (!this.podeGerenciarOrcamentos(chamado, usuario)) {
+      throw new ForbiddenException('Sem permissão para visualizar orçamentos.');
+    }
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      return {
+        ok: true,
+        orcamentos: this.store.getOrcamentosPorChamado(id).map((o) => ({ ...o })),
+      };
+    }
+    const orcamentosEnt = await this.orcamentoRepo.find({
+      where: { chamadoId: id },
+      order: { id: 'ASC' },
+    });
+    return {
+      ok: true,
+      orcamentos: orcamentosEnt.map((o) => mapOrcamentoToContrato(o) as Orcamento),
+    };
+  }
+
+  async criarOrcamento(
+    id: number,
+    usuario: UsuarioInterno,
+    dados: CriarOrcamentoDto,
+  ): Promise<{ ok: true; orcamento: Orcamento }> {
+    const chamado = await this.buscarChamadoContrato(id);
+    if (usuario.role !== 'PRESTADOR' || chamado.prestadorId !== usuario.id) {
+      throw new ForbiddenException(
+        'Somente o prestador atribuído pode enviar orçamentos.',
+      );
+    }
+    if (chamado.status !== 'REVISADO') {
+      throw new BadRequestException(
+        'Orçamentos só podem ser enviados em chamados revisados.',
+      );
+    }
+    const descricao = dados.descricao.trim();
+    if (!descricao) throw new BadRequestException('Descreva o orçamento.');
+    const agora = new Date();
+
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      const orcamento: Orcamento = {
+        id: this.store.incProximoIdOrcamento(),
+        chamadoId: id,
+        prestadorId: usuario.id,
+        descricao,
+        valorCentavos: dados.valorCentavos,
+        status: 'PENDENTE',
+        criadoEm: agora.toISOString(),
+        atualizadoEm: agora.toISOString(),
+      };
+      this.store.salvarOrcamento(orcamento);
+      return { ok: true, orcamento: { ...orcamento } };
+    }
+
+    const orcamentoEnt = this.orcamentoRepo.create({
+      chamadoId: id,
+      prestadorId: usuario.id,
+      descricao,
+      valorCentavos: dados.valorCentavos,
+      status: 'PENDENTE',
+      motivoRejeicao: null,
+      aprovadoPorId: null,
+      aprovadoEm: null,
+      criadoEm: agora,
+      atualizadoEm: agora,
+    });
+    await this.orcamentoRepo.save(orcamentoEnt);
+    const completo = await this.orcamentoRepo.findOne({
+      where: { id: orcamentoEnt.id },
+    });
+    return {
+      ok: true,
+      orcamento: mapOrcamentoToContrato(completo as OrcamentoEntity) as Orcamento,
+    };
+  }
+
+  async aprovarOrcamento(
+    chamadoId: number,
+    orcamentoId: number,
+    usuario: UsuarioInterno,
+  ): Promise<{ ok: true; orcamento: Orcamento }> {
+    const chamado = await this.buscarChamadoContrato(chamadoId);
+    this.validarDecisorOrcamento(usuario);
+    const agora = new Date();
+
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      const orcamento = this.buscarOrcamento(chamadoId, orcamentoId);
+      if (orcamento.status !== 'PENDENTE') {
+        throw new BadRequestException(
+          'Apenas orçamentos pendentes podem ser aprovados.',
+        );
+      }
+      const atualizado: Orcamento = {
+        ...orcamento,
+        status: 'APROVADO',
+        aprovadoPorId: usuario.id,
+        aprovadoEm: agora.toISOString(),
+        atualizadoEm: agora.toISOString(),
+      };
+      this.store.salvarOrcamento(atualizado);
+      this.registrarHistoricoOrcamento(
+        chamado,
+        usuario,
+        `Orçamento aprovado: ${atualizado.descricao}.`,
+        agora.toISOString(),
+      );
+      return { ok: true, orcamento: { ...atualizado } };
+    }
+
+    const orcamentoEnt = await this.orcamentoRepo.findOne({
+      where: { id: orcamentoId },
+    });
+    if (!orcamentoEnt || orcamentoEnt.chamadoId !== chamadoId) {
+      throw new NotFoundException('Orçamento não encontrado.');
+    }
+    if (orcamentoEnt.status !== 'PENDENTE') {
+      throw new BadRequestException(
+        'Apenas orçamentos pendentes podem ser aprovados.',
+      );
+    }
+    orcamentoEnt.status = 'APROVADO';
+    orcamentoEnt.aprovadoPorId = usuario.id;
+    orcamentoEnt.aprovadoEm = agora;
+    orcamentoEnt.atualizadoEm = agora;
+    await this.orcamentoRepo.save(orcamentoEnt);
+    await this.registrarHistoricoOrcamentoRepo(
+      chamado,
+      usuario,
+      `Orçamento aprovado: ${orcamentoEnt.descricao}.`,
+      agora,
+    );
+    return { ok: true, orcamento: mapOrcamentoToContrato(orcamentoEnt) as Orcamento };
+  }
+
+  async rejeitarOrcamento(
+    chamadoId: number,
+    orcamentoId: number,
+    usuario: UsuarioInterno,
+    dados: RejeitarOrcamentoDto,
+  ): Promise<{ ok: true; orcamento: Orcamento }> {
+    const chamado = await this.buscarChamadoContrato(chamadoId);
+    this.validarDecisorOrcamento(usuario);
+    const motivo = dados.motivo.trim();
+    if (!motivo) throw new BadRequestException('Informe o motivo da rejeição.');
+    const agora = new Date();
+    const observacao = `Orçamento rejeitado: ${motivo}.`;
+
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      const orcamento = this.buscarOrcamento(chamadoId, orcamentoId);
+      if (orcamento.status !== 'PENDENTE') {
+        throw new BadRequestException(
+          'Apenas orçamentos pendentes podem ser rejeitados.',
+        );
+      }
+      const atualizado: Orcamento = {
+        ...orcamento,
+        status: 'REJEITADO',
+        motivoRejeicao: motivo,
+        aprovadoPorId: usuario.id,
+        aprovadoEm: agora.toISOString(),
+        atualizadoEm: agora.toISOString(),
+      };
+      this.store.salvarOrcamento(atualizado);
+      this.registrarHistoricoOrcamento(chamado, usuario, observacao, agora.toISOString());
+      return { ok: true, orcamento: { ...atualizado } };
+    }
+
+    const orcamentoEnt = await this.orcamentoRepo.findOne({
+      where: { id: orcamentoId },
+    });
+    if (!orcamentoEnt || orcamentoEnt.chamadoId !== chamadoId) {
+      throw new NotFoundException('Orçamento não encontrado.');
+    }
+    if (orcamentoEnt.status !== 'PENDENTE') {
+      throw new BadRequestException(
+        'Apenas orçamentos pendentes podem ser rejeitados.',
+      );
+    }
+    orcamentoEnt.status = 'REJEITADO';
+    orcamentoEnt.motivoRejeicao = motivo;
+    orcamentoEnt.aprovadoPorId = usuario.id;
+    orcamentoEnt.aprovadoEm = agora;
+    orcamentoEnt.atualizadoEm = agora;
+    await this.orcamentoRepo.save(orcamentoEnt);
+    await this.registrarHistoricoOrcamentoRepo(
+      chamado,
+      usuario,
+      observacao,
+      agora,
+    );
+    return { ok: true, orcamento: mapOrcamentoToContrato(orcamentoEnt) as Orcamento };
+  }
+
+  private podeGerenciarOrcamentos(c: Chamado, usuario: UsuarioInterno): boolean {
+    if (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') return true;
+    return usuario.role === 'PRESTADOR' && c.prestadorId === usuario.id;
+  }
+
+  private validarDecisorOrcamento(usuario: UsuarioInterno): void {
+    if (usuario.role !== 'SINDICO' && usuario.role !== 'ADMINISTRADOR') {
+      throw new ForbiddenException(
+        'Somente síndico ou administrador pode decidir sobre orçamentos.',
+      );
+    }
+  }
+
+  private buscarOrcamento(chamadoId: number, orcamentoId: number): Orcamento {
+    const orcamento = this.store.getOrcamentoPorId(orcamentoId);
+    if (!orcamento || orcamento.chamadoId !== chamadoId) {
+      throw new NotFoundException('Orçamento não encontrado.');
+    }
+    return orcamento;
+  }
+
+  private registrarHistoricoOrcamento(
+    chamado: Chamado,
+    usuario: UsuarioInterno,
+    observacao: string,
+    dataHora: string,
+  ): void {
+    this.store.salvarChamado({
+      ...chamado,
+      historico: [
+        {
+          id: this.store.incProximoIdHistorico(),
+          usuarioId: usuario.id,
+          de: chamado.status,
+          para: chamado.status,
+          dataHora,
+          observacao,
+        },
+        ...chamado.historico,
+      ],
+    });
+  }
+
+  private async registrarHistoricoOrcamentoRepo(
+    chamado: Chamado,
+    usuario: UsuarioInterno,
+    observacao: string,
+    dataHora: Date,
+  ): Promise<void> {
+    await this.historicoRepo.save(this.historicoRepo.create({
+      chamadoId: chamado.id,
+      usuarioId: usuario.id,
+      deStatus: chamado.status,
+      paraStatus: chamado.status,
+      dataHora,
+      observacao,
+    } as any));
+  }
+
+  private async validarSemOrcamentoPendente(chamadoId: number): Promise<void> {
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      const pendente = this.store
+        .getOrcamentosPorChamado(chamadoId)
+        .some((o) => o.status === 'PENDENTE');
+      if (pendente) {
+        throw new BadRequestException(
+          'Aprove ou rejeite os orçamentos pendentes antes de iniciar o chamado.',
+        );
+      }
+      return;
+    }
+    const pendentes = await this.orcamentoRepo.count({
+      where: { chamadoId, status: 'PENDENTE' },
+    });
+    if (pendentes > 0) {
+      throw new BadRequestException(
+        'Aprove ou rejeite os orçamentos pendentes antes de iniciar o chamado.',
+      );
+    }
   }
 
   // ---- Despesas ----
@@ -1434,6 +1721,20 @@ export class ChamadosService {
         'Este chamado não está atribuído a você.',
       );
     }
+  }
+
+  private async buscarChamadoContrato(id: number): Promise<Chamado> {
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      return this.buscar(id);
+    }
+    const ent = await this.chamadoRepo.findOne({
+      where: { id },
+      relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
+    } as any);
+    if (!ent) {
+      throw new NotFoundException('Chamado não encontrado.');
+    }
+    return mapChamadoToContrato(ent as any) as Chamado;
   }
 
   private buscar(id: number): Chamado {

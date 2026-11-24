@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Chamado, Despesa, UsuarioPublico } from '../contrato.js';
+import type { Chamado, Despesa, Orcamento, UsuarioPublico } from '../contrato.js';
 import { classificarChamado } from '../chamados/criticidade.js';
 import { chamadosSeed, usuariosSeed } from './seed.js';
 import type { UsuarioInterno } from './seed.js';
@@ -23,6 +23,7 @@ export class StoreService {
     ]),
   );
   private readonly despesas = new Map<number, Despesa>();
+  private readonly orcamentos = new Map<number, Orcamento>();
   private readonly tokensReset = new Map<string, TokenReset>();
 
   private proximoIdUsuario = Math.max(...this.usuarios.keys()) + 1;
@@ -30,6 +31,7 @@ export class StoreService {
   private proximoIdHistorico =
     Math.max(...chamadosSeed.flatMap((c) => c.historico.map((h) => h.id))) + 1;
   private proximoIdDespesa = 1;
+  private proximoIdOrcamento = 1;
   private proximoIdAnexoDespesa = 1;
 
   // ---- Usuários ----
@@ -148,6 +150,28 @@ export class StoreService {
 
   incProximoIdDespesa(): number {
     return this.proximoIdDespesa++;
+  }
+
+  getOrcamentosPorChamado(chamadoId: number): Orcamento[] {
+    return [...this.orcamentos.values()]
+      .filter((o) => o.chamadoId === chamadoId)
+      .sort((a, b) => a.id - b.id);
+  }
+
+  getOrcamentoPorId(id: number): Orcamento | undefined {
+    return this.orcamentos.get(id);
+  }
+
+  salvarOrcamento(orcamento: Orcamento): void {
+    this.orcamentos.set(orcamento.id, orcamento);
+  }
+
+  getProximoIdOrcamento(): number {
+    return this.proximoIdOrcamento;
+  }
+
+  incProximoIdOrcamento(): number {
+    return this.proximoIdOrcamento++;
   }
 
   getProximoIdAnexoDespesa(): number {

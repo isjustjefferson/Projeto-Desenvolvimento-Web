@@ -8,6 +8,7 @@ import { HistoricoEntity } from './entities/historico.entity.js';
 import { TokenResetEntity } from './entities/token-reset.entity.js';
 import { DespesaEntity } from './entities/despesa.entity.js';
 import { AnexoDespesaEntity } from './entities/anexo-despesa.entity.js';
+import { OrcamentoEntity } from './entities/orcamento.entity.js';
 
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
 
@@ -50,11 +51,16 @@ const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
       inject: isTest ? [] : [DataSource],
     },
     {
+      provide: 'ORCAMENTO_REPO',
+      useFactory: (ds?: DataSource) => (ds ? ds.getRepository(OrcamentoEntity) : ({} as any)),
+      inject: isTest ? [] : [DataSource],
+    },
+    {
       provide: 'DATA_SOURCE',
       useFactory: (ds?: DataSource) => ds ?? ({} as any),
       inject: isTest ? [] : [DataSource],
     },
   ],
-  exports: ['USUARIO_REPO', 'LOCAL_REPO', 'CHAMADO_REPO', 'HISTORICO_REPO', 'TOKEN_RESET_REPO', 'DESPESA_REPO', 'ANEXO_DESPESA_REPO', 'DATA_SOURCE'],
+  exports: ['USUARIO_REPO', 'LOCAL_REPO', 'CHAMADO_REPO', 'HISTORICO_REPO', 'TOKEN_RESET_REPO', 'DESPESA_REPO', 'ANEXO_DESPESA_REPO', 'ORCAMENTO_REPO', 'DATA_SOURCE'],
 })
 export class DatabaseRepositoriesModule {}

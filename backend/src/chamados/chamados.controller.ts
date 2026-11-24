@@ -22,10 +22,12 @@ import {
   ConcluirChamadoDto,
   CriarChamadoDto,
   CriarDespesaDto,
+  CriarOrcamentoDto,
   EditarDespesaDto,
   FiltrosChamadosDto,
   RecusarChamadoDto,
   RejeitarDespesaDto,
+  RejeitarOrcamentoDto,
 } from './dto/chamados.dto.js';
 
 @Controller('chamados')
@@ -90,6 +92,45 @@ export class ChamadosController {
     @UsuarioAtual() usuario: UsuarioInterno,
   ) {
     return this.chamados.iniciar(id, usuario);
+  }
+
+  @Get(':id/orcamentos')
+  listarOrcamentos(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.listarOrcamentos(id, usuario);
+  }
+
+  @Post(':id/orcamentos')
+  @Roles('PRESTADOR')
+  criarOrcamento(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CriarOrcamentoDto,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.criarOrcamento(id, usuario, dto);
+  }
+
+  @Post(':id/orcamentos/:orcamentoId/aprovar')
+  @Roles('SINDICO', 'ADMINISTRADOR')
+  aprovarOrcamento(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('orcamentoId', ParseIntPipe) orcamentoId: number,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.aprovarOrcamento(id, orcamentoId, usuario);
+  }
+
+  @Post(':id/orcamentos/:orcamentoId/rejeitar')
+  @Roles('SINDICO', 'ADMINISTRADOR')
+  rejeitarOrcamento(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('orcamentoId', ParseIntPipe) orcamentoId: number,
+    @Body() dto: RejeitarOrcamentoDto,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.rejeitarOrcamento(id, orcamentoId, usuario, dto);
   }
 
   @Post(':id/concluir')

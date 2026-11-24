@@ -125,6 +125,24 @@ export class RecusarChamadoDto {
   motivo!: string;
 }
 
+export class CriarOrcamentoDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Descreva o orçamento.' })
+  @MaxLength(500)
+  descricao!: string;
+
+  @IsInt({ message: 'Valor inválido.' })
+  @Min(0, { message: 'Valor não pode ser negativo.' })
+  valorCentavos!: number;
+}
+
+export class RejeitarOrcamentoDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Informe o motivo da rejeição.' })
+  @MaxLength(500)
+  motivo!: string;
+}
+
 export class ConcluirChamadoDto {
   @IsString()
   @IsNotEmpty({ message: 'Descreva a solução aplicada.' })

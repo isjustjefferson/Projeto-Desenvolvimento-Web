@@ -7,9 +7,10 @@ import { HistoricoEntity } from './entities/historico.entity.js';
 import { TokenResetEntity } from './entities/token-reset.entity.js';
 import { DespesaEntity } from './entities/despesa.entity.js';
 import { AnexoDespesaEntity } from './entities/anexo-despesa.entity.js';
+import { OrcamentoEntity } from './entities/orcamento.entity.js';
 
 export default new DataSource({
   ...(typeormConfig as any),
-  entities: [UsuarioEntity, LocalEntity, ChamadoEntity, HistoricoEntity, TokenResetEntity, DespesaEntity, AnexoDespesaEntity],
+  entities: [UsuarioEntity, LocalEntity, ChamadoEntity, HistoricoEntity, TokenResetEntity, DespesaEntity, AnexoDespesaEntity, OrcamentoEntity],
   migrations: ['dist/database/migrations/*.js'],
 });
