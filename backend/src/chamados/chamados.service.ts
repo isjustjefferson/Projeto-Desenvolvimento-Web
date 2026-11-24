@@ -1223,7 +1223,7 @@ export class ChamadosService {
     id: number,
     usuario: UsuarioInterno,
   ): Promise<{ ok: true; despesas: Despesa[]; resumoFinanceiro: ResumoFinanceiro }> {
-    const chamado = this.buscar(id);
+    const chamado = await this.buscarChamadoContrato(id);
     if (!this.podeVer(chamado, usuario)) {
       throw new NotFoundException('Chamado não encontrado.');
     }
@@ -1245,7 +1245,7 @@ export class ChamadosService {
     usuario: UsuarioInterno,
     dados: CriarDespesaDto,
   ): Promise<{ ok: true; despesa: Despesa }> {
-    const chamado = this.buscar(id);
+    const chamado = await this.buscarChamadoContrato(id);
     if (!this.podeGerenciarDespesas(chamado, usuario)) {
       throw new ForbiddenException('Sem permissão para lançar despesas.');
     }
@@ -1317,7 +1317,7 @@ export class ChamadosService {
     usuario: UsuarioInterno,
     dados: EditarDespesaDto,
   ): Promise<{ ok: true; despesa: Despesa }> {
-    const chamado = this.buscar(chamadoId);
+    const chamado = await this.buscarChamadoContrato(chamadoId);
     if (!this.podeGerenciarDespesas(chamado, usuario)) {
       throw new ForbiddenException('Sem permissão para editar despesas.');
     }
@@ -1359,7 +1359,7 @@ export class ChamadosService {
     despesaId: number,
     usuario: UsuarioInterno,
   ): Promise<{ ok: true }> {
-    const chamado = this.buscar(chamadoId);
+    const chamado = await this.buscarChamadoContrato(chamadoId);
     if (!this.podeGerenciarDespesas(chamado, usuario)) {
       throw new ForbiddenException('Sem permissão para remover despesas.');
     }
@@ -1383,7 +1383,7 @@ export class ChamadosService {
     usuario: UsuarioInterno,
     dto: AnexoDespesaDto,
   ): Promise<{ ok: true; despesa: Despesa }> {
-    const chamado = this.buscar(chamadoId);
+    const chamado = await this.buscarChamadoContrato(chamadoId);
     if (!this.podeGerenciarDespesas(chamado, usuario)) {
       throw new ForbiddenException('Sem permissão para anexar arquivos.');
     }
@@ -1435,7 +1435,7 @@ export class ChamadosService {
     anexoId: number,
     usuario: UsuarioInterno,
   ): Promise<{ ok: true; despesa: Despesa }> {
-    const chamado = this.buscar(chamadoId);
+    const chamado = await this.buscarChamadoContrato(chamadoId);
     if (!this.podeGerenciarDespesas(chamado, usuario)) {
       throw new ForbiddenException('Sem permissão para remover anexos.');
     }
@@ -1470,7 +1470,7 @@ export class ChamadosService {
     if (usuario.role !== 'SINDICO' && usuario.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('Apenas síndico ou administrador podem aprovar.');
     }
-    const chamado = this.buscar(chamadoId);
+    const chamado = await this.buscarChamadoContrato(chamadoId);
     const despesaEnt = await this.despesaRepo.findOne({
       where: { id: despesaId },
       relations: { anexos: true },
@@ -1501,7 +1501,7 @@ export class ChamadosService {
     if (usuario.role !== 'SINDICO' && usuario.role !== 'ADMINISTRADOR') {
       throw new ForbiddenException('Apenas síndico ou administrador podem rejeitar.');
     }
-    const chamado = this.buscar(chamadoId);
+    const chamado = await this.buscarChamadoContrato(chamadoId);
     const despesaEnt = await this.despesaRepo.findOne({
       where: { id: despesaId },
       relations: { anexos: true },
