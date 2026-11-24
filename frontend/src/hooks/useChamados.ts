@@ -110,6 +110,16 @@ export function useAprovarChamado() {
   });
 }
 
+export function useRecusarChamado() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (v: { id: number; motivo: string }) =>
+      chamadosApi.recusar(v.id, v.motivo),
+    onSuccess: (chamado) => aplicarRetorno(queryClient, chamado),
+  });
+}
+
 export function useIniciarChamado() {
   const queryClient = useQueryClient();
 

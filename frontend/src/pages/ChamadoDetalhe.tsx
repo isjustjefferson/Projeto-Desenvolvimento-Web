@@ -22,6 +22,7 @@ import {
   useConcluirChamado,
   useCriarDespesa,
   useIniciarChamado,
+  useRecusarChamado,
   useRejeitarDespesa,
   useRemoverDespesa,
 } from '../hooks/useChamados';
@@ -115,6 +116,7 @@ export function ChamadoDetalhe() {
   const { usuario } = useAuth();
   const chamadoQuery = useChamado(id ? Number(id) : undefined);
   const aprovarChamado = useAprovarChamado();
+  const recusarChamado = useRecusarChamado();
   const iniciarChamado = useIniciarChamado();
   const concluirChamado = useConcluirChamado();
   const criarDespesa = useCriarDespesa();
@@ -127,6 +129,7 @@ export function ChamadoDetalhe() {
 
   const [modalAprovar, setModalAprovar] = useState(false);
   const [modalConcluir, setModalConcluir] = useState(false);
+  const [modalRecusar, setModalRecusar] = useState(false);
   const [modalDespesa, setModalDespesa] = useState(false);
   const [modalRejeitar, setModalRejeitar] = useState(false);
   const [prioridadeSel, setPrioridadeSel] = useState<Prioridade>('MEDIA');
@@ -136,6 +139,7 @@ export function ChamadoDetalhe() {
   const [erroAcao, setErroAcao] = useState('');
   const [despesaRejeitarId, setDespesaRejeitarId] = useState<number | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
+  const [motivoRecusa, setMotivoRecusa] = useState('');
 
   // id não numérico não vira requisição: já cai direto em "não encontrado"
   const alvoId = id ? Number(id) : undefined;
@@ -192,6 +196,9 @@ export function ChamadoDetalhe() {
   const podeAprovar =
     (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') &&
     chamado.status === 'AGUARDANDO_APROVACAO';
+  const podeRecusar =
+    (usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR') &&
+    chamado.status === 'AGUARDANDO_APROVACAO';
   const podeIniciar =
     (usuario.role === 'SINDICO' ||
       usuario.role === 'PRESTADOR' ||
@@ -240,6 +247,19 @@ export function ChamadoDetalhe() {
       toast.success('Chamado aprovado e liberado para atendimento.');
     } catch (err) {
       toast.error(mensagemDeErro(err, 'Não foi possível aprovar.'));
+    }
+  }
+
+  async function recusar() {
+    if (!motivoRecusa.trim() || recusarChamado.isPending) return;
+    setErroAcao('');
+    try {
+      await recusarChamado.mutateAsync({ id: c.id, motivo: motivoRecusa.trim() });
+      setModalRecusar(false);
+      setMotivoRecusa('');
+      toast.success('Chamado recusado.');
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Não foi possível recusar.'));
     }
   }
 
@@ -472,11 +492,22 @@ export function ChamadoDetalhe() {
           </div>
         )}
 
-        {chamado.status !== 'CONCLUIDO' && (
+        {chamado.status !== 'CONCLUIDO' && chamado.status !== 'RECUSADO' && (
           <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
             {podeAprovar && (
               <button onClick={abrirAprovacao} className="btn-primary">
                 <Briefcase className="h-4 w-4" /> Aprovar e Liberar Chamado
+              </button>
+            )}
+            {podeRecusar && (
+              <button
+                onClick={() => {
+                  setMotivoRecusa('');
+                  setModalRecusar(true);
+                }}
+                className="btn bg-red-600 text-white hover:bg-red-700"
+              >
+                Recusar chamado
               </button>
             )}
             {podeIniciar && (
@@ -722,6 +753,28 @@ export function ChamadoDetalhe() {
             }
           >
             {concluirChamado.isPending ? 'Concluindo…' : 'Concluir'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={modalRecusar} onClose={() => setModalRecusar(false)} title="Recusar chamado">
+        <div className="space-y-3">
+          <div>
+            <label className="label">Motivo da recusa</label>
+            <textarea
+              className="input min-h-[80px]"
+              value={motivoRecusa}
+              onChange={(e) => setMotivoRecusa(e.target.value)}
+              maxLength={500}
+              placeholder="Informe o motivo da recusa"
+            />
+          </div>
+          <button
+            onClick={() => void recusar()}
+            className="btn w-full bg-red-600 text-white hover:bg-red-700"
+            disabled={!motivoRecusa.trim() || recusarChamado.isPending}
+          >
+            {recusarChamado.isPending ? 'Recusando…' : 'Recusar'}
           </button>
         </div>
       </Modal>

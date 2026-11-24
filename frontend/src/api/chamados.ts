@@ -88,6 +88,15 @@ export async function aprovar(
   return res.chamado;
 }
 
+export async function recusar(id: number, motivo: string): Promise<Chamado> {
+  const res = await post(
+    `/chamados/${id}/recusar`,
+    { motivo },
+    respostaChamadoSchema,
+  );
+  return res.chamado;
+}
+
 export async function iniciar(id: number): Promise<Chamado> {
   const res = await post(`/chamados/${id}/iniciar`, undefined, respostaChamadoSchema);
   return res.chamado;
