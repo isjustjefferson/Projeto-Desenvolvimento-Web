@@ -24,6 +24,7 @@ import {
   CriarDespesaDto,
   EditarDespesaDto,
   FiltrosChamadosDto,
+  RecusarChamadoDto,
   RejeitarDespesaDto,
 } from './dto/chamados.dto.js';
 
@@ -70,6 +71,16 @@ export class ChamadosController {
     @UsuarioAtual() usuario: UsuarioInterno,
   ) {
     return this.chamados.aprovar(id, usuario, dto);
+  }
+
+  @Post(':id/recusar')
+  @Roles('SINDICO', 'ADMINISTRADOR')
+  recusar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RecusarChamadoDto,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.recusar(id, usuario, dto);
   }
 
   @Post(':id/iniciar')

@@ -39,6 +39,7 @@ import type {
   CriarDespesaDto,
   EditarDespesaDto,
   FiltrosChamadosDto,
+  RecusarChamadoDto,
   RejeitarDespesaDto,
 } from './dto/chamados.dto.js';
 
@@ -445,6 +446,48 @@ export class ChamadosService {
       { prioridade: dados.prioridade, tecnicoId: dados.prestadorId },
     );
     return { ok: true, chamado: this.prepararChamadoParaRespostaContrato(mapChamadoToContrato(result as any), autenticado) };
+  }
+
+  async recusar(
+    id: number,
+    autenticado: UsuarioInterno,
+    dados: RecusarChamadoDto,
+  ): Promise<{ ok: true; chamado: Chamado }> {
+    const motivo = dados.motivo?.trim();
+    if (!motivo) throw new BadRequestException('Informe o motivo da recusa.');
+    const observacao = `Recusado: ${motivo}`;
+
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      const chamado = this.buscar(id);
+      if (chamado.status !== 'AGUARDANDO_APROVACAO') {
+        throw new BadRequestException('Apenas chamados em aguardando aprovação podem ser recusados.');
+      }
+      return this.transicionar(chamado, autenticado, 'RECUSADO', observacao);
+    }
+
+    const chamadoEnt = await this.chamadoRepo.findOne({
+      where: { id },
+      relations: { local: true, criadoPor: true, tecnico: true, historicos: true },
+    } as any);
+    if (!chamadoEnt) throw new NotFoundException('Chamado não encontrado.');
+    if (chamadoEnt.status !== 'AGUARDANDO_APROVACAO') {
+      throw new BadRequestException(
+        'Apenas chamados em aguardando aprovação podem ser recusados.',
+      );
+    }
+    const result = await this.transicionarRepo(
+      chamadoEnt as any,
+      autenticado,
+      'RECUSADO',
+      observacao,
+    );
+    return {
+      ok: true,
+      chamado: this.prepararChamadoParaRespostaContrato(
+        mapChamadoToContrato(result as any),
+        autenticado,
+      ),
+    };
   }
 
   async iniciar(id: number, autenticado: UsuarioInterno): Promise<{ ok: true; chamado: Chamado }> {

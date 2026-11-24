@@ -118,6 +118,13 @@ export class AprovarChamadoDto {
   prestadorId!: number;
 }
 
+export class RecusarChamadoDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Informe o motivo da recusa.' })
+  @MaxLength(500)
+  motivo!: string;
+}
+
 export class ConcluirChamadoDto {
   @IsString()
   @IsNotEmpty({ message: 'Descreva a solução aplicada.' })
