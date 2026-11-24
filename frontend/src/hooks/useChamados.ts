@@ -44,6 +44,19 @@ export function useResumoChamados() {
   });
 }
 
+export function useDespesas(
+  id: number | undefined,
+  opcoes: { enabled?: boolean } = {},
+) {
+  const { usuario } = useAuth();
+
+  return useQuery({
+    queryKey: chaves.despesas(id ?? 0),
+    queryFn: () => despesasApi.listarDespesas(id as number),
+    enabled: id !== undefined && Boolean(usuario) && (opcoes.enabled ?? true),
+  });
+}
+
 export function useChamado(id: number | undefined) {
   const { usuario } = useAuth();
   const queryClient = useQueryClient();

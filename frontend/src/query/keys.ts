@@ -9,6 +9,8 @@ export const chaves = {
   resumoChamados: ['chamados', 'resumo'] as const,
   despesas: (chamadoId: number) =>
     ['chamados', 'detalhe', chamadoId, 'despesas'] as const,
+  orcamentos: (chamadoId: number) =>
+    ['chamados', 'detalhe', chamadoId, 'orcamentos'] as const,
   relatorioDespesas: (filtros: string) =>
     ['relatorios', 'despesas', filtros] as const,
   usuarios: ['usuarios'] as const,

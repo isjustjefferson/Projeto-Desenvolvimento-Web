@@ -9,12 +9,14 @@ import type {
   resumoFinanceiroSchema,
   roleSchema,
   statusDespesaSchema,
+  statusOrcamentoSchema,
   statusSchema,
   tipoAnexoSchema,
   tipoDocumentoFiscalSchema,
   usuarioResumoSchema,
   usuarioSchema,
   despesaSchema,
+  orcamentoSchema,
   paginacaoSchema,
   resumoChamadosSchema,
 } from './api/schemas';
@@ -34,6 +36,8 @@ export type CategoriaDespesa = z.infer<typeof categoriaDespesaSchema>;
 
 export type StatusDespesa = z.infer<typeof statusDespesaSchema>;
 
+export type StatusOrcamento = z.infer<typeof statusOrcamentoSchema>;
+
 export type FormaPagamento = z.infer<typeof formaPagamentoSchema>;
 
 export type PagoPor = z.infer<typeof pagoPorSchema>;
@@ -49,6 +53,8 @@ export type UsuarioResumo = z.infer<typeof usuarioResumoSchema>;
 export type Chamado = z.infer<typeof chamadoSchema>;
 
 export type Despesa = z.infer<typeof despesaSchema>;
+
+export type Orcamento = z.infer<typeof orcamentoSchema>;
 
 export type ResumoFinanceiro = z.infer<typeof resumoFinanceiroSchema>;
 

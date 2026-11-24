@@ -7,6 +7,7 @@ import type {
   Role,
   Status,
   StatusDespesa,
+  StatusOrcamento,
   TipoAnexo,
 } from './types';
 
@@ -28,6 +29,18 @@ export const statusDespesaColor: Record<StatusDespesa, string> = {
   PENDENTE: 'bg-amber-500 text-white',
   APROVADA: 'bg-emerald-500 text-white',
   REJEITADA: 'bg-red-500 text-white',
+};
+
+export const statusOrcamentoLabel: Record<StatusOrcamento, string> = {
+  PENDENTE: 'Pendente',
+  APROVADO: 'Aprovado',
+  REJEITADO: 'Rejeitado',
+};
+
+export const statusOrcamentoColor: Record<StatusOrcamento, string> = {
+  PENDENTE: 'bg-amber-500 text-white',
+  APROVADO: 'bg-emerald-500 text-white',
+  REJEITADO: 'bg-red-500 text-white',
 };
 
 export const categoriaDespesaLabel: Record<CategoriaDespesa, string> = {

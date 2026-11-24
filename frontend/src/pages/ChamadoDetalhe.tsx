@@ -21,11 +21,18 @@ import {
   useChamado,
   useConcluirChamado,
   useCriarDespesa,
+  useDespesas,
   useIniciarChamado,
   useRecusarChamado,
   useRejeitarDespesa,
   useRemoverDespesa,
 } from '../hooks/useChamados';
+import {
+  useAprovarOrcamento,
+  useCriarOrcamento,
+  useOrcamentos,
+  useRejeitarOrcamento,
+} from '../hooks/useOrcamentos';
 import { useDiretorio } from '../hooks/useUsuarios';
 import { ApiError, mensagemDeErro } from '../api/client';
 import type { CriarDespesaInput } from '../api/despesas';
@@ -38,10 +45,13 @@ import {
   statusDespesaColor,
   statusDespesaLabel,
   statusLabel,
+  statusOrcamentoColor,
+  statusOrcamentoLabel,
   tipoAnexoLabel,
   tipoDocumentoFiscalLabel,
 } from '../helpers';
 import { PrioridadeBadge, StatusBadge } from '../components/Badge';
+import { CampoMoeda } from '../components/CampoMoeda';
 import { FormularioDespesa } from '../components/FormularioDespesa';
 import { Modal } from '../components/Modal';
 import type { Prioridade } from '../types';
@@ -125,13 +135,33 @@ export function ChamadoDetalhe() {
   const removerDespesa = useRemoverDespesa();
   const aprovarDespesa = useAprovarDespesa();
   const rejeitarDespesa = useRejeitarDespesa();
+  const criarOrcamento = useCriarOrcamento();
+  const aprovarOrcamento = useAprovarOrcamento();
+  const rejeitarOrcamento = useRejeitarOrcamento();
   const { prestadores, nomeUsuario } = useDiretorio();
+  const orcamentosQuery = useOrcamentos(id ? Number(id) : undefined, {
+    enabled:
+      usuario !== null &&
+      usuario.role !== 'CONDOMINO' &&
+      (usuario.role !== 'PRESTADOR' ||
+        chamadoQuery.data?.prestadorId === usuario.id),
+  });
+  const despesasQuery = useDespesas(id ? Number(id) : undefined, {
+    enabled:
+      usuario !== null &&
+      usuario.role !== 'CONDOMINO' &&
+      (usuario.role !== 'PRESTADOR' ||
+        chamadoQuery.data?.prestadorId === usuario.id),
+  });
 
   const [modalAprovar, setModalAprovar] = useState(false);
   const [modalConcluir, setModalConcluir] = useState(false);
   const [modalRecusar, setModalRecusar] = useState(false);
   const [modalDespesa, setModalDespesa] = useState(false);
   const [modalRejeitar, setModalRejeitar] = useState(false);
+  const [modalOrcamento, setModalOrcamento] = useState(false);
+  const [modalRejeitarOrcamento, setModalRejeitarOrcamento] = useState(false);
+  const [modalIniciarSemOrcamento, setModalIniciarSemOrcamento] = useState(false);
   const [prioridadeSel, setPrioridadeSel] = useState<Prioridade>('MEDIA');
   const [prestadorSel, setPrestadorSel] = useState('');
   const [solDesc, setSolDesc] = useState('');
@@ -139,6 +169,10 @@ export function ChamadoDetalhe() {
   const [erroAcao, setErroAcao] = useState('');
   const [despesaRejeitarId, setDespesaRejeitarId] = useState<number | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
+  const [orcamentoDescricao, setOrcamentoDescricao] = useState('');
+  const [orcamentoValor, setOrcamentoValor] = useState(0);
+  const [orcamentoRejeitarId, setOrcamentoRejeitarId] = useState<number | null>(null);
+  const [motivoRejeicaoOrcamento, setMotivoRejeicaoOrcamento] = useState('');
   const [motivoRecusa, setMotivoRecusa] = useState('');
 
   // id não numérico não vira requisição: já cai direto em "não encontrado"
@@ -219,8 +253,19 @@ export function ChamadoDetalhe() {
   const podeAprovarDespesas =
     usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR';
 
-  const despesas = chamado.despesas || [];
-  const resumo = chamado.resumoFinanceiro || {
+  const podeEnviarOrcamento =
+    usuario.role === 'PRESTADOR' && chamado.prestadorId === usuario.id;
+  const podeGerenciarOrcamentos =
+    usuario.role === 'SINDICO' ||
+    usuario.role === 'ADMINISTRADOR' ||
+    podeEnviarOrcamento;
+  const podeDecidirOrcamentos =
+    usuario.role === 'SINDICO' || usuario.role === 'ADMINISTRADOR';
+  const orcamentos = orcamentosQuery.data?.orcamentos ?? [];
+  const orcamentosPendentes = orcamentos.filter((o) => o.status === 'PENDENTE').length;
+
+  const despesas = despesasQuery.data?.despesas ?? [];
+  const resumo = despesasQuery.data?.resumoFinanceiro ?? {
     totalCentavos: 0,
     aprovadoCentavos: 0,
     pendenteCentavos: 0,
@@ -263,11 +308,16 @@ export function ChamadoDetalhe() {
     }
   }
 
-  async function iniciar() {
+  async function iniciar(confirmado = false) {
     if (iniciarChamado.isPending) return;
     setErroAcao('');
+    if (!confirmado && !orcamentosQuery.isPending && orcamentos.length === 0) {
+      setModalIniciarSemOrcamento(true);
+      return;
+    }
     try {
       await iniciarChamado.mutateAsync(c.id);
+      setModalIniciarSemOrcamento(false);
       toast.success('Chamado em andamento.');
     } catch (err) {
       // O banner fica na própria página, então aqui o erro inline continua visível.
@@ -352,6 +402,69 @@ export function ChamadoDetalhe() {
       toast.success('Despesa rejeitada.');
     } catch (err) {
       toast.error(mensagemDeErro(err, 'Não foi possível rejeitar.'));
+    }
+  }
+
+  function abrirNovoOrcamento() {
+    setErroAcao('');
+    setOrcamentoDescricao('');
+    setOrcamentoValor(0);
+    setModalOrcamento(true);
+  }
+
+  async function salvarOrcamento() {
+    if (!orcamentoDescricao.trim() || criarOrcamento.isPending) return;
+    setErroAcao('');
+    try {
+      await criarOrcamento.mutateAsync({
+        chamadoId: c.id,
+        input: {
+          descricao: orcamentoDescricao.trim(),
+          valorCentavos: orcamentoValor,
+        },
+      });
+      setModalOrcamento(false);
+      setOrcamentoDescricao('');
+      setOrcamentoValor(0);
+      toast.success('Orçamento enviado.');
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Não foi possível enviar o orçamento.'));
+    }
+  }
+
+  async function aprovarOrcamentoAcao(orcamentoId: number) {
+    try {
+      await aprovarOrcamento.mutateAsync({ chamadoId: c.id, orcamentoId });
+      toast.success('Orçamento aprovado.');
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Não foi possível aprovar o orçamento.'));
+    }
+  }
+
+  function abrirRejeitarOrcamento(orcamentoId: number) {
+    setOrcamentoRejeitarId(orcamentoId);
+    setMotivoRejeicaoOrcamento('');
+    setModalRejeitarOrcamento(true);
+  }
+
+  async function rejeitarOrcamentoAcao() {
+    if (
+      !orcamentoRejeitarId ||
+      !motivoRejeicaoOrcamento.trim() ||
+      rejeitarOrcamento.isPending
+    ) {
+      return;
+    }
+    try {
+      await rejeitarOrcamento.mutateAsync({
+        chamadoId: c.id,
+        orcamentoId: orcamentoRejeitarId,
+        motivo: motivoRejeicaoOrcamento.trim(),
+      });
+      setModalRejeitarOrcamento(false);
+      toast.success('Orçamento rejeitado.');
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Não foi possível rejeitar o orçamento.'));
     }
   }
 
@@ -511,14 +624,28 @@ export function ChamadoDetalhe() {
               </button>
             )}
             {podeIniciar && (
-              <button
-                onClick={() => void iniciar()}
-                className="btn-primary"
-                disabled={iniciarChamado.isPending}
-              >
-                <Play className="h-4 w-4" />{' '}
-                {iniciarChamado.isPending ? 'Iniciando…' : 'Iniciar atendimento'}
-              </button>
+              <>
+                <button
+                  onClick={() => void iniciar()}
+                  className="btn-primary"
+                  disabled={iniciarChamado.isPending || orcamentosPendentes > 0}
+                  title={
+                    orcamentosPendentes > 0
+                      ? podeDecidirOrcamentos
+                        ? 'Aprove ou rejeite os orçamentos pendentes antes de iniciar.'
+                        : 'Aguardando aprovação do síndico.'
+                      : undefined
+                  }
+                >
+                  <Play className="h-4 w-4" />{' '}
+                  {iniciarChamado.isPending ? 'Iniciando…' : 'Iniciar atendimento'}
+                </button>
+                {orcamentos.length === 0 && (
+                  <span className="self-center text-xs text-amber-700">
+                    Sem orçamento enviado
+                  </span>
+                )}
+              </>
             )}
             {podeConcluir && (
               <button onClick={() => setModalConcluir(true)} className="btn-secondary">
@@ -528,6 +655,68 @@ export function ChamadoDetalhe() {
           </div>
         )}
       </div>
+
+      {podeGerenciarOrcamentos && (
+        <div className="card">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 font-semibold text-gray-800">
+              <Briefcase className="h-4 w-4" /> Orçamentos
+            </h2>
+            {podeEnviarOrcamento && c.status === 'REVISADO' && (
+              <button onClick={abrirNovoOrcamento} className="btn-secondary !px-2 !py-1 text-xs">
+                <Plus className="h-3 w-3" /> Enviar orçamento
+              </button>
+            )}
+          </div>
+          {podeDecidirOrcamentos && orcamentosPendentes > 0 && (
+            <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {orcamentosPendentes} orçamento(s) pendente(s). Aprove ou rejeite antes de iniciar o atendimento.
+            </div>
+          )}
+          {orcamentosQuery.isPending ? (
+            <p className="text-sm text-gray-400">Carregando orçamentos…</p>
+          ) : orcamentos.length === 0 ? (
+            <p className="text-sm text-gray-400">Nenhum orçamento enviado.</p>
+          ) : (
+            <div className="space-y-2">
+              {orcamentos.map((o) => (
+                <div key={o.id} className="rounded-lg border border-gray-100 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-gray-800">{o.descricao}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusOrcamentoColor[o.status]}`}>
+                          {statusOrcamentoLabel[o.status]}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {nomeUsuario(o.prestadorId)} · {formatarData(o.criadoEm)}
+                        {o.aprovadoPorId ? ` · Decidido por ${nomeUsuario(o.aprovadoPorId)}` : ''}
+                      </div>
+                    </div>
+                    <div className="font-semibold">{formatarMoeda(o.valorCentavos)}</div>
+                  </div>
+                  {o.motivoRejeicao && (
+                    <div className="mt-2 rounded bg-red-50 px-2 py-1 text-xs text-red-700">
+                      Motivo: {o.motivoRejeicao}
+                    </div>
+                  )}
+                  {podeDecidirOrcamentos && o.status === 'PENDENTE' && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button onClick={() => void aprovarOrcamentoAcao(o.id)} className="btn-primary !px-2 !py-1 text-xs" disabled={aprovarOrcamento.isPending}>
+                        Aprovar
+                      </button>
+                      <button onClick={() => abrirRejeitarOrcamento(o.id)} className="btn-secondary !px-2 !py-1 text-xs">
+                        Rejeitar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="card">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -784,6 +973,78 @@ export function ChamadoDetalhe() {
           salvando={criarDespesa.isPending}
           onSalvar={salvarDespesa}
         />
+      </Modal>
+
+      <Modal open={modalOrcamento} onClose={() => setModalOrcamento(false)} title="Enviar orçamento">
+        <div className="space-y-4">
+          <div>
+            <label className="label">Descrição</label>
+            <textarea
+              className="input min-h-[80px]"
+              value={orcamentoDescricao}
+              onChange={(e) => setOrcamentoDescricao(e.target.value)}
+              maxLength={500}
+              placeholder="Ex.: Troca de tomada e mão de obra"
+            />
+          </div>
+          <div>
+            <label className="label">Valor</label>
+            <CampoMoeda className="input" value={orcamentoValor} onChange={setOrcamentoValor} />
+          </div>
+          <button
+            onClick={() => void salvarOrcamento()}
+            className="btn-primary w-full"
+            disabled={!orcamentoDescricao.trim() || criarOrcamento.isPending}
+          >
+            {criarOrcamento.isPending ? 'Enviando…' : 'Enviar orçamento'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={modalIniciarSemOrcamento} onClose={() => setModalIniciarSemOrcamento(false)} title="Iniciar sem orçamento?">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            O prestador ainda não enviou um orçamento para este chamado. Iniciar
+            agora pode gerar cobrança sem aprovação prévia.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setModalIniciarSemOrcamento(false)}
+              className="btn-secondary flex-1"
+            >
+              Voltar
+            </button>
+            <button
+              onClick={() => void iniciar(true)}
+              className="btn-primary flex-1"
+              disabled={iniciarChamado.isPending}
+            >
+              {iniciarChamado.isPending ? 'Iniciando…' : 'Iniciar mesmo assim'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={modalRejeitarOrcamento} onClose={() => setModalRejeitarOrcamento(false)} title="Rejeitar orçamento">
+        <div className="space-y-3">
+          <div>
+            <label className="label">Motivo</label>
+            <textarea
+              className="input min-h-[80px]"
+              value={motivoRejeicaoOrcamento}
+              onChange={(e) => setMotivoRejeicaoOrcamento(e.target.value)}
+              maxLength={500}
+              placeholder="Informe o motivo da rejeição"
+            />
+          </div>
+          <button
+            onClick={() => void rejeitarOrcamentoAcao()}
+            className="btn-primary w-full"
+            disabled={!motivoRejeicaoOrcamento.trim() || rejeitarOrcamento.isPending}
+          >
+            {rejeitarOrcamento.isPending ? 'Rejeitando…' : 'Rejeitar'}
+          </button>
+        </div>
       </Modal>
 
       <Modal open={modalRejeitar} onClose={() => setModalRejeitar(false)} title="Rejeitar despesa">

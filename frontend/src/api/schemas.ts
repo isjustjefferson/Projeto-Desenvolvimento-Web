@@ -49,6 +49,8 @@ export const CATEGORIA_DESPESA_VALUES = [
 
 export const STATUS_DESPESA_VALUES = ['PENDENTE', 'APROVADA', 'REJEITADA'] as const;
 
+export const STATUS_ORCAMENTO_VALUES = ['PENDENTE', 'APROVADO', 'REJEITADO'] as const;
+
 export const FORMA_PAGAMENTO_VALUES = ['DINHEIRO', 'PIX', 'CARTAO', 'FATURADO'] as const;
 
 export const PAGO_POR_VALUES = ['TECNICO', 'EMPRESA'] as const;
@@ -76,6 +78,7 @@ export const prioridadeSchema = z.enum(PRIORIDADE_VALUES);
 export const categoriaSchema = z.enum(CATEGORIA_VALUES);
 export const categoriaDespesaSchema = z.enum(CATEGORIA_DESPESA_VALUES);
 export const statusDespesaSchema = z.enum(STATUS_DESPESA_VALUES);
+export const statusOrcamentoSchema = z.enum(STATUS_ORCAMENTO_VALUES);
 export const formaPagamentoSchema = z.enum(FORMA_PAGAMENTO_VALUES);
 export const pagoPorSchema = z.enum(PAGO_POR_VALUES);
 export const tipoAnexoSchema = z.enum(TIPO_ANEXO_VALUES);
@@ -145,6 +148,20 @@ export const despesaSchema = z.object({
   criadoEm: z.string(),
   atualizadoEm: z.string(),
   anexos: z.array(anexoDespesaSchema),
+});
+
+export const orcamentoSchema = z.object({
+  id: z.number(),
+  chamadoId: z.number(),
+  prestadorId: z.number(),
+  descricao: z.string(),
+  valorCentavos: z.number(),
+  status: statusOrcamentoSchema,
+  motivoRejeicao: z.string().nullish(),
+  aprovadoPorId: z.number().nullish(),
+  aprovadoEm: z.string().nullish(),
+  criadoEm: z.string(),
+  atualizadoEm: z.string(),
 });
 
 export const resumoFinanceiroSchema = z.object({
@@ -261,4 +278,14 @@ export const respostaDespesasSchema = z.object({
   ok: okLiteral,
   despesas: z.array(despesaSchema),
   resumoFinanceiro: resumoFinanceiroSchema,
+});
+
+export const respostaOrcamentoSchema = z.object({
+  ok: okLiteral,
+  orcamento: orcamentoSchema,
+});
+
+export const respostaOrcamentosSchema = z.object({
+  ok: okLiteral,
+  orcamentos: z.array(orcamentoSchema),
 });
