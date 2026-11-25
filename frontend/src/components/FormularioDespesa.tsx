@@ -9,9 +9,11 @@ import {
   formaPagamentoLabel,
   formatarChaveNFe,
   formatarCpfCnpj,
+  formatarMoeda,
   pagoPorLabel,
   validarCpfCnpj,
 } from '../helpers';
+import { extrairDadosOcr } from '../ocr';
 import { extrairChaveNFe, lerQrCodeDeImagem, tipoDaChave } from '../qrcode';
 import type {
   CategoriaDespesa,
@@ -68,6 +70,9 @@ export function FormularioDespesa({ salvando, onSalvar }: Props) {
   const [tipoDoc, setTipoDoc] = useState<TipoDocumentoFiscal | ''>('');
   const [chaveNFe, setChaveNFe] = useState('');
   const [anexos, setAnexos] = useState<AnexoArquivo[]>([]);
+  const [arquivos, setArquivos] = useState<File[]>([]);
+  const [ocrTentado, setOcrTentado] = useState<boolean[]>([]);
+  const [ocrCarregando, setOcrCarregando] = useState<number | null>(null);
   const [lendoQr, setLendoQr] = useState(false);
   const [erro, setErro] = useState('');
 
@@ -113,6 +118,8 @@ export function FormularioDespesa({ salvando, onSalvar }: Props) {
         if (texto) aplicarQrCode(texto, false);
       });
     }
+    setArquivos((prev) => [...prev, arquivo]);
+    setOcrTentado((prev) => [...prev, false]);
     const reader = new FileReader();
     reader.onload = () => {
       setAnexos((prev) => [
@@ -130,6 +137,51 @@ export function FormularioDespesa({ salvando, onSalvar }: Props) {
       ]);
     };
     reader.readAsDataURL(arquivo);
+  }
+
+  async function lerOcr(indice: number) {
+    const arquivo = arquivos[indice];
+    if (!arquivo || ocrCarregando !== null) return;
+    if (!arquivo.type.startsWith('image/')) {
+      setOcrTentado((prev) => prev.map((v, i) => (i === indice ? true : v)));
+      toast.error('OCR real funciona apenas com imagens; informe o valor manualmente.');
+      return;
+    }
+    setOcrCarregando(indice);
+    try {
+      const resultado = await extrairDadosOcr(arquivo);
+      setAnexos((prev) =>
+        prev.map((a, i) =>
+          i === indice
+            ? {
+                ...a,
+                valorTotalCentavos: resultado.valorCentavos ?? undefined,
+                textoOcr: resultado.textoOcr,
+                ocrExtraidoEm: resultado.ocrExtraidoEm,
+              }
+            : a,
+        ),
+      );
+      setOcrTentado((prev) => prev.map((v, i) => (i === indice ? true : v)));
+      if (resultado.valorCentavos !== null) {
+        toast.success(
+          `OCR encontrou ${formatarMoeda(resultado.valorCentavos)}. Confira e edite se precisar.`,
+        );
+      } else {
+        toast.error('OCR não identificou o valor. Informe manualmente no campo.');
+      }
+    } catch {
+      setOcrTentado((prev) => prev.map((v, i) => (i === indice ? true : v)));
+      toast.error('Não foi possível ler o OCR deste anexo.');
+    } finally {
+      setOcrCarregando(null);
+    }
+  }
+
+  function atualizarValorOcr(indice: number, valorCentavos: number) {
+    setAnexos((prev) =>
+      prev.map((a, i) => (i === indice ? { ...a, valorTotalCentavos: valorCentavos } : a)),
+    );
   }
 
   // Devolve a mensagem do primeiro problema encontrado, ou '' se está tudo certo
@@ -425,20 +477,61 @@ export function FormularioDespesa({ salvando, onSalvar }: Props) {
         {anexos.length > 0 && (
           <div className="mt-2 space-y-1">
             {anexos.map((a, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
-              >
-                <span className="truncate">{a.nomeArquivo}</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAnexos((p) => p.filter((_, idx) => idx !== i))
-                  }
-                  className="text-red-500"
-                >
-                  Remover
-                </button>
+              <div key={i} className="rounded bg-gray-50 px-2 py-1 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate">{a.nomeArquivo}</span>
+                    {a.valorTotalCentavos != null && (
+                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                        OCR
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void lerOcr(i)}
+                      disabled={ocrCarregando !== null}
+                      className="font-medium text-brand-700 hover:underline disabled:opacity-50"
+                    >
+                      {ocrCarregando === i ? 'Lendo…' : 'Ler OCR'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAnexos((p) => p.filter((_, idx) => idx !== i));
+                        setArquivos((p) => p.filter((_, idx) => idx !== i));
+                        setOcrTentado((p) => p.filter((_, idx) => idx !== i));
+                      }}
+                      className="text-red-500"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </div>
+                {ocrTentado[i] && (
+                  <div className="mt-2 space-y-1 border-t border-gray-200 pt-2">
+                    <label htmlFor={`${id}-ocr-${i}`} className="label">
+                      Valor lido pelo OCR
+                    </label>
+                    <CampoMoeda
+                      id={`${id}-ocr-${i}`}
+                      className="input"
+                      value={a.valorTotalCentavos ?? 0}
+                      onChange={(valor) => atualizarValorOcr(i, valor)}
+                    />
+                    {a.textoOcr && (
+                      <details>
+                        <summary className="cursor-pointer text-gray-500">
+                          Texto extraído
+                        </summary>
+                        <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap rounded bg-white p-1 text-[10px]">
+                          {a.textoOcr}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
