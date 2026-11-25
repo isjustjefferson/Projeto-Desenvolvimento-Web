@@ -19,6 +19,9 @@ export interface CriarDespesaInput {
     chaveNFe?: string;
     numero?: string;
     serie?: string;
+    valorTotalCentavos?: number;
+    textoOcr?: string;
+    ocrExtraidoEm?: string;
     nomeArquivo: string;
     mimeType: string;
     tamanhoBytes: number;
@@ -45,10 +48,17 @@ export interface AnexarDespesaInput {
   chaveNFe?: string;
   numero?: string;
   serie?: string;
+  valorTotalCentavos?: number;
+  textoOcr?: string;
+  ocrExtraidoEm?: string;
   nomeArquivo: string;
   mimeType: string;
   tamanhoBytes: number;
   conteudo: string;
+}
+
+export interface CorrigirValorOcrInput {
+  valorCentavos: number;
 }
 
 export async function listarDespesas(chamadoId: number) {
@@ -76,6 +86,20 @@ export async function anexarDespesa(chamadoId: number, despesaId: number, input:
 
 export async function removerAnexoDespesa(chamadoId: number, despesaId: number, anexoId: number) {
   const res = await del(`/chamados/${chamadoId}/despesas/${despesaId}/anexos/${anexoId}`, respostaDespesaSchema);
+  return res.despesa;
+}
+
+export async function corrigirValorOcr(
+  chamadoId: number,
+  despesaId: number,
+  anexoId: number,
+  input: CorrigirValorOcrInput,
+) {
+  const res = await patch(
+    `/chamados/${chamadoId}/despesas/${despesaId}/anexos/${anexoId}`,
+    input,
+    respostaDespesaSchema,
+  );
   return res.despesa;
 }
 

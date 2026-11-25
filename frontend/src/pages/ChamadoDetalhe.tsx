@@ -20,6 +20,7 @@ import {
   useAprovarDespesa,
   useChamado,
   useConcluirChamado,
+  useCorrigirValorOcr,
   useCriarDespesa,
   useDespesas,
   useIniciarChamado,
@@ -62,6 +63,14 @@ interface AnexoArquivo {
   nomeArquivo: string;
   mimeType: string;
   conteudo?: string;
+}
+
+interface CorrecaoOcrAlvo {
+  despesaId: number;
+  anexoId: number;
+  nomeArquivo: string;
+  valorLido?: number;
+  valorAtual: number;
 }
 
 function criarUrlAnexo(anexo: AnexoArquivo): string | null {
@@ -130,6 +139,7 @@ export function ChamadoDetalhe() {
   const iniciarChamado = useIniciarChamado();
   const concluirChamado = useConcluirChamado();
   const criarDespesa = useCriarDespesa();
+  const corrigirValorOcr = useCorrigirValorOcr();
   // const anexarDespesa = useAnexarDespesa();
   // const removerAnexoDespesa = useRemoverAnexoDespesa();
   const removerDespesa = useRemoverDespesa();
@@ -162,6 +172,9 @@ export function ChamadoDetalhe() {
   const [modalOrcamento, setModalOrcamento] = useState(false);
   const [modalRejeitarOrcamento, setModalRejeitarOrcamento] = useState(false);
   const [modalIniciarSemOrcamento, setModalIniciarSemOrcamento] = useState(false);
+  const [modalCorrigirOcr, setModalCorrigirOcr] = useState(false);
+  const [correcaoOcr, setCorrecaoOcr] = useState<CorrecaoOcrAlvo | null>(null);
+  const [valorCorrecaoOcr, setValorCorrecaoOcr] = useState(0);
   const [prioridadeSel, setPrioridadeSel] = useState<Prioridade>('MEDIA');
   const [prestadorSel, setPrestadorSel] = useState('');
   const [solDesc, setSolDesc] = useState('');
@@ -402,6 +415,40 @@ export function ChamadoDetalhe() {
       toast.success('Despesa rejeitada.');
     } catch (err) {
       toast.error(mensagemDeErro(err, 'Não foi possível rejeitar.'));
+    }
+  }
+
+  function abrirCorrigirOcr(
+    despesaId: number,
+    anexo: { id: number; nomeArquivo: string; valorTotalCentavos?: number | null },
+    valorAtual: number,
+  ) {
+    const valorLido = anexo.valorTotalCentavos ?? undefined;
+    setCorrecaoOcr({
+      despesaId,
+      anexoId: anexo.id,
+      nomeArquivo: anexo.nomeArquivo,
+      valorLido,
+      valorAtual,
+    });
+    setValorCorrecaoOcr(valorLido ?? valorAtual);
+    setModalCorrigirOcr(true);
+  }
+
+  async function salvarCorrecaoOcr() {
+    if (!correcaoOcr || !valorCorrecaoOcr || corrigirValorOcr.isPending) return;
+    try {
+      await corrigirValorOcr.mutateAsync({
+        chamadoId: c.id,
+        despesaId: correcaoOcr.despesaId,
+        anexoId: correcaoOcr.anexoId,
+        input: { valorCentavos: valorCorrecaoOcr },
+      });
+      setModalCorrigirOcr(false);
+      setCorrecaoOcr(null);
+      toast.success('Valor da nota corrigido.');
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Não foi possível corrigir o valor.'));
     }
   }
 
@@ -787,6 +834,17 @@ export function ChamadoDetalhe() {
                         <span className="min-w-0 flex-1 truncate">
                           {a.tipoDocumentoFiscal ? tipoDocumentoFiscalLabel[a.tipoDocumentoFiscal as keyof typeof tipoDocumentoFiscalLabel] : tipoAnexoLabel[a.tipo]} · {a.nomeArquivo}
                         </span>
+                        {a.valorTotalCentavos != null && (
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                              a.valorTotalCentavos === d.valorCentavos
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'bg-amber-50 text-amber-700'
+                            }`}
+                          >
+                            OCR {formatarMoeda(a.valorTotalCentavos)}
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => abrirAnexo(a)}
@@ -801,6 +859,15 @@ export function ChamadoDetalhe() {
                         >
                           Baixar
                         </button>
+                        {podeGerenciarDespesas && d.status === 'PENDENTE' && (
+                          <button
+                            type="button"
+                            onClick={() => abrirCorrigirOcr(d.id, a, d.valorCentavos)}
+                            className="font-medium text-brand-700 hover:underline"
+                          >
+                            Corrigir valor
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -973,6 +1040,28 @@ export function ChamadoDetalhe() {
           salvando={criarDespesa.isPending}
           onSalvar={salvarDespesa}
         />
+      </Modal>
+
+      <Modal open={modalCorrigirOcr} onClose={() => setModalCorrigirOcr(false)} title="Corrigir valor da nota">
+        <div className="space-y-4">
+          {correcaoOcr && (
+            <p className="text-xs text-gray-500">
+              {correcaoOcr.nomeArquivo}
+              {correcaoOcr.valorLido !== undefined && <> · Valor lido: {formatarMoeda(correcaoOcr.valorLido)}</>}
+            </p>
+          )}
+          <div>
+            <label className="label">Valor da nota</label>
+            <CampoMoeda className="input" value={valorCorrecaoOcr} onChange={setValorCorrecaoOcr} />
+          </div>
+          <button
+            onClick={() => void salvarCorrecaoOcr()}
+            className="btn-primary w-full"
+            disabled={!valorCorrecaoOcr || corrigirValorOcr.isPending}
+          >
+            {corrigirValorOcr.isPending ? 'Salvando…' : 'Salvar correção'}
+          </button>
+        </div>
       </Modal>
 
       <Modal open={modalOrcamento} onClose={() => setModalOrcamento(false)} title="Enviar orçamento">

@@ -11,7 +11,12 @@ import type {
   NovoChamadoInput,
   SolucaoInput,
 } from '../api/chamados';
-import type { CriarDespesaInput, EditarDespesaInput, AnexarDespesaInput } from '../api/despesas';
+import type {
+  AnexarDespesaInput,
+  CorrigirValorOcrInput,
+  CriarDespesaInput,
+  EditarDespesaInput,
+} from '../api/despesas';
 import { useAuth } from '../context/AuthContext';
 import { chaves } from '../query/keys';
 import type { Chamado, PaginaChamados, Prioridade } from '../types';
@@ -214,6 +219,24 @@ export function useRemoverAnexoDespesa() {
   return useMutation({
     mutationFn: (v: { chamadoId: number; despesaId: number; anexoId: number }) =>
       despesasApi.removerAnexoDespesa(v.chamadoId, v.despesaId, v.anexoId),
+    onSuccess: (_d, v) => {
+      void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
+      invalidarListas(queryClient);
+      void queryClient.invalidateQueries({ queryKey: chaves.despesas(v.chamadoId) });
+    },
+  });
+}
+
+export function useCorrigirValorOcr() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (v: {
+      chamadoId: number;
+      despesaId: number;
+      anexoId: number;
+      input: CorrigirValorOcrInput;
+    }) => despesasApi.corrigirValorOcr(v.chamadoId, v.despesaId, v.anexoId, v.input),
     onSuccess: (_d, v) => {
       void queryClient.invalidateQueries({ queryKey: chaves.chamado(v.chamadoId) });
       invalidarListas(queryClient);
