@@ -57,7 +57,7 @@ describe('ChamadosService', () => {
     store = new StoreService();
     const repo = { find: async () => [], findOne: async () => null, save: async (x: any) => x, create: (x: any) => x } as any;
     const dataSource = { transaction: async (fn: any) => fn({ getRepository: () => repo }) } as any;
-    service = new ChamadosService(store, repo, repo, repo, repo, repo, repo, dataSource);
+    service = new ChamadosService(store, repo, repo, repo, repo, repo, repo, repo, dataSource);
     ana = store.getUsuarioInternoPorId(1)!;
     joao = store.getUsuarioInternoPorId(3)!;
     marta = store.getUsuarioInternoPorId(4)!;
@@ -309,10 +309,107 @@ describe('ChamadosService', () => {
   it('não aprova despesa que não está pendente', async () => {
     const despesa = despesaEntidade({ status: 'APROVADA' });
     const repo = repoComDespesa(despesa);
-    const svc = new ChamadosService(store, repo, repo, repo, repo, repo, repo, {} as any);
+    const svc = new ChamadosService(store, repo, repo, repo, repo, repo, repo, repo, {} as any);
 
     await expect(svc.aprovarDespesa(2, 1, ricardo)).rejects.toThrow(
       BadRequestException,
     );
+  });
+
+  it('síndico recusa chamado aguardando aprovação com motivo e registra histórico', async () => {
+    const res = await service.recusar(3, ricardo, {
+      motivo: 'Solicitação em duplicidade',
+    });
+
+    expect(res.chamado.status).toBe('RECUSADO');
+    expect(res.chamado.historico[0]).toMatchObject({
+      de: 'AGUARDANDO_APROVACAO',
+      para: 'RECUSADO',
+      observacao: 'Recusado: Solicitação em duplicidade',
+    });
+  });
+
+  it('recusa falha com motivo vazio ou chamado fora de AGUARDANDO_APROVACAO', async () => {
+    await expect(
+      service.recusar(3, ricardo, { motivo: '   ' }),
+    ).rejects.toThrow(BadRequestException);
+    await expect(
+      service.recusar(1, ricardo, { motivo: 'Já concluído' }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('fluxo de orçamentos: envio pelo prestador, bloqueio de início (RN05) e aprovação/rejeição', async () => {
+    await service.aprovar(3, ricardo, {
+      prioridade: 'MEDIA',
+      prestadorId: joao.id,
+    });
+
+    const criado = await service.criarOrcamento(3, joao, {
+      descricao: 'Troca de compressor',
+      valorCentavos: 45000,
+    });
+    expect(criado.orcamento).toMatchObject({
+      chamadoId: 3,
+      prestadorId: joao.id,
+      status: 'PENDENTE',
+      valorCentavos: 45000,
+    });
+
+    // RN05: não permite iniciar enquanto existir orçamento pendente
+    await expect(service.iniciar(3, joao)).rejects.toThrow(BadRequestException);
+
+    const aprovado = await service.aprovarOrcamento(3, criado.orcamento.id, ricardo);
+    expect(aprovado.orcamento).toMatchObject({
+      status: 'APROVADO',
+      aprovadoPorId: ricardo.id,
+    });
+
+    const iniciado = await service.iniciar(3, joao);
+    expect(iniciado.chamado.status).toBe('EM_ANDAMENTO');
+  });
+
+  it('bloqueia envio de orçamento por prestador não atribuído ou em status inválido', async () => {
+    await service.aprovar(3, ricardo, {
+      prioridade: 'MEDIA',
+      prestadorId: joao.id,
+    });
+
+    await expect(
+      service.criarOrcamento(3, marta, {
+        descricao: 'Outro prestador',
+        valorCentavos: 1000,
+      }),
+    ).rejects.toThrow(ForbiddenException);
+
+    await expect(
+      service.criarOrcamento(2, marta, {
+        descricao: 'Já em andamento',
+        valorCentavos: 1000,
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('síndico rejeita orçamento pendente com motivo', async () => {
+    await service.aprovar(3, ricardo, {
+      prioridade: 'ALTA',
+      prestadorId: joao.id,
+    });
+    const criado = await service.criarOrcamento(3, joao, {
+      descricao: 'Orçamento caro',
+      valorCentavos: 99000,
+    });
+
+    const rejeitado = await service.rejeitarOrcamento(
+      3,
+      criado.orcamento.id,
+      ricardo,
+      { motivo: 'Valor acima do mercado' },
+    );
+
+    expect(rejeitado.orcamento).toMatchObject({
+      status: 'REJEITADO',
+      motivoRejeicao: 'Valor acima do mercado',
+      aprovadoPorId: ricardo.id,
+    });
   });
 });

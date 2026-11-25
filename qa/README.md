@@ -44,10 +44,10 @@ qa/
 
 | Entrega | Ferramenta / Arquivo | Status | Descrição |
 | :--- | :--- | :---: | :--- |
-| **Plano de Testes** | [plano-de-testes.md](./plano-de-testes.md) | ✅ Concluído | Mapeamento de RF01 a RF06, RN01 a RN04 e casos de teste detalhados |
-| **Testes de API** | [postman/](./postman/) | ✅ Concluído | Coleção com 24 asserções automatizadas cobrindo 100% dos endpoints |
-| **Testes E2E (Web)** | [e2e/](./e2e/) | 🟡 Em planejamento | Automação do fluxo completo de ponta a ponta com Playwright |
-| **Auditoria & Bugs** | Seção 6 do Plano de Testes | ✅ Mapeado | Identificação e documentação de 5 bugs e vulnerabilidades de segurança |
+| **Plano de Testes** | [plano-de-testes.md](./plano-de-testes.md) | ✅ Atualizado (v2.0) | Mapeamento de RF01 a RF08, RN01 a RN05 e casos de teste detalhados |
+| **Testes de API** | [postman/](./postman/) | ✅ Concluído | Coleção atualizada para perfis reais, orçamentos e RN01–RN05 |
+| **Testes E2E (Web)** | [e2e/](./e2e/) | ✅ Automatizado | Suíte Playwright cobrindo autenticação, chamados, ciclo de vida, orçamentos/despesas, RBAC, dashboard e UI |
+| **Auditoria & Bugs** | Seção 6 do Plano de Testes | ✅ Mapeado | Registro de bugs encontrados na avaliação e execução E2E |
 
 ---
 
@@ -78,6 +78,8 @@ npm test
 npm run test:backend
 npm run test:api
 npm run test:frontend
+npm run test:e2e
+npm run test:e2e:ui
 ```
 
 Os comandos existentes nas aplicações continuam disponíveis e apontam para os arquivos em `qa/`:

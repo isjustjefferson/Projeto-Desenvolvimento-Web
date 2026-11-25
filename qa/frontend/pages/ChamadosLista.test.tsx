@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Chamado, Status, Usuario } from '../../../frontend/src/types';
+import type { FiltrosChamados } from '../../../frontend/src/api/chamados';
 import { ChamadosLista } from '../../../frontend/src/pages/ChamadosLista';
 
 const estado = vi.hoisted(() => ({
@@ -15,15 +16,47 @@ vi.mock('../../../frontend/src/context/AuthContext', () => ({
 }));
 
 vi.mock('../../../frontend/src/hooks/useChamados', () => ({
-  useChamados: () => ({ data: estado.chamados, isPending: false, error: null }),
+  useChamados: (filtros: FiltrosChamados = {}) => {
+    const filtrados = estado.chamados
+      .filter((c) => !filtros.status || c.status === filtros.status)
+      .filter((c) => {
+        if (!filtros.q) return true;
+        const termo = filtros.q.toLowerCase();
+        return (
+          c.titulo.toLowerCase().includes(termo) ||
+          c.descricao.toLowerCase().includes(termo)
+        );
+      })
+      .slice()
+      .sort((a, b) => {
+        const diff = new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime();
+        return filtros.ordem === 'desc' ? -diff : diff;
+      });
+    const limite = filtros.limite ?? 6;
+    const totalPaginas = Math.max(1, Math.ceil(filtrados.length / limite));
+    const pagina = Math.min(Math.max(1, filtros.pagina ?? 1), totalPaginas);
+    const inicio = (pagina - 1) * limite;
+    return {
+      data: {
+        chamados: filtrados.slice(inicio, inicio + limite),
+        paginacao: {
+          pagina,
+          limite,
+          total: filtrados.length,
+          totalPaginas,
+        },
+      },
+      isPending: false,
+      error: null,
+    };
+  },
 }));
 
 vi.mock('../../../frontend/src/hooks/useUsuarios', () => ({
-  useDiretorio: () => ({ nomeUsuario: (id: number) => `Usuário ${id}` }),
+  useDiretorio: () => ({ usuarios: [], nomeUsuario: (id: number) => `Usuário ${id}` }),
 }));
 
 function criarChamado(id: number, status: Status = 'EM_ANDAMENTO'): Chamado {
-  // Ids maiores são mais recentes: a lista ordena do mais novo para o mais antigo
   const data = new Date(Date.UTC(2026, 0, 1, 0, id)).toISOString();
   return {
     id,
@@ -69,13 +102,13 @@ beforeEach(() => {
 });
 
 describe('ChamadosLista — paginação', () => {
-  it('mostra 8 chamados por página e navega entre as páginas', async () => {
+  it('mostra 6 chamados por página e navega entre as páginas', async () => {
     const usuario = userEvent.setup();
-    estado.chamados = Array.from({ length: 12 }, (_, i) => criarChamado(i + 1));
+    estado.chamados = Array.from({ length: 10 }, (_, i) => criarChamado(i + 1));
     renderLista();
 
-    expect(titulos()).toHaveLength(8);
-    expect(titulos()[0]).toBe('Chamado 12');
+    expect(titulos()).toHaveLength(6);
+    expect(titulos()[0]).toBe('Chamado 10');
     expect(screen.getByText(/Página 1 de 2/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Anterior/ })).toBeDisabled();
 
@@ -88,7 +121,7 @@ describe('ChamadosLista — paginação', () => {
 
   it('volta para a primeira página ao filtrar', async () => {
     const usuario = userEvent.setup();
-    estado.chamados = Array.from({ length: 12 }, (_, i) => criarChamado(i + 1));
+    estado.chamados = Array.from({ length: 10 }, (_, i) => criarChamado(i + 1));
     renderLista();
 
     await usuario.click(screen.getByRole('button', { name: /Próxima/ }));
@@ -98,12 +131,12 @@ describe('ChamadosLista — paginação', () => {
     await usuario.type(screen.getByPlaceholderText(/Buscar/), 'Descrição');
 
     expect(screen.getByText(/Página 1 de 2/)).toBeInTheDocument();
-    expect(titulos()[0]).toBe('Chamado 12');
+    expect(titulos()[0]).toBe('Chamado 10');
   });
 
   it('esconde a paginação quando tudo cabe em uma página', () => {
-    // 8 é o limite exato de uma página: ainda não pagina
-    estado.chamados = Array.from({ length: 8 }, (_, i) => criarChamado(i + 1));
+    // 6 é o limite exato de uma página: ainda não pagina
+    estado.chamados = Array.from({ length: 6 }, (_, i) => criarChamado(i + 1));
     renderLista();
     expect(
       screen.queryByRole('button', { name: /Próxima/ }),

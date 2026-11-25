@@ -98,7 +98,7 @@ describe('FormularioDespesa — salvar', () => {
     await usuario.type(campo('Descrição'), '  Troca do disjuntor  ');
     await usuario.type(campo('Valor (R$)'), '25050');
     await usuario.type(campo('Fornecedor'), 'Casa das Ferragens');
-    await usuario.type(campo('CPF/CNPJ do fornecedor'), '12345678000190');
+    await usuario.type(campo('CPF/CNPJ do fornecedor'), '12345678000195');
     await usuario.type(campo('Nº da nota'), '4567');
     await usuario.type(campo('Série'), '1');
     fireEvent.change(campo('Data de emissão'), {
@@ -113,7 +113,7 @@ describe('FormularioDespesa — salvar', () => {
       descricao: 'Troca do disjuntor',
       valorCentavos: 25050,
       fornecedor: 'Casa das Ferragens',
-      cnpj: '12.345.678/0001-90',
+      cnpj: '12.345.678/0001-95',
       numeroNota: '4567',
       serie: '1',
       dataEmissao: '2026-01-10',

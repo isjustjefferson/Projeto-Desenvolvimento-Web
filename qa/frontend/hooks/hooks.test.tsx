@@ -7,7 +7,11 @@ import * as chamadosApi from '../../../frontend/src/api/chamados';
 import * as usuariosApi from '../../../frontend/src/api/usuarios';
 import { chaves } from '../../../frontend/src/query/keys';
 import { criarQueryClient } from '../../../frontend/src/query/client';
-import type { Chamado, UsuarioResumo } from '../../../frontend/src/types';
+import type {
+  Chamado,
+  PaginaChamados,
+  UsuarioResumo,
+} from '../../../frontend/src/types';
 import { useAprovarChamado, useChamado, useChamados } from '../../../frontend/src/hooks/useChamados';
 import {
   useAlterarCargo,
@@ -42,6 +46,10 @@ vi.mock('../../../frontend/src/context/AuthContext', () => ({
 }));
 
 const lista = chamadosFixture.chamados as unknown as Chamado[];
+const paginaLista: PaginaChamados = {
+  chamados: lista,
+  paginacao: chamadosFixture.paginacao,
+};
 const resumo = resumoFixture.usuarios as unknown as UsuarioResumo[];
 
 // Usa os mesmos defaults da aplicação (staleTime, retry) para os testes
@@ -60,18 +68,18 @@ beforeEach(() => {
 
 describe('useChamados', () => {
   it('carrega a listagem', async () => {
-    vi.mocked(chamadosApi.listar).mockResolvedValue(lista);
+    vi.mocked(chamadosApi.listar).mockResolvedValue(paginaLista);
     const { wrapper } = montar();
 
     const { result } = renderHook(() => useChamados(), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toHaveLength(lista.length);
+    expect(result.current.data?.chamados).toHaveLength(lista.length);
   });
 
   it('reaproveita o chamado que já está na listagem, sem buscar de novo', async () => {
     const { queryClient, wrapper } = montar();
-    queryClient.setQueryData(chaves.chamados, lista);
+    queryClient.setQueryData(chaves.listaChamados({}), paginaLista);
 
     const { result } = renderHook(() => useChamado(1), { wrapper });
 
@@ -110,7 +118,7 @@ describe('useChamados', () => {
     };
     vi.mocked(chamadosApi.aprovar).mockResolvedValue(aprovado);
     const { queryClient, wrapper } = montar();
-    queryClient.setQueryData(chaves.chamados, lista);
+    queryClient.setQueryData(chaves.listaChamados({}), paginaLista);
     queryClient.setQueryData(chaves.chamado(aprovado.id), lista[0]);
 
     const { result } = renderHook(() => useAprovarChamado(), { wrapper });
@@ -125,7 +133,9 @@ describe('useChamados', () => {
     expect(queryClient.getQueryData(chaves.chamado(aprovado.id))).toMatchObject(
       { status: 'REVISADO', prioridade: 'ALTA' },
     );
-    expect(queryClient.getQueryState(chaves.chamados)?.isInvalidated).toBe(true);
+    expect(
+      queryClient.getQueryState(chaves.listaChamados({}))?.isInvalidated,
+    ).toBe(true);
   });
 });
 

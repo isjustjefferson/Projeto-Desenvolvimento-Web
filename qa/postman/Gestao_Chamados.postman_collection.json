@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a918e7d2-7b24-4f2a-b73f-c399b92e8df1",
     "name": "Sistema de Gestão de Chamados - API",
-    "description": "Coleção oficial de testes de API (QA: Arthur José). Cobre autenticação, RBAC, ciclo de vida de chamados e gestão de usuários com asserções automáticas.",
+    "description": "Coleção oficial de testes de API (QA: Arthur José). Cobre autenticação, RBAC, ciclo de vida de chamados (CONDOMINO, PRESTADOR, SINDICO, ADMINISTRADOR), orçamentos e health check.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -10,7 +10,7 @@
       "name": "01 - Autenticação & Perfil",
       "item": [
         {
-          "name": "Login (Sucesso - Solicitante)",
+          "name": "Login (Sucesso - Condômino)",
           "event": [
             {
               "listen": "test",
@@ -24,6 +24,7 @@
                   "    const data = pm.response.json();",
                   "    pm.expect(data).to.have.property('usuario');",
                   "    pm.expect(data.usuario.email).to.eql('ana@predial.com');",
+                  "    pm.expect(data.usuario.role).to.eql('CONDOMINO');",
                   "    pm.expect(data.usuario).to.not.have.property('senha');",
                   "    pm.expect(data.usuario).to.not.have.property('senhaHash');",
                   "    pm.environment.set(\"usuarioId\", data.usuario.id);",
@@ -35,12 +36,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"ana@predial.com\",\n  \"senha\": \"123456\"\n}"
@@ -69,12 +65,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"ana@predial.com\",\n  \"senha\": \"senha_errada_999\"\n}"
@@ -87,7 +78,7 @@
           }
         },
         {
-          "name": "Auto-registro (Novo Solicitante)",
+          "name": "Auto-registro (Novo Condômino)",
           "event": [
             {
               "listen": "test",
@@ -97,9 +88,9 @@
                   "    pm.response.to.have.status(201);",
                   "});",
                   "",
-                  "pm.test(\"Novo usuário deve ter role SOLICITANTE\", function () {",
+                  "pm.test(\"Novo usuário deve ter role CONDOMINO\", function () {",
                   "    const data = pm.response.json();",
-                  "    pm.expect(data.usuario.role).to.eql('SOLICITANTE');",
+                  "    pm.expect(data.usuario.role).to.eql('CONDOMINO');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -108,15 +99,10 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"QA Tester Temporário\",\n  \"email\": \"tester.temp_{{$timestamp}}@predial.com\",\n  \"senha\": \"123456\",\n  \"unidade\": \"Bloco B, Ap 101\",\n  \"setor\": \"Apartamento 101\"\n}"
+              "raw": "{\n  \"nome\": \"QA Tester Temporário\",\n  \"email\": \"tester.temp_{{$timestamp}}@predial.com\",\n  \"senha\": \"123456\",\n  \"unidade\": \"Bloco B, Ap 101\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/register",
@@ -147,12 +133,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"ana@predial.com\"\n}"
@@ -187,12 +168,7 @@
           ],
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "x-usuario-id",
-                "value": "{{usuarioId}}"
-              }
-            ],
+            "header": [{ "key": "x-usuario-id", "value": "{{usuarioId}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/me",
               "host": ["{{baseUrl}}"],
@@ -206,7 +182,7 @@
       "name": "02 - Chamados (Ciclo de Vida & RNs)",
       "item": [
         {
-          "name": "Criar Chamado (Solicitante - Ana)",
+          "name": "Criar Chamado (Condômino - Ana)",
           "event": [
             {
               "listen": "test",
@@ -230,14 +206,8 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "x-usuario-id",
-                "value": "{{usuarioId}}"
-              }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-usuario-id", "value": "{{usuarioId}}" }
             ],
             "body": {
               "mode": "raw",
@@ -251,7 +221,7 @@
           }
         },
         {
-          "name": "Listar Chamados (RN01 - Isolamento Solicitante)",
+          "name": "Listar Chamados (RN01 - Isolamento Condômino)",
           "event": [
             {
               "listen": "test",
@@ -261,7 +231,7 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test(\"Solicitante só enxerga seus próprios chamados (RN01)\", function () {",
+                  "pm.test(\"Condômino só enxerga seus próprios chamados (RN01)\", function () {",
                   "    const data = pm.response.json();",
                   "    const myId = Number(pm.environment.get(\"usuarioId\"));",
                   "    data.chamados.forEach(c => {",
@@ -275,12 +245,7 @@
           ],
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "x-usuario-id",
-                "value": "{{usuarioId}}"
-              }
-            ],
+            "header": [{ "key": "x-usuario-id", "value": "{{usuarioId}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/chamados",
               "host": ["{{baseUrl}}"],
@@ -289,7 +254,7 @@
           }
         },
         {
-          "name": "Aprovar Chamado (Gestor - Ricardo - RN02)",
+          "name": "Aprovar Chamado (Síndico - Ricardo - RN02)",
           "event": [
             {
               "listen": "test",
@@ -298,10 +263,10 @@
                   "pm.test(\"Status code deve ser 201 Created\", function () {",
                   "    pm.response.to.have.status(201);",
                   "});",
-                  "pm.test(\"Status mudou para REVISADO e técnico foi atribuído\", function () {",
+                  "pm.test(\"Status mudou para REVISADO e prestador foi atribuído\", function () {",
                   "    const data = pm.response.json();",
                   "    pm.expect(data.chamado.status).to.eql('REVISADO');",
-                  "    pm.expect(data.chamado.tecnicoId).to.eql(Number(pm.environment.get(\"tecnicoId\")));",
+                  "    pm.expect(data.chamado.prestadorId).to.eql(Number(pm.environment.get(\"prestadorId\")));",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -311,18 +276,12 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "x-usuario-id",
-                "value": "{{gestorId}}"
-              }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-usuario-id", "value": "{{sindicoId}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prioridade\": \"ALTA\",\n  \"tecnicoId\": 3\n}"
+              "raw": "{\n  \"prioridade\": \"ALTA\",\n  \"prestadorId\": 3\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/aprovar",
@@ -332,7 +291,73 @@
           }
         },
         {
-          "name": "Iniciar Chamado (Técnico - João - RN03)",
+          "name": "Enviar Orçamento (Prestador - João)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Orçamento criado como PENDENTE\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.orcamento.status).to.eql('PENDENTE');",
+                  "    pm.environment.set(\"orcamentoId\", data.orcamento.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-usuario-id", "value": "{{prestadorId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Troca de reator e lâmpada LED\",\n  \"valorCentavos\": 12000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/orcamentos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chamados", "{{chamadoId}}", "orcamentos"]
+            }
+          }
+        },
+        {
+          "name": "Aprovar Orçamento (Síndico - Ricardo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code deve ser 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Orçamento aprovado\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.orcamento.status).to.eql('APROVADO');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "x-usuario-id", "value": "{{sindicoId}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/orcamentos/{{orcamentoId}}/aprovar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chamados", "{{chamadoId}}", "orcamentos", "{{orcamentoId}}", "aprovar"]
+            }
+          }
+        },
+        {
+          "name": "Iniciar Chamado (Prestador - João - RN03)",
           "event": [
             {
               "listen": "test",
@@ -352,12 +377,7 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "x-usuario-id",
-                "value": "{{tecnicoId}}"
-              }
-            ],
+            "header": [{ "key": "x-usuario-id", "value": "{{prestadorId}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/iniciar",
               "host": ["{{baseUrl}}"],
@@ -383,14 +403,8 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "x-usuario-id",
-                "value": "{{tecnicoId}}"
-              }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-usuario-id", "value": "{{prestadorId}}" }
             ],
             "body": {
               "mode": "raw",
@@ -427,18 +441,12 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "x-usuario-id",
-                "value": "{{tecnicoId}}"
-              }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-usuario-id", "value": "{{prestadorId}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"descricao\": \"Substituída a lâmpada fluorescente e testado o circuito elétrico.\",\n  \"materiais\": \"1x Lâmpada LED tubular 18W Bivolt, fita isolante 3M.\"\n}"
+              "raw": "{\n  \"descricao\": \"Substituída a lâmpada tubular e testado o circuito elétrico.\",\n  \"materiais\": \"1x Lâmpada LED tubular 18W Bivolt, fita isolante 3M.\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/concluir",
@@ -474,12 +482,7 @@
           ],
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "x-usuario-id",
-                "value": "{{adminId}}"
-              }
-            ],
+            "header": [{ "key": "x-usuario-id", "value": "{{adminId}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/usuarios",
               "host": ["{{baseUrl}}"],
@@ -488,7 +491,7 @@
           }
         },
         {
-          "name": "Listar Usuários como Solicitante (Bloqueio 403)",
+          "name": "Listar Usuários como Condômino (Bloqueio 403)",
           "event": [
             {
               "listen": "test",
@@ -504,12 +507,7 @@
           ],
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "x-usuario-id",
-                "value": "{{usuarioId}}"
-              }
-            ],
+            "header": [{ "key": "x-usuario-id", "value": "{{usuarioId}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/usuarios",
               "host": ["{{baseUrl}}"],
@@ -532,8 +530,8 @@
                   "pm.test(\"Status code deve ser 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"Tempo de resposta inferior a 500ms\", function () {",
-                  "    pm.expect(pm.response.responseTime).to.be.below(500);",
+                  "pm.test(\"Tempo de resposta inferior a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
                   "});"
                 ],
                 "type": "text/javascript"

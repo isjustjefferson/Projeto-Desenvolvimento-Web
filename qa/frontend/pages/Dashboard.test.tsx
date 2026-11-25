@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Chamado, Status, Usuario } from '../../../frontend/src/types';
+import type { Chamado, ResumoChamados, Status, Usuario } from '../../../frontend/src/types';
 import { Dashboard } from '../../../frontend/src/pages/Dashboard';
 
 const estado = vi.hoisted(() => ({
@@ -13,13 +13,61 @@ vi.mock('../../../frontend/src/context/AuthContext', () => ({
   useAuth: () => ({ usuario: estado.usuario }),
 }));
 
+function montarResumo(chamados: Chamado[]): ResumoChamados {
+  const porStatus: Partial<Record<Status, number>> = {};
+  const porCategoria: Record<string, number> = {};
+  const porPrioridadeAtiva = { BAIXA: 0, MEDIA: 0, ALTA: 0, CRITICA: 0 };
+  for (const c of chamados) {
+    porStatus[c.status] = (porStatus[c.status] ?? 0) + 1;
+    porCategoria[c.categoria] = (porCategoria[c.categoria] ?? 0) + 1;
+    if (c.status !== 'CONCLUIDO' && c.prioridade) {
+      porPrioridadeAtiva[c.prioridade] += 1;
+    }
+  }
+  const concluidos = porStatus.CONCLUIDO ?? 0;
+  return {
+    total: chamados.length,
+    abertos: chamados.length - concluidos,
+    concluidos,
+    triagem: porStatus.AGUARDANDO_APROVACAO ?? 0,
+    porStatus,
+    porCategoria,
+    porPrioridadeAtiva,
+    criticasPendentes: porPrioridadeAtiva.CRITICA,
+  };
+}
+
 vi.mock('../../../frontend/src/hooks/useChamados', () => ({
-  useChamados: () => ({
-    data: estado.chamados,
+  useResumoChamados: () => ({
+    data: montarResumo(estado.chamados),
     isPending: false,
     error: null,
     refetch: vi.fn(),
   }),
+  useChamados: (filtros: { status?: Status; ordem?: 'asc' | 'desc'; limite?: number } = {}) => {
+    const filtrados = estado.chamados
+      .filter((c) => !filtros.status || c.status === filtros.status)
+      .slice()
+      .sort((a, b) => {
+        const diff = new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime();
+        return filtros.ordem === 'desc' ? -diff : diff;
+      });
+    const limite = filtros.limite ?? 20;
+    return {
+      data: {
+        chamados: filtrados.slice(0, limite),
+        paginacao: {
+          pagina: 1,
+          limite,
+          total: filtrados.length,
+          totalPaginas: Math.max(1, Math.ceil(filtrados.length / limite)),
+        },
+      },
+      isPending: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  },
 }));
 
 vi.mock('../../../frontend/src/hooks/useUsuarios', () => ({

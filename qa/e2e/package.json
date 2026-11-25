@@ -1,0 +1,27 @@
+{
+  "name": "gestao-chamados-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test --config playwright.config.ts",
+    "test:headed": "playwright test --config playwright.config.ts --headed",
+    "test:ui": "playwright test --config playwright.config.ts --ui",
+    "test:chromium": "playwright test --config playwright.config.ts --project=chromium",
+    "test:firefox": "playwright test --config playwright.config.ts --project=firefox",
+    "test:mobile": "playwright test --config playwright.config.ts --project=mobile-chrome",
+    "test:auth": "playwright test --config playwright.config.ts tests/auth.spec.ts",
+    "test:chamados": "playwright test --config playwright.config.ts tests/chamados.spec.ts",
+    "test:ciclo": "playwright test --config playwright.config.ts tests/ciclo-vida.spec.ts",
+    "test:orcamentos": "playwright test --config playwright.config.ts tests/orcamentos-despesas.spec.ts",
+    "test:rbac": "playwright test --config playwright.config.ts tests/rbac.spec.ts",
+    "test:dashboard": "playwright test --config playwright.config.ts tests/dashboard.spec.ts",
+    "test:ui-spec": "playwright test --config playwright.config.ts tests/ui.spec.ts",
+    "report": "playwright show-report playwright-report",
+    "install:browsers": "playwright install --with-deps chromium firefox webkit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^24.19.4",
+    "dotenv": "^18.0.10"
+  }
+}

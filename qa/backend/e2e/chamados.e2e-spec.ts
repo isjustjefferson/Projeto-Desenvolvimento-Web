@@ -260,4 +260,61 @@ describe('Chamados (e2e)', () => {
       .set('x-usuario-id', '6')
       .expect(400);
   });
+
+  it('recusar: síndico recusa AGUARDANDO_APROVACAO e condômino é bloqueado', async () => {
+    await request(app.getHttpServer())
+      .post('/api/chamados/5/recusar')
+      .set('x-usuario-id', '1')
+      .send({ motivo: 'Sem permissão' })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/api/chamados/5/recusar')
+      .set('x-usuario-id', '5')
+      .send({ motivo: '' })
+      .expect(400);
+
+    const res = await request(app.getHttpServer())
+      .post('/api/chamados/5/recusar')
+      .set('x-usuario-id', '5')
+      .send({ motivo: 'Problema já atendido em outro chamado' })
+      .expect(201);
+
+    expect(res.body.chamado.status).toBe('RECUSADO');
+    expect(res.body.chamado.historico[0].observacao).toContain(
+      'Problema já atendido em outro chamado',
+    );
+  });
+
+  it('orçamentos: prestador envia, bloqueia início enquanto pendente (RN05) e síndico aprova/rejeita', async () => {
+    await request(app.getHttpServer())
+      .post('/api/chamados/3/aprovar')
+      .set('x-usuario-id', '5')
+      .send({ prioridade: 'ALTA', prestadorId: 3 })
+      .expect(201);
+
+    const orc = await request(app.getHttpServer())
+      .post('/api/chamados/3/orcamentos')
+      .set('x-usuario-id', '3')
+      .send({ descricao: 'Troca de peça', valorCentavos: 25000 })
+      .expect(201);
+    expect(orc.body.orcamento.status).toBe('PENDENTE');
+
+    await request(app.getHttpServer())
+      .post('/api/chamados/3/iniciar')
+      .set('x-usuario-id', '3')
+      .expect(400);
+
+    const aprovado = await request(app.getHttpServer())
+      .post(`/api/chamados/3/orcamentos/${orc.body.orcamento.id}/aprovar`)
+      .set('x-usuario-id', '5')
+      .expect(201);
+    expect(aprovado.body.orcamento.status).toBe('APROVADO');
+
+    const iniciado = await request(app.getHttpServer())
+      .post('/api/chamados/3/iniciar')
+      .set('x-usuario-id', '3')
+      .expect(201);
+    expect(iniciado.body.chamado.status).toBe('EM_ANDAMENTO');
+  });
 });
