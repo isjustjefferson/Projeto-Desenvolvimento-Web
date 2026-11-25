@@ -20,6 +20,7 @@ import {
   AnexoDespesaDto,
   AprovarChamadoDto,
   ConcluirChamadoDto,
+  CorrigirValorOcrDto,
   CriarChamadoDto,
   CriarDespesaDto,
   CriarOrcamentoDto,
@@ -202,6 +203,18 @@ export class ChamadosController {
     @UsuarioAtual() usuario: UsuarioInterno,
   ) {
     return this.chamados.removerAnexoDespesa(id, despesaId, anexoId, usuario);
+  }
+
+  @Patch(':id/despesas/:despesaId/anexos/:anexoId')
+  @Roles('PRESTADOR', 'SINDICO', 'ADMINISTRADOR')
+  corrigirValorOcr(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('despesaId', ParseIntPipe) despesaId: number,
+    @Param('anexoId', ParseIntPipe) anexoId: number,
+    @Body() dto: CorrigirValorOcrDto,
+    @UsuarioAtual() usuario: UsuarioInterno,
+  ) {
+    return this.chamados.corrigirValorOcr(id, despesaId, anexoId, dto, usuario);
   }
 
   @Post(':id/despesas/:despesaId/aprovar')

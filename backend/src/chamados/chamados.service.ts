@@ -38,6 +38,7 @@ import type {
   AnexoDespesaDto,
   AprovarChamadoDto,
   ConcluirChamadoDto,
+  CorrigirValorOcrDto,
   CriarChamadoDto,
   CriarDespesaDto,
   CriarOrcamentoDto,
@@ -1292,6 +1293,9 @@ export class ChamadosService {
           chaveNfe: anexo.chaveNFe?.trim() || null,
           numero: anexo.numero?.trim() || null,
           serie: anexo.serie?.trim() || null,
+          valorTotalCentavos: anexo.valorTotalCentavos ?? null,
+          textoOcr: anexo.textoOcr ?? null,
+          ocrExtraidoEm: this.resolverOcrExtraidoEm(anexo, agora),
           nomeArquivo: anexo.nomeArquivo,
           mimeType: anexo.mimeType,
           tamanhoBytes: anexo.tamanhoBytes,
@@ -1411,6 +1415,9 @@ export class ChamadosService {
       chaveNfe: dto.chaveNFe?.trim() || null,
       numero: dto.numero?.trim() || null,
       serie: dto.serie?.trim() || null,
+      valorTotalCentavos: dto.valorTotalCentavos ?? null,
+      textoOcr: dto.textoOcr ?? null,
+      ocrExtraidoEm: this.resolverOcrExtraidoEm(dto, agora),
       nomeArquivo: dto.nomeArquivo,
       mimeType: dto.mimeType,
       tamanhoBytes: dto.tamanhoBytes,
@@ -1458,6 +1465,47 @@ export class ChamadosService {
       where: { id: (despesaEnt as any).id },
       relations: { anexos: true } as any,
     }));
+    const full: DespesaEntity | null = Array.isArray(fullRes) ? (fullRes[0] as any) : (fullRes as any);
+    return { ok: true, despesa: mapDespesaToContrato(full as any, false) as any };
+  }
+
+  async corrigirValorOcr(
+    chamadoId: number,
+    despesaId: number,
+    anexoId: number,
+    dto: CorrigirValorOcrDto,
+    usuario: UsuarioInterno,
+  ): Promise<{ ok: true; despesa: Despesa }> {
+    const chamado = await this.buscarChamadoContrato(chamadoId);
+    if (!this.podeGerenciarDespesas(chamado, usuario)) {
+      throw new ForbiddenException('Sem permissão para corrigir o valor da nota.');
+    }
+    const despesaEnt = await this.despesaRepo.findOne({
+      where: { id: despesaId },
+      relations: { anexos: true },
+    });
+    if (!despesaEnt || despesaEnt.chamadoId !== chamado.id) {
+      throw new NotFoundException('Despesa não encontrada.');
+    }
+    if (despesaEnt.status !== 'PENDENTE') {
+      throw new BadRequestException('Não é possível corrigir valor de despesa não pendente.');
+    }
+    const anexoEnt = (despesaEnt as any).anexos?.find((a: any) => a.id === anexoId);
+    if (!anexoEnt) {
+      throw new NotFoundException('Anexo não encontrado.');
+    }
+    const agora = new Date();
+    await this.anexoRepo.update(
+      { id: anexoId, despesaId: despesaEnt.id },
+      { valorTotalCentavos: dto.valorCentavos } as any,
+    );
+    despesaEnt.valorCentavos = dto.valorCentavos;
+    despesaEnt.atualizadoEm = agora;
+    await this.despesaRepo.save(despesaEnt);
+    const fullRes = await this.despesaRepo.findOne({
+      where: { id: despesaEnt.id },
+      relations: { anexos: true } as any,
+    });
     const full: DespesaEntity | null = Array.isArray(fullRes) ? (fullRes[0] as any) : (fullRes as any);
     return { ok: true, despesa: mapDespesaToContrato(full as any, false) as any };
   }
@@ -1648,6 +1696,17 @@ export class ChamadosService {
     if (data > hoje) {
       throw new BadRequestException('Data de emissão não pode ser futura.');
     }
+  }
+
+  private resolverOcrExtraidoEm(
+    anexo: Pick<AnexoDespesaDto, 'ocrExtraidoEm' | 'valorTotalCentavos' | 'textoOcr'>,
+    agora: Date,
+  ): Date | null {
+    if (anexo.ocrExtraidoEm) return new Date(anexo.ocrExtraidoEm);
+    if (anexo.valorTotalCentavos !== undefined || anexo.textoOcr !== undefined) {
+      return agora;
+    }
+    return null;
   }
 
   private validarAnexos(anexos?: AnexoDespesaDto[]): void {

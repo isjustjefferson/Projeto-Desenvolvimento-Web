@@ -117,6 +117,9 @@ export interface AnexoDespesa {
   chaveNFe?: string;
   numero?: string;
   serie?: string;
+  valorTotalCentavos?: number;
+  textoOcr?: string;
+  ocrExtraidoEm?: string;
   nomeArquivo: string;
   mimeType: string;
   tamanhoBytes: number;

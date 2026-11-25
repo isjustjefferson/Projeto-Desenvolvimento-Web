@@ -240,6 +240,19 @@ export class AnexoDespesaDto {
   @MaxLength(20)
   serie?: string;
 
+  @IsOptional()
+  @IsInt({ message: 'Valor OCR inválido.' })
+  @Min(0, { message: 'Valor OCR não pode ser negativo.' })
+  valorTotalCentavos?: number;
+
+  @IsOptional()
+  @IsString()
+  textoOcr?: string;
+
+  @IsOptional()
+  @IsISO8601({}, { message: 'Data de extração OCR inválida.' })
+  ocrExtraidoEm?: string;
+
   @IsString()
   @IsNotEmpty({ message: 'Informe o nome do arquivo.' })
   @MaxLength(255)
@@ -368,4 +381,10 @@ export class RejeitarDespesaDto {
   @IsNotEmpty({ message: 'Informe o motivo da rejeição.' })
   @MaxLength(500)
   motivo!: string;
+}
+
+export class CorrigirValorOcrDto {
+  @IsInt({ message: 'Valor inválido.' })
+  @Min(1, { message: 'Valor deve ser maior que zero.' })
+  valorCentavos!: number;
 }

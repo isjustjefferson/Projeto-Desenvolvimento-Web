@@ -31,6 +31,15 @@ export class AnexoDespesaEntity {
   @Column({ type: 'varchar', length: 20, name: 'serie', nullable: true })
   serie!: string | null;
 
+  @Column({ type: 'integer', name: 'valor_total_centavos', nullable: true })
+  valorTotalCentavos!: number | null;
+
+  @Column({ type: 'text', name: 'texto_ocr', nullable: true })
+  textoOcr!: string | null;
+
+  @Column({ type: 'timestamptz', name: 'ocr_extraido_em', nullable: true })
+  ocrExtraidoEm!: Date | null;
+
   @Column({ type: 'varchar', length: 255, name: 'nome_arquivo', nullable: false })
   nomeArquivo!: string;
 
