@@ -27,10 +27,11 @@ Este documento reúne todos os novos pontos de melhoria, correções e funcional
 
 * [ ] **Pesquisa de viabilidade de APIs Fiscais vs. OCR:** Avaliar a disponibilidade, custos e restrições técnicas (como exigência de certificado digital A1/A3) das APIs de consulta de NF-e/NFC-e/NFS-e por chave de acesso, definindo a arquitetura de *fallback* para o motor de OCR/Visão Computacional.
 * [ ] **Monitoramento do banco em nuvem (Supabase):** Manter o acompanhamento da integração recém-migrada para o Supabase para garantir estabilidade nas novas operações de armazenamento de notas e anexos.
+  * [x] Health-check real de conectividade com o banco (`SELECT 1`) em `GET /api/health`.
 
 ## 🗄️ DBA (Banco de Dados)
 
-* [ ] **Ampliação da carga de dados (*Seed*) de Prestadores de Serviço:** Cadastrar novos prestadores de serviço no banco de dados contemplando outras especialidades além das duas atuais (Elétrica e Hidráulica), tornando o sistema e as demonstrações mais dinâmicos.
+* [x] **Ampliação da carga de dados (*Seed*) de Prestadores de Serviço:** Cadastrar novos prestadores de serviço no banco de dados contemplando outras especialidades além das duas atuais (Elétrica e Hidráulica), tornando o sistema e as demonstrações mais dinâmicos.
 * [ ] **Estrutura para itens detalhados da Nota Fiscal:** Ajustar/criar tabelas ou colunas necessárias para armazenar o detalhamento dos itens extraídos via XML/OCR da nota fiscal e o status/motivo de chamados recusados na triagem.
 
 ## 🧪 QA (Quality Assurance)
