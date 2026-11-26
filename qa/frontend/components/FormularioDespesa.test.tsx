@@ -1,10 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { dataLocalIso } from '../../../frontend/src/helpers';
-import { FormularioDespesa } from '../../../frontend/src/components/FormularioDespesa';
+import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { dataLocalIso } from "../../../frontend/src/helpers";
+import { FormularioDespesa } from "../../../frontend/src/components/FormularioDespesa";
 
-const semNbsp = (s: string) => s.replace(/\u00a0/g, ' ');
+const semNbsp = (s: string) => s.replace(/\u00a0/g, " ");
 
 const onSalvar = vi.fn();
 
@@ -14,7 +14,7 @@ function renderFormulario() {
     usuario: userEvent.setup(),
     campo: (rotulo: string | RegExp) =>
       screen.getByLabelText<HTMLInputElement>(rotulo),
-    salvar: () => screen.getByRole('button', { name: /Salvar despesa/ }),
+    salvar: () => screen.getByRole("button", { name: /Salvar despesa/ }),
   };
 }
 
@@ -22,37 +22,37 @@ beforeEach(() => {
   onSalvar.mockReset();
 });
 
-describe('FormularioDespesa — campos', () => {
-  it('formata o valor em R$ enquanto digita', async () => {
+describe("FormularioDespesa — campos", () => {
+  it("formata o valor em R$ enquanto digita", async () => {
     const { usuario, campo } = renderFormulario();
-    await usuario.type(campo('Valor (R$)'), '15000');
-    expect(semNbsp(campo('Valor (R$)').value)).toBe('R$ 150,00');
-    expect(campo('Valor (R$)')).toHaveAttribute('inputmode', 'numeric');
+    await usuario.type(campo("Valor (R$)"), "15000");
+    expect(semNbsp(campo("Valor (R$)").value)).toBe("R$ 150,00");
+    expect(campo("Valor (R$)")).toHaveAttribute("inputmode", "numeric");
   });
 
-  it('nº da nota e série aceitam só dígitos, com teclado numérico', async () => {
+  it("nº da nota e série aceitam só dígitos, com teclado numérico", async () => {
     const { usuario, campo } = renderFormulario();
-    await usuario.type(campo('Nº da nota'), '12a3-4');
-    await usuario.type(campo('Série'), '12345');
-    expect(campo('Nº da nota').value).toBe('1234');
-    expect(campo('Série').value).toBe('123');
-    expect(campo('Nº da nota')).toHaveAttribute('inputmode', 'numeric');
+    await usuario.type(campo("Nº da nota"), "12a3-4");
+    await usuario.type(campo("Série"), "12345");
+    expect(campo("Nº da nota").value).toBe("1234");
+    expect(campo("Série").value).toBe("123");
+    expect(campo("Nº da nota")).toHaveAttribute("inputmode", "numeric");
   });
 
-  it('aplica a máscara de CPF ou CNPJ conforme a quantidade de dígitos', async () => {
+  it("aplica a máscara de CPF ou CNPJ conforme a quantidade de dígitos", async () => {
     const { usuario, campo } = renderFormulario();
-    await usuario.type(campo('CPF/CNPJ do fornecedor'), '12345678901');
-    expect(campo('CPF/CNPJ do fornecedor').value).toBe('123.456.789-01');
-    await usuario.type(campo('CPF/CNPJ do fornecedor'), '234');
-    expect(campo('CPF/CNPJ do fornecedor').value).toBe('12.345.678/9012-34');
+    await usuario.type(campo("CPF/CNPJ do fornecedor"), "12345678901");
+    expect(campo("CPF/CNPJ do fornecedor").value).toBe("123.456.789-01");
+    await usuario.type(campo("CPF/CNPJ do fornecedor"), "234");
+    expect(campo("CPF/CNPJ do fornecedor").value).toBe("12.345.678/9012-34");
   });
 
-  it('não permite data de emissão futura', () => {
+  it("não permite data de emissão futura", () => {
     const { campo } = renderFormulario();
-    expect(campo('Data de emissão')).toHaveAttribute('max', dataLocalIso());
+    expect(campo("Data de emissão")).toHaveAttribute("max", dataLocalIso());
   });
 
-  it('todo campo de texto tem placeholder', () => {
+  it("todo campo de texto tem placeholder", () => {
     renderFormulario();
     const campos = [
       ...document.querySelectorAll(
@@ -60,78 +60,78 @@ describe('FormularioDespesa — campos', () => {
       ),
     ];
     expect(campos.length).toBeGreaterThan(0);
-    for (const c of campos) expect(c).toHaveAttribute('placeholder');
+    for (const c of campos) expect(c).toHaveAttribute("placeholder");
   });
 
-  it('mostra a chave de acesso só para NF-e e NFC-e', async () => {
+  it("mostra a chave de acesso só para NF-e e NFC-e", async () => {
     const { usuario, campo } = renderFormulario();
     expect(screen.queryByLabelText(/Chave de acesso/)).not.toBeInTheDocument();
 
     await usuario.selectOptions(
-      campo('Tipo de documento fiscal (opcional)'),
-      'NFE',
+      campo("Tipo de documento fiscal (opcional)"),
+      "NFE",
     );
-    await usuario.type(campo(/Chave de acesso/), '12345678');
-    expect(campo(/Chave de acesso/).value).toBe('1234 5678');
+    await usuario.type(campo(/Chave de acesso/), "12345678");
+    expect(campo(/Chave de acesso/).value).toBe("1234 5678");
 
     await usuario.selectOptions(
-      campo('Tipo de documento fiscal (opcional)'),
-      'RECIBO',
+      campo("Tipo de documento fiscal (opcional)"),
+      "RECIBO",
     );
     expect(screen.queryByLabelText(/Chave de acesso/)).not.toBeInTheDocument();
   });
 });
 
-describe('FormularioDespesa — salvar', () => {
-  it('fica desabilitado sem descrição ou sem valor', async () => {
+describe("FormularioDespesa — salvar", () => {
+  it("fica desabilitado sem descrição ou sem valor", async () => {
     const { usuario, campo, salvar } = renderFormulario();
     expect(salvar()).toBeDisabled();
-    await usuario.type(campo('Descrição'), 'Compra de fios');
+    await usuario.type(campo("Descrição"), "Compra de fios");
     expect(salvar()).toBeDisabled();
-    await usuario.type(campo('Valor (R$)'), '1');
+    await usuario.type(campo("Valor (R$)"), "1");
     expect(salvar()).toBeEnabled();
   });
 
-  it('envia todos os campos preenchidos no formato da API', async () => {
+  it("envia todos os campos preenchidos no formato da API", async () => {
     const { usuario, campo, salvar } = renderFormulario();
-    await usuario.selectOptions(campo('Categoria'), 'MAO_DE_OBRA');
-    await usuario.type(campo('Descrição'), '  Troca do disjuntor  ');
-    await usuario.type(campo('Valor (R$)'), '25050');
-    await usuario.type(campo('Fornecedor'), 'Casa das Ferragens');
-    await usuario.type(campo('CPF/CNPJ do fornecedor'), '12345678000195');
-    await usuario.type(campo('Nº da nota'), '4567');
-    await usuario.type(campo('Série'), '1');
-    fireEvent.change(campo('Data de emissão'), {
-      target: { value: '2026-01-10' },
+    await usuario.selectOptions(campo("Categoria"), "MAO_DE_OBRA");
+    await usuario.type(campo("Descrição"), "  Troca do disjuntor  ");
+    await usuario.type(campo("Valor (R$)"), "25050");
+    await usuario.type(campo("Fornecedor"), "Casa das Ferragens");
+    await usuario.type(campo("CPF/CNPJ do fornecedor"), "12345678000195");
+    await usuario.type(campo("Nº da nota"), "4567");
+    await usuario.type(campo("Série"), "1");
+    fireEvent.change(campo("Data de emissão"), {
+      target: { value: "2026-01-10" },
     });
-    await usuario.selectOptions(campo('Forma de pagamento'), 'PIX');
-    await usuario.selectOptions(campo('Pago por'), 'EMPRESA');
+    await usuario.selectOptions(campo("Forma de pagamento"), "PIX");
+    await usuario.selectOptions(campo("Pago por"), "EMPRESA");
     await usuario.click(salvar());
 
     expect(onSalvar).toHaveBeenCalledWith({
-      categoria: 'MAO_DE_OBRA',
-      descricao: 'Troca do disjuntor',
+      categoria: "MAO_DE_OBRA",
+      descricao: "Troca do disjuntor",
       valorCentavos: 25050,
-      fornecedor: 'Casa das Ferragens',
-      cnpj: '12.345.678/0001-95',
-      numeroNota: '4567',
-      serie: '1',
-      dataEmissao: '2026-01-10',
-      formaPagamento: 'PIX',
-      pagoPor: 'EMPRESA',
+      fornecedor: "Casa das Ferragens",
+      cnpj: "12.345.678/0001-95",
+      numeroNota: "4567",
+      serie: "1",
+      dataEmissao: "2026-01-10",
+      formaPagamento: "PIX",
+      pagoPor: "EMPRESA",
       anexos: [],
     });
   });
 
-  it('omite os campos opcionais deixados em branco', async () => {
+  it("omite os campos opcionais deixados em branco", async () => {
     const { usuario, campo, salvar } = renderFormulario();
-    await usuario.type(campo('Descrição'), 'Parafusos');
-    await usuario.type(campo('Valor (R$)'), '990');
+    await usuario.type(campo("Descrição"), "Parafusos");
+    await usuario.type(campo("Valor (R$)"), "990");
     await usuario.click(salvar());
 
     expect(onSalvar).toHaveBeenCalledWith({
-      categoria: 'MATERIAL',
-      descricao: 'Parafusos',
+      categoria: "MATERIAL",
+      descricao: "Parafusos",
       valorCentavos: 990,
       fornecedor: undefined,
       cnpj: undefined,
@@ -144,66 +144,118 @@ describe('FormularioDespesa — salvar', () => {
     });
   });
 
-  it('bloqueia CPF/CNPJ incompleto', async () => {
+  it("bloqueia CPF/CNPJ incompleto", async () => {
     const { usuario, campo, salvar } = renderFormulario();
-    await usuario.type(campo('Descrição'), 'Tinta');
-    await usuario.type(campo('Valor (R$)'), '5000');
-    await usuario.type(campo('CPF/CNPJ do fornecedor'), '12345');
+    await usuario.type(campo("Descrição"), "Tinta");
+    await usuario.type(campo("Valor (R$)"), "5000");
+    await usuario.type(campo("CPF/CNPJ do fornecedor"), "12345");
     await usuario.click(salvar());
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(screen.getByRole("alert")).toHaveTextContent(
       /CPF \(11 dígitos\) ou CNPJ \(14 dígitos\)/,
     );
     expect(onSalvar).not.toHaveBeenCalled();
   });
 
-  it('bloqueia data de emissão futura digitada à mão', async () => {
+  it("bloqueia CPF e CNPJ com dígito verificador inválido", async () => {
     const { usuario, campo, salvar } = renderFormulario();
-    await usuario.type(campo('Descrição'), 'Tinta');
-    await usuario.type(campo('Valor (R$)'), '5000');
-    fireEvent.change(campo('Data de emissão'), {
-      target: { value: '2999-01-01' },
+    await usuario.type(campo("Descrição"), "Tinta");
+    await usuario.type(campo("Valor (R$)"), "5000");
+    await usuario.type(campo("CPF/CNPJ do fornecedor"), "52998224726");
+    await usuario.click(salvar());
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/CPF\/CNPJ inválido/);
+    expect(onSalvar).not.toHaveBeenCalled();
+
+    await usuario.clear(campo("CPF/CNPJ do fornecedor"));
+    await usuario.type(campo("CPF/CNPJ do fornecedor"), "12345678000190");
+    await usuario.click(salvar());
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/CPF\/CNPJ inválido/);
+    expect(onSalvar).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia CPF e CNPJ com dígitos repetidos", async () => {
+    const { usuario, campo, salvar } = renderFormulario();
+    await usuario.type(campo("Descrição"), "Tinta");
+    await usuario.type(campo("Valor (R$)"), "5000");
+    await usuario.type(campo("CPF/CNPJ do fornecedor"), "11111111111");
+    expect(campo("CPF/CNPJ do fornecedor").value).toBe("111.111.111-11");
+    await usuario.click(salvar());
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/CPF\/CNPJ inválido/);
+    expect(onSalvar).not.toHaveBeenCalled();
+
+    await usuario.clear(campo("CPF/CNPJ do fornecedor"));
+    await usuario.type(campo("CPF/CNPJ do fornecedor"), "11111111111111");
+    expect(campo("CPF/CNPJ do fornecedor").value).toBe("11.111.111/1111-11");
+    await usuario.click(salvar());
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/CPF\/CNPJ inválido/);
+    expect(onSalvar).not.toHaveBeenCalled();
+  });
+
+  it("aceita CPF válido formatado ao salvar", async () => {
+    const { usuario, campo, salvar } = renderFormulario();
+    await usuario.type(campo("Descrição"), "Serviço autônomo");
+    await usuario.type(campo("Valor (R$)"), "8000");
+    await usuario.type(campo("CPF/CNPJ do fornecedor"), "52998224725");
+    await usuario.click(salvar());
+
+    expect(onSalvar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cnpj: "529.982.247-25",
+      }),
+    );
+  });
+
+  it("bloqueia data de emissão futura digitada à mão", async () => {
+    const { usuario, campo, salvar } = renderFormulario();
+    await usuario.type(campo("Descrição"), "Tinta");
+    await usuario.type(campo("Valor (R$)"), "5000");
+    fireEvent.change(campo("Data de emissão"), {
+      target: { value: "2999-01-01" },
     });
     await usuario.click(salvar());
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(screen.getByRole("alert")).toHaveTextContent(
       /não pode ser no futuro/,
     );
     expect(onSalvar).not.toHaveBeenCalled();
   });
 
-  it('exige chave com 44 dígitos e um anexo, e envia a chave no anexo', async () => {
+  it("exige chave com 44 dígitos e um anexo, e envia a chave no anexo", async () => {
     const { usuario, campo, salvar } = renderFormulario();
-    await usuario.type(campo('Descrição'), 'Fios');
-    await usuario.type(campo('Valor (R$)'), '5000');
+    await usuario.type(campo("Descrição"), "Fios");
+    await usuario.type(campo("Valor (R$)"), "5000");
     await usuario.selectOptions(
-      campo('Tipo de documento fiscal (opcional)'),
-      'NFE',
+      campo("Tipo de documento fiscal (opcional)"),
+      "NFE",
     );
 
-    await usuario.type(campo(/Chave de acesso/), '1234');
+    await usuario.type(campo(/Chave de acesso/), "1234");
     await usuario.click(salvar());
-    expect(screen.getByRole('alert')).toHaveTextContent(/44 dígitos/);
+    expect(screen.getByRole("alert")).toHaveTextContent(/44 dígitos/);
 
     await usuario.clear(campo(/Chave de acesso/));
-    await usuario.type(campo(/Chave de acesso/), '3'.repeat(44));
+    await usuario.type(campo(/Chave de acesso/), "3".repeat(44));
     await usuario.click(salvar());
-    expect(screen.getByRole('alert')).toHaveTextContent(/Anexe a nota/);
+    expect(screen.getByRole("alert")).toHaveTextContent(/Anexe a nota/);
     expect(onSalvar).not.toHaveBeenCalled();
 
-    const pdf = new File(['%PDF'], 'nota.pdf', { type: 'application/pdf' });
+    const pdf = new File(["%PDF"], "nota.pdf", { type: "application/pdf" });
     await usuario.upload(screen.getByLabelText(/Adicionar arquivo/), pdf);
-    await screen.findByText('nota.pdf');
+    await screen.findByText("nota.pdf");
     await usuario.click(salvar());
 
     const enviado = onSalvar.mock.calls[0][0];
     expect(enviado.anexos).toHaveLength(1);
     expect(enviado.anexos[0]).toMatchObject({
-      tipo: 'NOTA_FISCAL',
-      tipoDocumentoFiscal: 'NFE',
-      chaveNFe: '3'.repeat(44),
-      nomeArquivo: 'nota.pdf',
-      mimeType: 'application/pdf',
+      tipo: "NOTA_FISCAL",
+      tipoDocumentoFiscal: "NFE",
+      chaveNFe: "3".repeat(44),
+      nomeArquivo: "nota.pdf",
+      mimeType: "application/pdf",
     });
   });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
   apenasDigitos,
   avatarCor,
@@ -15,95 +15,96 @@ import {
   roleLabel,
   statusLabel,
   tempoRelativo,
-} from '../../frontend/src/helpers';
+  validarCpfCnpj,
+} from "../../frontend/src/helpers";
 
-describe('formatarData', () => {
+describe("formatarData", () => {
   it('retorna "-" quando não há data', () => {
-    expect(formatarData(undefined)).toBe('-');
-    expect(formatarData(null)).toBe('-');
+    expect(formatarData(undefined)).toBe("-");
+    expect(formatarData(null)).toBe("-");
   });
 
-  it('formata em pt-BR com dia, mês, ano e hora', () => {
-    expect(formatarData('2026-03-15T12:00:00')).toBe('15/03/2026, 12:00');
+  it("formata em pt-BR com dia, mês, ano e hora", () => {
+    expect(formatarData("2026-03-15T12:00:00")).toBe("15/03/2026, 12:00");
   });
 });
 
-describe('tempoRelativo', () => {
+describe("tempoRelativo", () => {
   const ha = (ms: number) => new Date(Date.now() - ms).toISOString();
 
-  it('usa minutos, horas e dias conforme a diferença', () => {
-    expect(tempoRelativo(ha(10 * 60_000))).toBe('10 min atrás');
-    expect(tempoRelativo(ha(3 * 3_600_000))).toBe('3 h atrás');
-    expect(tempoRelativo(ha(24 * 3_600_000))).toBe('1 dia atrás');
-    expect(tempoRelativo(ha(48 * 3_600_000))).toBe('2 dias atrás');
+  it("usa minutos, horas e dias conforme a diferença", () => {
+    expect(tempoRelativo(ha(10 * 60_000))).toBe("10 min atrás");
+    expect(tempoRelativo(ha(3 * 3_600_000))).toBe("3 h atrás");
+    expect(tempoRelativo(ha(24 * 3_600_000))).toBe("1 dia atrás");
+    expect(tempoRelativo(ha(48 * 3_600_000))).toBe("2 dias atrás");
   });
 });
 
-describe('iniciais', () => {
-  it('usa no máximo duas letras, em maiúsculas', () => {
-    expect(iniciais('Ana Clara Souza')).toBe('AC');
-    expect(iniciais('joão da silva')).toBe('JD');
-    expect(iniciais('maria')).toBe('M');
-    expect(iniciais('   ana   maria   ')).toBe('AM');
+describe("iniciais", () => {
+  it("usa no máximo duas letras, em maiúsculas", () => {
+    expect(iniciais("Ana Clara Souza")).toBe("AC");
+    expect(iniciais("joão da silva")).toBe("JD");
+    expect(iniciais("maria")).toBe("M");
+    expect(iniciais("   ana   maria   ")).toBe("AM");
   });
 });
 
-describe('avatarCor', () => {
-  it('é determinística e sempre devolve uma cor do conjunto', () => {
+describe("avatarCor", () => {
+  it("é determinística e sempre devolve uma cor do conjunto", () => {
     const paleta = [
-      'bg-brand-600',
-      'bg-blue-600',
-      'bg-emerald-600',
-      'bg-amber-600',
-      'bg-purple-600',
-      'bg-rose-600',
+      "bg-brand-600",
+      "bg-blue-600",
+      "bg-emerald-600",
+      "bg-amber-600",
+      "bg-purple-600",
+      "bg-rose-600",
     ];
-    expect(avatarCor('Ana')).toBe(avatarCor('Ana'));
-    expect(paleta).toContain(avatarCor('Ana'));
-    expect(paleta).toContain(avatarCor('Bruno Careca'));
+    expect(avatarCor("Ana")).toBe(avatarCor("Ana"));
+    expect(paleta).toContain(avatarCor("Ana"));
+    expect(paleta).toContain(avatarCor("Bruno Careca"));
   });
 });
 
-describe('rótulos', () => {
-  it('cobre todos os valores dos enums usados na interface', () => {
+describe("rótulos", () => {
+  it("cobre todos os valores dos enums usados na interface", () => {
     expect(Object.keys(statusLabel)).toHaveLength(5);
     expect(Object.keys(prioridadeLabel)).toHaveLength(4);
     expect(Object.keys(roleLabel)).toHaveLength(4);
     expect(Object.keys(categoriaLabel)).toHaveLength(6);
-    expect(statusLabel.AGUARDANDO_APROVACAO).toBe('Aguardando Aprovação');
-    expect(categoriaLabel.HIDRAULICA).toBe('Hidráulica');
-    expect(roleLabel.PRESTADOR).toBe('Prestador de Serviços');
+    expect(statusLabel.AGUARDANDO_APROVACAO).toBe("Aguardando Aprovação");
+    expect(categoriaLabel.HIDRAULICA).toBe("Hidráulica");
+    expect(roleLabel.PRESTADOR).toBe("Prestador de Serviços");
   });
 });
 
 // Intl usa espaço não separável entre "R$" e o valor
-const semNbsp = (s: string) => s.replace(/\u00a0/g, ' ');
+const semNbsp = (s: string) => s.replace(/\u00a0/g, " ");
 
-describe('formatarMoeda', () => {
-  it('formata centavos em reais no padrão pt-BR', () => {
-    expect(semNbsp(formatarMoeda(0))).toBe('R$ 0,00');
-    expect(semNbsp(formatarMoeda(1234))).toBe('R$ 12,34');
-    expect(semNbsp(formatarMoeda(123456789))).toBe('R$ 1.234.567,89');
+describe("formatarMoeda", () => {
+  it("formata centavos em reais no padrão pt-BR", () => {
+    expect(semNbsp(formatarMoeda(0))).toBe("R$ 0,00");
+    expect(semNbsp(formatarMoeda(1234))).toBe("R$ 12,34");
+    expect(semNbsp(formatarMoeda(123456789))).toBe("R$ 1.234.567,89");
   });
 });
 
-describe('centavosDeDigitos', () => {
-  it('lê só os dígitos, como digitação de caixa eletrônico', () => {
-    expect(centavosDeDigitos('')).toBe(0);
-    expect(centavosDeDigitos('1')).toBe(1);
-    expect(centavosDeDigitos('R$ 0,123')).toBe(123);
-    expect(centavosDeDigitos('R$ 1.234,56')).toBe(123456);
+describe("centavosDeDigitos", () => {
+  it("lê só os dígitos, como digitação de caixa eletrônico", () => {
+    expect(centavosDeDigitos("")).toBe(0);
+    expect(centavosDeDigitos("1")).toBe(1);
+    expect(centavosDeDigitos("R$ 0,123")).toBe(123);
+    expect(centavosDeDigitos("R$ 1.234,56")).toBe(123456);
   });
 
-  it('ignora o excesso de dígitos para não perder precisão', () => {
-    expect(centavosDeDigitos('99999999999999999999')).toBe(999999999999);
+  it("ignora o excesso de dígitos para não perder precisão", () => {
+    expect(centavosDeDigitos("99999999999999999999")).toBe(999999999999);
   });
 });
 
-describe('paginar', () => {
+describe("paginar", () => {
   const itens = Array.from({ length: 23 }, (_, i) => i + 1);
 
-  it('fatia a página pedida e informa o total', () => {
+  it("fatia a página pedida e informa o total", () => {
     const p = paginar(itens, 2, 10);
     expect(p.itens).toEqual([11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
     expect(p.pagina).toBe(2);
@@ -111,16 +112,16 @@ describe('paginar', () => {
     expect(p.total).toBe(23);
   });
 
-  it('a última página traz só o resto', () => {
+  it("a última página traz só o resto", () => {
     expect(paginar(itens, 3, 10).itens).toEqual([21, 22, 23]);
   });
 
-  it('corrige página fora do intervalo', () => {
+  it("corrige página fora do intervalo", () => {
     expect(paginar(itens, 9, 10).pagina).toBe(3);
     expect(paginar(itens, 0, 10).pagina).toBe(1);
   });
 
-  it('lista vazia tem uma página vazia', () => {
+  it("lista vazia tem uma página vazia", () => {
     expect(paginar([], 1, 10)).toEqual({
       itens: [],
       pagina: 1,
@@ -130,44 +131,76 @@ describe('paginar', () => {
   });
 });
 
-describe('apenasDigitos', () => {
-  it('remove tudo que não é dígito e respeita o limite', () => {
-    expect(apenasDigitos('12.345-6a')).toBe('123456');
-    expect(apenasDigitos('123456', 3)).toBe('123');
-    expect(apenasDigitos('')).toBe('');
+describe("apenasDigitos", () => {
+  it("remove tudo que não é dígito e respeita o limite", () => {
+    expect(apenasDigitos("12.345-6a")).toBe("123456");
+    expect(apenasDigitos("123456", 3)).toBe("123");
+    expect(apenasDigitos("")).toBe("");
   });
 });
 
-describe('formatarCpfCnpj', () => {
-  it('formata como CPF enquanto tiver até 11 dígitos', () => {
-    expect(formatarCpfCnpj('123')).toBe('123');
-    expect(formatarCpfCnpj('1234')).toBe('123.4');
-    expect(formatarCpfCnpj('1234567')).toBe('123.456.7');
-    expect(formatarCpfCnpj('12345678901')).toBe('123.456.789-01');
+describe("formatarCpfCnpj", () => {
+  it("formata como CPF enquanto tiver até 11 dígitos", () => {
+    expect(formatarCpfCnpj("123")).toBe("123");
+    expect(formatarCpfCnpj("1234")).toBe("123.4");
+    expect(formatarCpfCnpj("1234567")).toBe("123.456.7");
+    expect(formatarCpfCnpj("12345678901")).toBe("123.456.789-01");
   });
 
-  it('passa a formatar como CNPJ a partir de 12 dígitos', () => {
-    expect(formatarCpfCnpj('123456789012')).toBe('12.345.678/9012');
-    expect(formatarCpfCnpj('12345678000190')).toBe('12.345.678/0001-90');
+  it("passa a formatar como CNPJ a partir de 12 dígitos", () => {
+    expect(formatarCpfCnpj("123456789012")).toBe("12.345.678/9012");
+    expect(formatarCpfCnpj("12345678000190")).toBe("12.345.678/0001-90");
   });
 
-  it('ignora o que não é dígito e o excesso', () => {
-    expect(formatarCpfCnpj('12.345.678/0001-90999')).toBe('12.345.678/0001-90');
-  });
-});
-
-describe('formatarChaveNFe', () => {
-  it('agrupa os dígitos de 4 em 4 e limita a 44', () => {
-    expect(formatarChaveNFe('12345678')).toBe('1234 5678');
-    expect(formatarChaveNFe('1234 567x')).toBe('1234 567');
-    expect(apenasDigitos(formatarChaveNFe('9'.repeat(50)))).toHaveLength(44);
+  it("ignora o que não é dígito e o excesso", () => {
+    expect(formatarCpfCnpj("12.345.678/0001-90999")).toBe("12.345.678/0001-90");
   });
 });
 
-describe('dataLocalIso', () => {
-  it('usa a data do fuso local, não a de UTC', () => {
+describe("validarCpfCnpj", () => {
+  it("aceita CPF e CNPJ válidos com ou sem máscara", () => {
+    expect(validarCpfCnpj("52998224725")).toBe(true);
+    expect(validarCpfCnpj("529.982.247-25")).toBe(true);
+    expect(validarCpfCnpj("12345678000195")).toBe(true);
+    expect(validarCpfCnpj("12.345.678/0001-95")).toBe(true);
+  });
+
+  it("rejeita CPF e CNPJ com dígitos verificadores inválidos", () => {
+    expect(validarCpfCnpj("529.982.247-35")).toBe(false);
+    expect(validarCpfCnpj("529.982.247-26")).toBe(false);
+    expect(validarCpfCnpj("123.456.789-01")).toBe(false);
+    expect(validarCpfCnpj("12.345.678/0001-85")).toBe(false);
+    expect(validarCpfCnpj("12.345.678/0001-90")).toBe(false);
+  });
+
+  it("rejeita sequências de dígitos repetidos em CPF e CNPJ", () => {
+    expect(validarCpfCnpj("00000000000")).toBe(false);
+    expect(validarCpfCnpj("111.111.111-11")).toBe(false);
+    expect(validarCpfCnpj("999.999.999-99")).toBe(false);
+    expect(validarCpfCnpj("00000000000000")).toBe(false);
+    expect(validarCpfCnpj("11.111.111/1111-11")).toBe(false);
+  });
+
+  it("rejeita tamanho incorreto ou caracteres inválidos", () => {
+    expect(validarCpfCnpj("")).toBe(false);
+    expect(validarCpfCnpj("12345")).toBe(false);
+    expect(validarCpfCnpj("52998224725a")).toBe(false);
+    expect(validarCpfCnpj("12.345.678/0001-95#")).toBe(false);
+  });
+});
+
+describe("formatarChaveNFe", () => {
+  it("agrupa os dígitos de 4 em 4 e limita a 44", () => {
+    expect(formatarChaveNFe("12345678")).toBe("1234 5678");
+    expect(formatarChaveNFe("1234 567x")).toBe("1234 567");
+    expect(apenasDigitos(formatarChaveNFe("9".repeat(50)))).toHaveLength(44);
+  });
+});
+
+describe("dataLocalIso", () => {
+  it("usa a data do fuso local, não a de UTC", () => {
     // 23h do dia 15 no horário local ainda é dia 15, mesmo que em UTC já seja 16
-    expect(dataLocalIso(new Date(2026, 2, 15, 23, 30))).toBe('2026-03-15');
-    expect(dataLocalIso(new Date(2026, 0, 5))).toBe('2026-01-05');
+    expect(dataLocalIso(new Date(2026, 2, 15, 23, 30))).toBe("2026-03-15");
+    expect(dataLocalIso(new Date(2026, 0, 5))).toBe("2026-01-05");
   });
 });
