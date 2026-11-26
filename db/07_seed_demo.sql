@@ -1,7 +1,28 @@
--- Seed de demonstração: locais, chamados e históricos (mesmos dados do mock do
--- frontend em seed.ts). Reexecutável via ON CONFLICT (id) DO NOTHING.
--- Pressupõe os 6 usuários seed já inseridos (usuarios 1..6).
+-- Seed de demonstração: usuários, locais, chamados e históricos (mesmos dados do
+-- seed em memória em backend/src/dados/seed.ts, com senha padrão "123456").
+-- Reexecutável via ON CONFLICT DO NOTHING, preservando bancos já populados.
 -- As datas são relativas a now() para aproximar o comportamento do seed em memória.
+
+INSERT INTO usuarios (id, nome, email, papel, unidade, setor, especialidade, ativo, senha_hash)
+OVERRIDING SYSTEM VALUE
+VALUES
+(1, 'Ana Souza', 'ana@predial.com', 'CONDOMINO', 'Bloco A, Ap 204', 'Apartamento 204', NULL, true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
+(2, 'Carlos Lima', 'carlos@predial.com', 'CONDOMINO', 'Bloco A, Ap 102', 'Apartamento 102', NULL, true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
+(3, 'João Eletricista', 'joao@predial.com', 'PRESTADOR', NULL, 'Manutenção', 'Elétrica', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
+(4, 'Marta Encanadora', 'marta@predial.com', 'PRESTADOR', NULL, 'Manutenção', 'Hidráulica', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
+(5, 'Ricardo Síndico', 'ricardo@predial.com', 'SINDICO', NULL, 'Administração', NULL, true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
+(6, 'Tiago TI', 'tiago@predial.com', 'ADMINISTRADOR', NULL, 'Tecnologia da Informação', NULL, true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy')
+ON CONFLICT DO NOTHING;
+
+SELECT setval('usuarios_id_seq', COALESCE((SELECT MAX(id) FROM usuarios), 1));
+
+INSERT INTO usuarios (nome, email, papel, setor, especialidade, ativo, senha_hash)
+VALUES
+('Paulo Climatização', 'paulo@predial.com', 'PRESTADOR', 'Manutenção', 'Climatização', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
+('Carla Marceneira', 'carla@predial.com', 'PRESTADOR', 'Manutenção', 'Mobiliário', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
+('Roberto Estrutural', 'roberto@predial.com', 'PRESTADOR', 'Manutenção', 'Estrutural', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
+('Fernanda Manutenção Geral', 'fernanda@predial.com', 'PRESTADOR', 'Manutenção', 'Outros', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy')
+ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO locais (id, predio, andar, sala)
 OVERRIDING SYSTEM VALUE
@@ -62,6 +83,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Ajusta as sequências para continuar após os ids semeados.
+SELECT setval('usuarios_id_seq', COALESCE((SELECT MAX(id) FROM usuarios), 1));
 SELECT setval('locais_id_seq', COALESCE((SELECT MAX(id) FROM locais), 1));
 SELECT setval('chamados_id_seq', COALESCE((SELECT MAX(id) FROM chamados), 1));
 SELECT setval('historicos_id_seq', COALESCE((SELECT MAX(id) FROM historicos), 1));

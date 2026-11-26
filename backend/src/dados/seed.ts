@@ -1,5 +1,10 @@
 import bcrypt from 'bcrypt';
-import type { Chamado, Historico, Status, UsuarioPublico } from '../contrato.js';
+import type {
+  Chamado,
+  Historico,
+  Status,
+  UsuarioPublico,
+} from '../contrato.js';
 
 // Usuario interno de armazenamento: guarda o hash, nunca a senha em texto.
 export interface UsuarioInterno extends UsuarioPublico {
@@ -31,7 +36,7 @@ function usuario(
   };
 }
 
-// Replica os 6 usuários de demonstração do frontend/src/data/mock.ts
+// Usuários de demonstração (inclui prestadores para todas as 6 categorias)
 export const usuariosSeed: UsuarioInterno[] = [
   usuario(1, 'Ana Souza', 'ana@predial.com', 'CONDOMINO', {
     unidade: 'Bloco A, Ap 204',
@@ -55,6 +60,28 @@ export const usuariosSeed: UsuarioInterno[] = [
   usuario(6, 'Tiago TI', 'tiago@predial.com', 'ADMINISTRADOR', {
     setor: 'Tecnologia da Informação',
   }),
+  usuario(7, 'Paulo Climatização', 'paulo@predial.com', 'PRESTADOR', {
+    especialidade: 'Climatização',
+    setor: 'Manutenção',
+  }),
+  usuario(8, 'Carla Marceneira', 'carla@predial.com', 'PRESTADOR', {
+    especialidade: 'Mobiliário',
+    setor: 'Manutenção',
+  }),
+  usuario(9, 'Roberto Estrutural', 'roberto@predial.com', 'PRESTADOR', {
+    especialidade: 'Estrutural',
+    setor: 'Manutenção',
+  }),
+  usuario(
+    10,
+    'Fernanda Manutenção Geral',
+    'fernanda@predial.com',
+    'PRESTADOR',
+    {
+      especialidade: 'Outros',
+      setor: 'Manutenção',
+    },
+  ),
 ];
 
 // Mesma base de tempo do mock do front (datas relativas à inicialização)
