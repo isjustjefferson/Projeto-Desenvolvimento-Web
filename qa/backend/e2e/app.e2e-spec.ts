@@ -35,15 +35,15 @@ describe("Health (e2e)", () => {
     await app.close();
   });
 
-  it("GET /api/health executa SELECT 1 e responde 200 com database up", async () => {
-    const query = vi.fn().mockResolvedValue([{ "?column?": 1 }]);
+  it("GET /api/health responde 200 com banco e migrações disponíveis", async () => {
+    const query = vi.fn().mockResolvedValue([{ sessoes: true, ocr: true }]);
     const app = await criarAppHealth({ isInitialized: true, query });
 
     const res = await request(app.getHttpServer())
       .get("/api/health")
       .expect(200);
 
-    expect(query).toHaveBeenCalledWith("SELECT 1");
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("public.sessoes_autenticacao"));
     expect(res.body).toMatchObject({
       status: "ok",
       database: "up",
@@ -52,7 +52,20 @@ describe("Health (e2e)", () => {
     await app.close();
   });
 
-  it("GET /api/health responde 503 com database down quando SELECT 1 falha", async () => {
+  it("GET /api/health responde 503 quando o banco está acessível e falta uma migração", async () => {
+    for (const schema of [{ sessoes: false, ocr: true }, { sessoes: true, ocr: false }]) {
+      const query = vi.fn().mockResolvedValue([schema]);
+      const app = await criarAppHealth({ isInitialized: true, query });
+      try {
+        const res = await request(app.getHttpServer()).get("/api/health").expect(503);
+        expect(res.body).toMatchObject({ status: "error", database: "up", schema: "incomplete" });
+      } finally {
+        await app.close();
+      }
+    }
+  });
+
+  it("GET /api/health responde 503 com database down quando a consulta falha", async () => {
     const query = vi.fn().mockRejectedValue(new Error("connection refused"));
     const app = await criarAppHealth({ isInitialized: true, query });
 
@@ -60,7 +73,7 @@ describe("Health (e2e)", () => {
       .get("/api/health")
       .expect(503);
 
-    expect(query).toHaveBeenCalledWith("SELECT 1");
+    expect(query).toHaveBeenCalledOnce();
     expect(res.body).toMatchObject({
       status: "error",
       database: "down",
