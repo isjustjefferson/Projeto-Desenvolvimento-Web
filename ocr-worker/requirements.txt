@@ -1,0 +1,2 @@
+paddlepaddle==3.2.0
+paddleocr[doc-parser]==3.3.2
