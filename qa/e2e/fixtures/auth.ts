@@ -90,7 +90,7 @@ export async function sairUI(page: Page): Promise<void> {
     await page.waitForURL('/login', { timeout: 10_000 });
     return;
   }
-  await page.evaluate(() => localStorage.removeItem('predial.usuarioId'));
+  await page.context().request.post('/api/auth/logout');
   await page.goto('/login');
 }
 

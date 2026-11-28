@@ -3,7 +3,7 @@
  * Testes de autenticação: login, cadastro, recuperação de senha, proteção de rotas e redirecionamentos.
  */
 import { test as baseTest } from '@playwright/test';
-import { test, expect, USUARIOS, loginUI, sairUI } from '../fixtures/auth';
+import { test, expect, USUARIOS, loginUI } from '../fixtures/auth';
 import { LoginPage } from '../pages/LoginPage';
 
 // ---------------------------------------------------------------------------
@@ -88,58 +88,17 @@ baseTest(
 );
 
 // ---------------------------------------------------------------------------
-// CT-AUTH-04 (recuperação de senha) — Valida /forgot-password → /reset-password
-// Nota: expõe BUG-07 quando rodando com PostgreSQL sem coluna tokens_reset.usado_em.
+// CT-AUTH-04 — Recuperação aguarda um canal de entrega seguro
 // ---------------------------------------------------------------------------
-baseTest(
-  'CT-AUTH-04: fluxo de recuperação e redefinição de senha',
-  async ({ page, request }) => {
-    const ts = Date.now();
-    const emailTemp = `playwright_reset_${ts}@predial.com`;
-
-    const reg = await request.post('http://localhost:3000/api/auth/register', {
-      data: {
-        nome: `Reset Tester ${ts}`,
-        email: emailTemp,
-        unidade: 'Bloco Teste, Ap 100',
-        senha: '123456',
-      },
-    });
-    expect(reg.status()).toBe(201);
-    const { usuario } = (await reg.json()) as { usuario: { id: number } };
-
-    try {
-      await page.goto('/forgot-password');
-      await page.locator('#forgot-email').fill(emailTemp);
-      await page.getByRole('button', { name: /enviar solicitação/i }).click();
-
-      await expect(
-        page.getByRole('link', { name: /continuar para redefinição/i }),
-      ).toBeVisible({ timeout: 5_000 });
-
-      await page.getByRole('link', { name: /continuar para redefinição/i }).click();
-      await expect(page).toHaveURL('/reset-password');
-
-      await page.locator('#reset-senha').fill('nova654321');
-      await page.locator('#reset-confirmar').fill('nova654321');
-      await page.getByRole('button', { name: /confirmar nova senha/i }).click();
-
-      await expect(page).toHaveURL('/login', { timeout: 10_000 });
-
-      const login = new LoginPage(page);
-      await login.login(emailTemp, '123456');
-      await expect(login.mensagemErro).toBeVisible();
-
-      await loginUI(page, { email: emailTemp, senha: 'nova654321' });
-      await expect(page).toHaveURL('/');
-      await sairUI(page);
-    } finally {
-      await request.delete('http://localhost:3000/api/me', {
-        headers: { 'x-usuario-id': String(usuario.id) },
-      });
-    }
-  },
-);
+baseTest('CT-AUTH-04: recuperação de senha informa que está indisponível', async ({ page, request }) => {
+  await page.goto('/forgot-password');
+  await expect(page.getByText(/recuperação automática de senha está indisponível/i)).toBeVisible();
+  const resposta = await request.post('/api/auth/forgot-password', {
+    data: { email: USUARIOS.condomino.email },
+  });
+  expect(resposta.status()).toBe(503);
+  expect((await resposta.json()).token).toBeUndefined();
+});
 
 // ---------------------------------------------------------------------------
 // CT-AUTH-04 (rotas públicas) — Usuário autenticado é redirecionado
