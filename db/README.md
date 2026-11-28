@@ -22,10 +22,12 @@ db/
 ├── 05_indices.sql                 # Índices principais
 ├── 05b_indices_despesas.sql       # Índices de despesas
 06_migracao_papel.sql          # migra enum papel (perfis novos)
-07_seed_demo.sql               # seed demo (locais/chamados/historicos)
+07_seed_demo.sql               # seed demo (contas inicialmente inativas, locais, chamados e históricos)
 08_orcamentos.sql              # tabela orcamentos
 09_nota_fiscal_ocr.sql         # colunas OCR em anexos_despesa
 10_migracao_status_recusado.sql # status RECUSADO em bancos existentes
+11_trabalhos_ocr.sql           # fila persistente para o worker local
+12_sessoes_autenticacao.sql    # sessões compartilhadas entre Chamados e Financeiro
 └── scripts/
     └── iniciar-banco.ps1          # Script de provisionamento
 ```
@@ -63,7 +65,7 @@ O script irá:
 1. Criar o papel `predial` (ou gerar senha se não informada)
 2. Criar o banco `predial` com `UTF8`
 3. Aplicar os arquivos SQL na ordem correta
-4. Verificar: 8 tabelas, 28 índices, 14 FKs, 1 CHECK, 11 ENUMs, status `RECUSADO`, tabela `orcamentos` e colunas OCR
+4. Verificar 10 tabelas, 34 índices, 16 FKs, o CHECK da RN04, 11 ENUMs, o status `RECUSADO`, a tabela `orcamentos` e as colunas OCR.
 
 **Variáveis opcionais:**
 
@@ -95,9 +97,13 @@ psql -U postgres -v ON_ERROR_STOP=1 -f db/07_seed_demo.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/08_orcamentos.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/09_nota_fiscal_ocr.sql
 psql -U postgres -v ON_ERROR_STOP=1 -f db/10_migracao_status_recusado.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/11_trabalhos_ocr.sql
+psql -U postgres -v ON_ERROR_STOP=1 -f db/12_sessoes_autenticacao.sql
 ```
 
 > **Importante:** Sempre use `-v ON_ERROR_STOP=1`. Sem isso, o `psql` continua após erro e retorna sucesso.
+
+Para inicializar um banco local de desenvolvimento com as mesmas contas de teste do Compose, substitua a linha do seed por `psql -U postgres -v ON_ERROR_STOP=1 -c "SET predial.seed_local = 'on'" -f db/07_seed_demo.sql` durante a carga inicial. Para uma demo publicada, use o fluxo de [credenciais individuais](DEPLOY_NUVEM_SUPABASE.md#4-preparar-as-credenciais-da-demo).
 
 ---
 

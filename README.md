@@ -36,7 +36,7 @@ Na API, os perfis são `CONDOMINO`, `PRESTADOR`, `SINDICO` e `ADMINISTRADOR`.
 ## O que já está implementado
 
 ### Frontend (`frontend/`)
-- Login, cadastro, recuperação e redefinição de senha; gestão da própria conta (dados, foto, exclusão).
+- Login, cadastro e gestão da própria conta (dados, foto, exclusão). A recuperação automática aguarda um canal seguro de entrega.
 - **Dashboard** com indicadores (abertos, concluídos, aguardando triagem, críticos pendentes), distribuição por status, prioridade e categoria, e a **fila de triagem do síndico** listando os chamados aguardando aprovação.
 - **Lista de chamados** com busca e filtros (status, prioridade, categoria e condômino), filtros compartilháveis pela URL, **alternância entre cards e lista compacta** e **paginação**.
 - Abertura de chamado com foto; detalhe do chamado com triagem, atendimento, conclusão, histórico e despesas (lançamento, anexos, aprovação e rejeição).
@@ -104,7 +104,7 @@ O planejamento das próximas entregas está no [**BACKLOG.md**](BACKLOG.md).
 | Banco de dados | PostgreSQL, TypeORM |
 | Testes | Vitest e Testing Library (frontend), Vitest e Supertest (backend), Postman, Playwright |
 
-Arquitetura atual: um monólito NestJS (API) e uma SPA React, em repositório único (monorepo).
+A SPA React usa a API NestJS. O ambiente local pode executar a API em um processo ou separar Chamados e Financeiro em dois processos. O código fica no mesmo repositório.
 
 ## Estrutura do repositório
 
@@ -121,33 +121,83 @@ Arquitetura atual: um monólito NestJS (API) e uma SPA React, em repositório ú
 
 ## Como rodar localmente
 
-**Pré-requisitos:** Node.js 22+, npm e PostgreSQL 14+.
+### Com Docker Compose
+
+Na raiz do repositório, use Docker Compose v2 para iniciar Chamados, Financeiro e PostgreSQL local com dados fictícios.
+
+```powershell
+$env:FINANCEIRO_TOKEN = [guid]::NewGuid().ToString('N')
+docker compose -p predial-local -f compose.yaml -f compose.financeiro.yaml up -d --build --wait
+Invoke-RestMethod http://127.0.0.1:3000/api/health
+Invoke-RestMethod http://127.0.0.1:3001/api/health
+```
+
+Os dois health checks devem retornar `status: ok` e `database: up`. Um retorno `503` com `schema: incomplete` indica que falta a tabela de sessões ou de trabalhos OCR. Em um volume novo, o Compose aplica os scripts de `db/` automaticamente.
+
+Para testar a interface, instale as dependências do frontend com Node.js 24.15 ou superior na série 24 e abra `http://127.0.0.1:5173`. O proxy do Vite encaminha `/api` para Chamados na porta 3000.
+
+```powershell
+npm ci --prefix frontend
+npm --prefix frontend run dev -- --host 127.0.0.1
+```
+
+Em modo separado, Chamados encaminha as rotas de orçamentos, despesas e relatórios ao Financeiro. O Financeiro exige o token da comunicação interna e aplica as permissões de cada operação. A abertura e a consulta de chamados continuam disponíveis se o Financeiro parar. O início e a conclusão ficam bloqueados enquanto o Financeiro estiver indisponível. Chamados e Financeiro ainda usam o mesmo PostgreSQL local nesta etapa, porque as tabelas financeiras têm chaves estrangeiras para chamados e usuários e as transições consultam as pendências no banco atual. A migração para um banco do Financeiro depende da substituição dessas dependências por contratos entre os serviços.
+
+Se o volume local já existir, aplique as migrações de OCR e de sessões antes de atualizar os serviços. Em seguida, execute novamente o comando de subida do Compose.
+
+```powershell
+docker compose -p predial-local up -d --wait postgres-chamados
+Get-Content -Raw db/11_trabalhos_ocr.sql,db/12_sessoes_autenticacao.sql |
+  docker compose -p predial-local exec -T postgres-chamados psql -U chamados_local -d chamados -v ON_ERROR_STOP=1 --single-transaction -f -
+```
+
+### Worker PaddleOCR no computador
+
+Use Python 3.11 e defina `OCR_WORKER_TOKEN` antes de subir o Compose. O processo da API e o worker precisam do mesmo valor. Mantenha essa credencial fora do Git. No mesmo terminal, defina também `FINANCEIRO_TOKEN` como na seção anterior.
+
+```powershell
+py -3.11 -m venv ocr-worker/.venv
+.\ocr-worker\.venv\Scripts\python.exe -m pip install -r ocr-worker/requirements.txt
+$env:OCR_WORKER_TOKEN = [guid]::NewGuid().ToString('N')
+docker compose -p predial-local -f compose.yaml -f compose.financeiro.yaml up -d --build --wait
+.\ocr-worker\.venv\Scripts\python.exe ocr-worker/worker.py --url http://127.0.0.1:3000
+```
+
+Depois de salvar uma despesa com imagem JPEG ou PNG, abra **OCR no computador** no anexo e solicite a análise. Os itens aparecem como sugestões de conferência. Os valores financeiros continuam sendo confirmados pela pessoa que usa o sistema. Se o worker parar durante a leitura, outro worker pode retomar o trabalho após o prazo da reserva.
+
+Na primeira execução, o PaddleOCR baixa os modelos e usa o cache local de `ocr-worker`. Se já tiver os modelos do protótipo baixados, defina `OCR_MODELOS_DIR` com o caminho para a pasta `official_models` antes de iniciar o worker.
+
+Para usar com a versão publicada futuramente, aplique a migração no banco de demonstração, publique as alterações do backend e do frontend e configure o token no ambiente da API. Rode o worker com `--url` apontando para a origem HTTPS da API. O computador faz conexões de saída e pode ficar atrás do roteador residencial.
+
+### Sem Docker
+
+**Pré-requisitos:** Node.js 24.15 ou superior na série 24, npm e PostgreSQL 14+.
 
 ### 1. Banco de dados
 ```powershell
 .\db\scripts\iniciar-banco.ps1
 ```
-Detalhes e opções em [`db/README.md`](db/README.md).
+Detalhes e carga das contas de teste em [`db/README.md`](db/README.md).
 
 ### 2. Backend
 ```bash
 cd backend
-npm install
+npm ci
 # crie o .env seguindo backend/.env.example (DATABASE_URL ou DB_HOST/DB_USER/...)
 npm run start:dev
 ```
-A API sobe em `http://localhost:3000/api`. Verifique com `GET /api/health`.
+Para um PostgreSQL local sem TLS, deixe `DB_SSL` vazio e use uma URL sem `sslmode`. A API sobe em `http://localhost:3000/api`. Verifique com `GET /api/health`.
 
 ### 3. Frontend
 ```bash
 cd frontend
-npm install
-npm run dev
+npm ci
+npm run dev -- --host 127.0.0.1
 ```
-A interface abre em `http://localhost:5173`. O Vite redireciona `/api` para o backend.
+A interface abre em `http://127.0.0.1:5173`. O Vite redireciona `/api` para o backend.
 
 ### Usuários de teste
-Todos usam a senha `123456`.
+No Compose de desenvolvimento e nos testes automatizados, estas contas de teste usam a senha pública `123456`. Para uma demo publicada, prepare credenciais individuais conforme o [guia do banco na nuvem](db/DEPLOY_NUVEM_SUPABASE.md).
 
 | Usuário | E-mail | Perfil |
 | :--- | :--- | :--- |
@@ -173,12 +223,15 @@ npm --prefix qa run test:frontend      # componentes, hooks e páginas
 
 ## Principais rotas da API
 
-Todas sob `/api`. As rotas autenticadas exigem o header `x-usuario-id`.
+Todas sob `/api`. O login e o cadastro criam uma sessão de 8 horas e enviam o cookie HttpOnly `predial_sessao`. Chamados e Financeiro validam a sessão e o perfil no banco. O logout revoga a sessão. Clientes de API podem manter o cookie entre requisições usando um armazenamento de cookies.
+
+Em produção, configure `NODE_ENV=production` no backend e sirva o frontend e o proxy de `/api` na mesma origem HTTPS. O proxy público deve preservar `Set-Cookie` nas respostas de login, cadastro e logout e encaminhar `Cookie` nas requisições. O Compose local permite o cookie por HTTP somente para desenvolvimento.
 
 | Método | Rota | Acesso |
 | :--- | :--- | :--- |
 | GET | `/health` | Público |
-| POST | `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password` | Público |
+| POST | `/auth/login`, `/auth/register`, `/auth/logout` | Sessão |
+| POST | `/auth/forgot-password`, `/auth/reset-password` | Recuperação indisponível até configurar um canal seguro |
 | GET, PATCH, DELETE | `/me` | Autenticado |
 | GET | `/usuarios/resumo` | Autenticado |
 | GET, POST, PATCH, DELETE | `/usuarios`, `/usuarios/:id/role`, `/usuarios/:id` | Administrador |
