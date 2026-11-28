@@ -9,6 +9,7 @@
   "scripts": {
     "build": "nest build",
     "deploy": "nest deploy",
+    "preparar:demo": "node scripts/preparar-credenciais-demo.mjs",
     "format": "prettier --write \"src/**/*.ts\" \"../qa/backend/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -24,7 +25,7 @@
   "dependencies": {
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
-    "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/platform-express": "^12.3.0",
     "@nestjs/typeorm": "^12.0.2",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
@@ -35,7 +36,7 @@
     "typeorm": "^1.1.1"
   },
   "devDependencies": {
-    "@nestjs/cli": "^12.0.0",
+    "@nestjs/cli": "^12.0.12",
     "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
@@ -44,7 +45,7 @@
     "@types/node": "^24.0.0",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.0.0",
-    "@vitest/coverage-v8": "^4.1.2",
+    "@vitest/coverage-v8": "^4.1.12",
     "oxlint": "^1.58.0",
     "oxlint-tsgolint": "^7.0.2001",
     "prettier": "^3.4.2",
@@ -52,6 +53,12 @@
     "supertest": "^7.0.0",
     "typescript": "^6.0.2",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "@nestjs/mau": {
+      "inquirer": "^8.2.7",
+      "undici": "^6.29.1"
+    }
   }
 }
