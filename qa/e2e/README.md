@@ -99,7 +99,7 @@ Todos os usuários padrão utilizam a senha `123456` (configurável em `.env.tes
 
 ## 📋 Cenários Automatizados
 
-- `auth.spec.ts`: login de todos os 6 perfis, erro de credenciais, cadastro/exclusão de conta, fluxo de recuperação de senha (expõe `BUG-07` em PostgreSQL) e redirecionamentos de rota.
+- `auth.spec.ts`: login de todos os 6 perfis, erro de credenciais, cadastro/exclusão de conta, recuperação de senha indisponível sem expor token e redirecionamentos de rota.
 - `chamados.spec.ts`: abertura de chamado com sugestão automática, validação de campos obrigatórios, filtros por status e alternância cards/lista.
 - `ciclo-vida.spec.ts`: fluxo completo determinístico (criação → aprovação/atribuição → início → validação RN04 → conclusão → histórico auditável) e recusa na triagem.
 - `orcamentos-despesas.spec.ts`: envio/aprovação de orçamento, bloqueio de início com orçamento pendente (RN05), lançamento/aprovação de despesa e bloqueio de conclusão com despesa pendente.

@@ -116,10 +116,10 @@ Credenciais e perfis seedados para uso nos testes automatizados e manuais:
 #### `CT-AUTH-04` — Recuperação de senha e proteção de rotas públicas
 * **Automated:** ✅ Playwright (`auth.spec.ts`)
 * **Passos:**
-  1. Acessar `/forgot-password` e solicitar redefinição com e-mail cadastrado.
-  2. Seguir para `/reset-password` e cadastrar nova senha.
+  1. Acessar `/forgot-password` e conferir o aviso de recuperação indisponível.
+  2. Verificar que a API retorna `503` sem expor token.
   3. Validar que usuário autenticado redireciona para `/` ao acessar `/login` ou `/register`.
-* **Resultado Esperado:** Senha redefinida e aceita no login (nota: em PostgreSQL atualmente falha por `BUG-07`).
+* **Resultado Esperado:** A recuperação automática fica indisponível até existir um canal seguro de entrega.
 
 #### `CT-AUTH-05` — Proteção de rota autenticada sem sessão
 * **Automated:** ✅ Playwright (`auth.spec.ts`)

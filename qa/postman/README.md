@@ -39,11 +39,13 @@ Você pode:
 ## 🧪 Cenários Automatizados na Coleção
 
 * **01 - Autenticação & Perfil:**
-  * Login com sucesso (salva o ID dinamicamente no ambiente e valida que a senha não é exposta)
+  * Login com sucesso (confere o cookie de sessão e o perfil retornado)
   * Login com senha incorreta (validação de `401 Unauthorized`)
   * Auto-registro de novo Solicitante
-  * Recuperação de senha
+  * Recuperação de senha indisponível sem entrega pública de token
   * Consulta do perfil logado (`GET /api/me`)
+
+As requisições protegidas fazem login com a conta de teste indicada para o cenário e usam o cookie retornado.
 * **02 - Chamados (Ciclo de Vida):**
   * Criação de chamado pelo Solicitante (`POST /api/chamados`)
   * Validação de isolamento do Solicitante — RN01 (`GET /api/chamados`)
