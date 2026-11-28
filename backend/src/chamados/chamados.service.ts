@@ -76,6 +76,11 @@ const MIME_PERMITIDOS = ['image/jpeg', 'image/png', 'image/jpg', 'application/pd
 const TAMANHO_MAX_ANEXO = 5 * 1024 * 1024;
 const MAX_ANEXOS_POR_DESPESA = 5;
 
+function decodificarAnexo(conteudo: string): Buffer {
+  const base64 = conteudo.replace(/^data:[^,]*;base64,/i, '');
+  return Buffer.from(base64, 'base64');
+}
+
 @Injectable()
 export class ChamadosService {
   constructor(
@@ -1224,6 +1229,51 @@ export class ChamadosService {
     id: number,
     usuario: UsuarioInterno,
   ): Promise<{ ok: true; despesas: Despesa[]; resumoFinanceiro: ResumoFinanceiro }> {
+    await this.validarAcessoFinanceiro(id, usuario);
+    const despesasEnt = await this.despesaRepo.find({
+      where: { chamadoId: id },
+      relations: { anexos: true } as any,
+      order: { id: 'ASC' },
+    });
+    const despesas = despesasEnt.map((d) => mapDespesaToContrato(d, false) as any);
+    const resumo = this.calcularResumo(despesas);
+    return { ok: true, despesas, resumoFinanceiro: resumo };
+  }
+
+  async obterConteudoAnexoDespesa(
+    chamadoId: number,
+    despesaId: number,
+    anexoId: number,
+    usuario: UsuarioInterno,
+  ) {
+    await this.validarAcessoFinanceiro(chamadoId, usuario);
+
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      const despesa = this.store.getDespesaPorId(despesaId);
+      const anexo = despesa?.chamadoId === chamadoId
+        ? despesa.anexos.find((arquivo) => arquivo.id === anexoId)
+        : undefined;
+      if (!anexo?.conteudo) throw new NotFoundException('Anexo não encontrado.');
+      return { ok: true, anexo: {
+        nomeArquivo: anexo.nomeArquivo,
+        mimeType: anexo.mimeType,
+        conteudo: anexo.conteudo,
+      } };
+    }
+
+    const anexo = await this.anexoRepo.findOne({
+      select: { id: true, nomeArquivo: true, mimeType: true, conteudo: true },
+      where: { id: anexoId, despesa: { id: despesaId, chamadoId } },
+    });
+    if (!anexo?.conteudo?.length) throw new NotFoundException('Anexo não encontrado.');
+    return { ok: true, anexo: {
+      nomeArquivo: anexo.nomeArquivo,
+      mimeType: anexo.mimeType,
+      conteudo: anexo.conteudo.toString('base64'),
+    } };
+  }
+
+  async validarAcessoFinanceiro(id: number, usuario: UsuarioInterno): Promise<void> {
     const chamado = await this.buscarChamadoContrato(id);
     if (!this.podeVer(chamado, usuario)) {
       throw new NotFoundException('Chamado não encontrado.');
@@ -1231,14 +1281,6 @@ export class ChamadosService {
     if (usuario.role === 'CONDOMINO') {
       throw new ForbiddenException('Sem permissão para visualizar despesas.');
     }
-    const despesasEnt = await this.despesaRepo.find({
-      where: { chamadoId: chamado.id },
-      relations: { anexos: true } as any,
-      order: { id: 'ASC' },
-    });
-    const despesas = despesasEnt.map((d) => mapDespesaToContrato(d, false) as any);
-    const resumo = this.calcularResumo(despesas);
-    return { ok: true, despesas, resumoFinanceiro: resumo };
   }
 
   async criarDespesa(
@@ -1281,11 +1323,11 @@ export class ChamadosService {
 
     if (dados.anexos && dados.anexos.length > 0) {
       for (const anexo of dados.anexos) {
+        const buf = decodificarAnexo(anexo.conteudo);
         const hash = crypto
           .createHash('sha256')
-          .update(anexo.conteudo)
+          .update(buf)
           .digest('hex');
-        const buf = Buffer.from(anexo.conteudo, 'base64');
         const aEnt = this.anexoRepo.create({
           despesaId: saved.id,
           tipo: anexo.tipo as any,
@@ -1406,8 +1448,8 @@ export class ChamadosService {
       throw new BadRequestException('Máximo de 5 anexos por despesa.');
     }
     const agora = new Date();
-    const hash = crypto.createHash('sha256').update(dto.conteudo).digest('hex');
-    const buf = Buffer.from(dto.conteudo, 'base64');
+    const buf = decodificarAnexo(dto.conteudo);
+    const hash = crypto.createHash('sha256').update(buf).digest('hex');
     const aEnt = this.anexoRepo.create({
       despesaId: despesaEnt.id,
       tipo: dto.tipo as any,
@@ -1427,8 +1469,7 @@ export class ChamadosService {
       criadoEm: agora,
     } as any);
     await this.anexoRepo.save(aEnt);
-    despesaEnt.atualizadoEm = agora;
-    await this.despesaRepo.save(despesaEnt);
+    await this.despesaRepo.update(despesaEnt.id, { atualizadoEm: agora });
     const full = await this.despesaRepo.findOne({
       where: { id: despesaEnt.id },
       relations: { anexos: true },

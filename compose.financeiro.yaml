@@ -1,0 +1,30 @@
+services:
+  chamados:
+    environment:
+      FINANCEIRO_URL: http://financeiro:3000
+      FINANCEIRO_TOKEN: "${FINANCEIRO_TOKEN:?Defina um token local para a comunicacao entre servicos}"
+
+  financeiro:
+    build: ./backend
+    environment:
+      APP_SERVICE: financeiro
+      PORT: "3000"
+      FINANCEIRO_TOKEN: "${FINANCEIRO_TOKEN:?Defina um token local para a comunicacao entre servicos}"
+      DB_HOST: postgres-chamados
+      DB_USER: chamados_local
+      DB_PASSWORD: chamados_local
+      DB_NAME: chamados
+    depends_on:
+      postgres-chamados:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${FINANCEIRO_PORT:-3001}:3000"
+    networks:
+      - aplicacao
+      - dados-chamados
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => { if (!r.ok) process.exitCode = 1 }).catch(() => { process.exitCode = 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s

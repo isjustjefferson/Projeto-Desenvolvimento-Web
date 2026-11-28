@@ -88,6 +88,38 @@ describe('ChamadosService', () => {
     });
   });
 
+  it('recupera o conteúdo apenas com anexo, despesa, chamado e perfil correspondentes', async () => {
+    const agora = new Date().toISOString();
+    store.salvarDespesa({
+      id: 95,
+      chamadoId: 1,
+      registradoPorId: joao.id,
+      categoria: 'MATERIAL',
+      descricao: 'Comprovante fictício',
+      valorCentavos: 100,
+      status: 'APROVADA',
+      criadoEm: agora,
+      atualizadoEm: agora,
+      anexos: [{
+        id: 42,
+        despesaId: 95,
+        tipo: 'RECIBO',
+        nomeArquivo: 'teste.pdf',
+        mimeType: 'application/pdf',
+        tamanhoBytes: 4,
+        conteudo: 'dGVzdA==',
+        enviadoPorId: joao.id,
+        criadoEm: agora,
+      }],
+    });
+    await expect(service.obterConteudoAnexoDespesa(1, 95, 42, ricardo)).resolves.toEqual({
+      ok: true,
+      anexo: { nomeArquivo: 'teste.pdf', mimeType: 'application/pdf', conteudo: 'dGVzdA==' },
+    });
+    await expect(service.obterConteudoAnexoDespesa(1, 95, 42, ana)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.obterConteudoAnexoDespesa(2, 95, 42, ricardo)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('condômino vê apenas os próprios chamados e nunca REVISADO', async () => {
     const res = await service.listar(ana, {});
     expect(res.chamados.map((c: any) => c.id)).toEqual([1, 3, 5]);

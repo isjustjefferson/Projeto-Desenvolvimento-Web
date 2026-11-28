@@ -36,7 +36,7 @@ import {
 } from '../hooks/useOrcamentos';
 import { useDiretorio } from '../hooks/useUsuarios';
 import { ApiError, mensagemDeErro } from '../api/client';
-import type { CriarDespesaInput } from '../api/despesas';
+import { obterConteudoAnexo, type CriarDespesaInput } from '../api/despesas';
 import {
   categoriaDespesaLabel,
   categoriaLabel,
@@ -79,7 +79,10 @@ function criarUrlAnexo(anexo: AnexoArquivo): string | null {
   const base64 =
     virgula >= 0 ? anexo.conteudo.slice(virgula + 1) : anexo.conteudo;
   const meta = virgula >= 0 ? anexo.conteudo.slice(0, virgula) : '';
-  const mime = meta.match(/^data:([^;,]+)/)?.[1] ?? anexo.mimeType;
+  const mimeInformado = meta.match(/^data:([^;,]+)/)?.[1] ?? anexo.mimeType;
+  const mime = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'].includes(mimeInformado)
+    ? mimeInformado
+    : 'application/octet-stream';
 
   try {
     const binario = atob(base64);
@@ -93,29 +96,39 @@ function criarUrlAnexo(anexo: AnexoArquivo): string | null {
   }
 }
 
-function abrirAnexo(anexo: AnexoArquivo) {
-  const url = criarUrlAnexo(anexo);
-  if (!url) {
-    toast.error('Não foi possível abrir o anexo.');
+async function abrirAnexo(chamadoId: number, despesaId: number, anexoId: number) {
+  const janela = window.open('about:blank', '_blank');
+  if (!janela) {
+    toast.error('Permita janelas pop-up ou baixe o anexo.');
     return;
   }
-  window.open(url, '_blank', 'noopener,noreferrer');
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  janela.opener = null;
+  try {
+    const url = criarUrlAnexo(await obterConteudoAnexo(chamadoId, despesaId, anexoId));
+    if (!url) throw new Error('Anexo inválido.');
+    janela.location.replace(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (erro) {
+    janela.close();
+    toast.error(mensagemDeErro(erro, 'Não foi possível abrir o anexo.'));
+  }
 }
 
-function baixarAnexo(anexo: AnexoArquivo) {
-  const url = criarUrlAnexo(anexo);
-  if (!url) {
-    toast.error('Não foi possível baixar o anexo.');
-    return;
+async function baixarAnexo(chamadoId: number, despesaId: number, anexoId: number) {
+  try {
+    const anexo = await obterConteudoAnexo(chamadoId, despesaId, anexoId);
+    const url = criarUrlAnexo(anexo);
+    if (!url) throw new Error('Anexo inválido.');
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = anexo.nomeArquivo;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (erro) {
+    toast.error(mensagemDeErro(erro, 'Não foi possível baixar o anexo.'));
   }
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = anexo.nomeArquivo;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 function ChamadoNaoEncontrado() {
@@ -847,14 +860,14 @@ export function ChamadoDetalhe() {
                         )}
                         <button
                           type="button"
-                          onClick={() => abrirAnexo(a)}
+                          onClick={() => void abrirAnexo(c.id, d.id, a.id)}
                           className="font-medium text-brand-700 hover:underline"
                         >
                           Visualizar
                         </button>
                         <button
                           type="button"
-                          onClick={() => baixarAnexo(a)}
+                          onClick={() => void baixarAnexo(c.id, d.id, a.id)}
                           className="font-medium text-brand-700 hover:underline"
                         >
                           Baixar

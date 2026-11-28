@@ -7,8 +7,14 @@ import { ChamadosController } from './chamados.controller.js';
 import { ChamadosService } from './chamados.service.js';
 
 @Module({
-  imports: [DadosModule, AuthModule, DatabaseModule, DatabaseRepositoriesModule],
-  controllers: [ChamadosController],
+  imports: [DadosModule, DatabaseModule, DatabaseRepositoriesModule],
   providers: [ChamadosService],
+  exports: [ChamadosService],
+})
+export class ChamadosOperacoesModule {}
+
+@Module({
+  imports: [AuthModule, ChamadosOperacoesModule, DadosModule, DatabaseRepositoriesModule],
+  controllers: [ChamadosController],
 })
 export class ChamadosModule {}

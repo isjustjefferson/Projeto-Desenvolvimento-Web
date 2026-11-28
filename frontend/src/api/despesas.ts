@@ -1,4 +1,5 @@
 import type { Despesa } from '../types';
+import { z } from 'zod';
 import { del, get, patch, post } from './client';
 import { respostaDespesaSchema, respostaDespesasSchema } from './schemas';
 
@@ -63,6 +64,23 @@ export interface CorrigirValorOcrInput {
 
 export async function listarDespesas(chamadoId: number) {
   return get(`/chamados/${chamadoId}/despesas`, respostaDespesasSchema);
+}
+
+const respostaConteudoAnexo = z.object({
+  ok: z.literal(true),
+  anexo: z.object({
+    nomeArquivo: z.string(),
+    mimeType: z.string(),
+    conteudo: z.string().min(1),
+  }),
+});
+
+export async function obterConteudoAnexo(chamadoId: number, despesaId: number, anexoId: number) {
+  const resposta = await get(
+    `/chamados/${chamadoId}/despesas/${despesaId}/anexos/${anexoId}`,
+    respostaConteudoAnexo,
+  );
+  return resposta.anexo;
 }
 
 export async function criarDespesa(chamadoId: number, input: CriarDespesaInput) {

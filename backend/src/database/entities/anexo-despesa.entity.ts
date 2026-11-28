@@ -52,7 +52,7 @@ export class AnexoDespesaEntity {
   @Column({ type: 'varchar', length: 64, name: 'hash_sha256', nullable: true })
   hashSha256!: string | null;
 
-  @Column({ type: 'bytea', name: 'conteudo', nullable: true })
+  @Column({ type: 'bytea', name: 'conteudo', nullable: true, select: false })
   conteudo!: Buffer | null;
 
   @Column({ type: 'integer', name: 'enviado_por_id', nullable: false })
