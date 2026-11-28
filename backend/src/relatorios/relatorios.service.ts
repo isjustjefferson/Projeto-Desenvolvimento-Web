@@ -1,8 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import type { Repository } from 'typeorm';
 import { despesaSemConteudo } from '../common/anexos.js';
 import type { Despesa } from '../contrato.js';
 import { StoreService } from '../dados/store.service.js';
 import type { UsuarioInterno } from '../dados/seed.js';
+import { DespesaEntity } from '../database/entities/despesa.entity.js';
+import { mapDespesaToContrato } from '../database/mappers/despesa.mapper.js';
+
+export interface FiltrosRelatorioDespesas {
+  status?: string;
+  categoria?: string;
+  registradoPorId?: number | string;
+  de?: string;
+  ate?: string;
+  temDocumento?: string;
+  somenteComprovado?: string;
+}
 
 function inicioDoDia(valor?: string): number | undefined {
   if (!valor) return undefined;
@@ -22,11 +35,28 @@ function fimDoDia(valor?: string): number | undefined {
 
 @Injectable()
 export class RelatoriosService {
-  constructor(private readonly store: StoreService) {}
+  constructor(
+    private readonly store: StoreService,
+    @Inject('DESPESA_REPO') private readonly repositorio: Repository<DespesaEntity>,
+  ) {}
 
-  despesas(usuario: UsuarioInterno, filtros: any) {
-    const despesasMap = (this.store as any).despesas as Map<number, Despesa> | undefined;
-    let despesas: Despesa[] = despesasMap ? [...despesasMap.values()] : [];
+  async despesas(_usuario: UsuarioInterno, filtros: FiltrosRelatorioDespesas) {
+    const emTeste = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
+    const chamados = new Map<number, { id: number; titulo: string }>();
+    let despesas: Despesa[];
+    if (emTeste) {
+      despesas = this.store.getDespesas();
+    } else {
+      const registros = await this.repositorio.createQueryBuilder('despesa')
+        .leftJoinAndSelect('despesa.anexos', 'anexo')
+        .leftJoin('despesa.chamado', 'chamado')
+        .addSelect(['chamado.id', 'chamado.titulo'])
+        .getMany();
+      despesas = registros.map((despesa) => {
+        if (despesa.chamado) chamados.set(despesa.chamadoId, despesa.chamado);
+        return mapDespesaToContrato(despesa, false);
+      });
+    }
 
     if (filtros?.status) {
       despesas = despesas.filter((d) => d.status === filtros.status);
@@ -70,7 +100,7 @@ export class RelatoriosService {
       if (d.status === 'APROVADA') aprovadoCentavos += d.valorCentavos;
       if (d.status === 'PENDENTE') pendenteCentavos += d.valorCentavos;
       if (d.status === 'REJEITADA') rejeitadoCentavos += d.valorCentavos;
-      if (d.anexos.some((a) => !!a.tipoDocumentoFiscal)) comDocumento += 1;
+      if (d.status === 'APROVADA' && d.anexos.some((a) => !!a.tipoDocumentoFiscal)) comDocumento += 1;
       porCategoria[d.categoria] = (porCategoria[d.categoria] || 0) + d.valorCentavos;
       const chaveRegistrante = String(d.registradoPorId);
       porRegistrante[chaveRegistrante] =
@@ -86,7 +116,7 @@ export class RelatoriosService {
     const itens = despesas
       .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
       .map((d) => {
-        const chamado = this.store.getChamadoPorId(d.chamadoId);
+        const chamado = emTeste ? this.store.getChamadoPorId(d.chamadoId) : chamados.get(d.chamadoId);
         return {
           ...despesaSemConteudo(d),
           chamadoTitulo: chamado?.titulo,

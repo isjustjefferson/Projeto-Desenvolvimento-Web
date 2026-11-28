@@ -1,16 +1,20 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Repository } from 'typeorm';
 import { StoreService } from '../../../../backend/src/dados/store.service.js';
 import type { UsuarioInterno } from '../../../../backend/src/dados/seed.js';
 import { RelatoriosService } from '../../../../backend/src/relatorios/relatorios.service.js';
+import type { DespesaEntity } from '../../../../backend/src/database/entities/despesa.entity.js';
 
 describe('RelatoriosService', () => {
   let store: StoreService;
   let service: RelatoriosService;
   let ricardo: UsuarioInterno;
 
+  afterEach(() => vi.unstubAllEnvs());
+
   beforeEach(() => {
     store = new StoreService();
-    service = new RelatoriosService(store);
+    service = new RelatoriosService(store, {} as Repository<DespesaEntity>);
     ricardo = store.getUsuarioInternoPorId(5)!;
 
     store.salvarDespesa({
@@ -68,8 +72,8 @@ describe('RelatoriosService', () => {
     });
   });
 
-  it('calcula resumo financeiro e agregações por categoria e registrante', () => {
-    const res = service.despesas(ricardo, {});
+  it('calcula resumo financeiro e agregações por categoria e registrante', async () => {
+    const res = await service.despesas(ricardo, {});
 
     expect(res.ok).toBe(true);
     expect(res.resumo).toEqual({
@@ -88,19 +92,51 @@ describe('RelatoriosService', () => {
       DESLOCAMENTO: 2000,
     });
     expect(res.porFornecedor).toEqual({ 'Casa Hidráulica': 10000 });
-    expect(res.despesas[0].anexos[0]).not.toHaveProperty('conteudo');
+    const comprovante = res.despesas.find((despesa) => despesa.id === 1)?.anexos[0];
+    expect(comprovante).toBeDefined();
+    expect(comprovante).not.toHaveProperty('conteudo');
   });
 
-  it('filtra por status, categoria, registrante e documento fiscal', () => {
-    const apenasAprovadas = service.despesas(ricardo, { status: 'APROVADA' });
+  it('filtra por status, categoria, registrante e documento fiscal', async () => {
+    const apenasAprovadas = await service.despesas(ricardo, { status: 'APROVADA' });
     expect(apenasAprovadas.despesas).toHaveLength(1);
     expect(apenasAprovadas.despesas[0].id).toBe(1);
 
-    const semDoc = service.despesas(ricardo, { temDocumento: 'nao' });
+    const semDoc = await service.despesas(ricardo, { temDocumento: 'nao' });
     expect(semDoc.despesas).toHaveLength(2);
 
-    const doJoao = service.despesas(ricardo, { registradoPorId: 3 });
+    const doJoao = await service.despesas(ricardo, { registradoPorId: 3 });
     expect(doJoao.despesas).toHaveLength(2);
     expect(doJoao.resumo.totalCentavos).toBe(7000);
+  });
+
+  it('consulta o repositório e usa o título do chamado fora do modo em memória', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('VITEST', undefined);
+    const momento = new Date('2026-10-10T12:00:00.000Z');
+    const consulta = {
+      leftJoinAndSelect: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockReturnThis(),
+      addSelect: vi.fn().mockReturnThis(),
+      getMany: vi.fn().mockResolvedValue([{
+        id: 99,
+        chamadoId: 100,
+        chamado: { id: 100, titulo: 'Chamado persistido' },
+        registradoPorId: 3,
+        categoria: 'MATERIAL',
+        descricao: 'Nota fictícia',
+        status: 'APROVADA',
+        valorCentavos: 3750,
+        criadoEm: momento,
+        atualizadoEm: momento,
+        anexos: [],
+      }]),
+    };
+    const repo = { createQueryBuilder: vi.fn().mockReturnValue(consulta) };
+    const relatorio = new RelatoriosService(store, repo as unknown as Repository<DespesaEntity>);
+    const resultado = await relatorio.despesas(ricardo, {});
+    expect(repo.createQueryBuilder).toHaveBeenCalledWith('despesa');
+    expect(resultado.resumo.aprovadoCentavos).toBe(3750);
+    expect(resultado.despesas).toMatchObject([{ id: 99, chamadoTitulo: 'Chamado persistido' }]);
   });
 });

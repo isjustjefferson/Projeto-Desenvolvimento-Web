@@ -10,6 +10,7 @@ import { AuthGuard } from '../common/guards/auth.guard.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import { RelatoriosService } from './relatorios.service.js';
+import type { FiltrosRelatorioDespesas } from './relatorios.service.js';
 
 @Controller('relatorios')
 @UseGuards(AuthGuard, RolesGuard)
@@ -19,7 +20,7 @@ export class RelatoriosController {
 
   @Get('despesas')
   despesas(
-    @Query() filtros: any,
+    @Query() filtros: FiltrosRelatorioDespesas,
     @UsuarioAtual() usuario: UsuarioInterno,
   ) {
     return this.relatorios.despesas(usuario, filtros);

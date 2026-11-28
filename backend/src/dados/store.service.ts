@@ -107,6 +107,10 @@ export class StoreService {
   }
 
   // ---- Despesas ----
+  getDespesas(): Despesa[] {
+    return [...this.despesas.values()];
+  }
+
   getDespesasPorChamado(chamadoId: number): Despesa[] {
     return [...this.despesas.values()]
       .filter((d) => d.chamadoId === chamadoId)
