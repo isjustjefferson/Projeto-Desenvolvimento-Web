@@ -5,6 +5,31 @@
     "description": "Coleção oficial de testes de API (QA: Arthur José). Cobre autenticação, RBAC, ciclo de vida de chamados (CONDOMINO, PRESTADOR, SINDICO, ADMINISTRADOR), orçamentos e health check.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const conta = pm.request.headers.get('X-Conta-Teste');",
+          "if (conta) {",
+          "  pm.request.headers.remove('X-Conta-Teste');",
+          "  pm.sendRequest({",
+          "    url: pm.environment.get('baseUrl') + '/api/auth/login',",
+          "    method: 'POST',",
+          "    header: {'Content-Type': 'application/json'},",
+          "    body: {mode: 'raw', raw: JSON.stringify({email: conta, senha: '123456'})}",
+          "  }, (erro, resposta) => {",
+          "    if (erro || resposta.code !== 200) throw new Error('Falhou o login da conta de teste.');",
+          "    const cookie = resposta.headers.get('Set-Cookie');",
+          "    if (!cookie) throw new Error('O login não retornou um cookie de sessão.');",
+          "    pm.request.headers.upsert({key: 'Cookie', value: cookie.split(';')[0]});",
+          "  });",
+          "}"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "01 - Autenticação & Perfil",
@@ -27,6 +52,7 @@
                   "    pm.expect(data.usuario.role).to.eql('CONDOMINO');",
                   "    pm.expect(data.usuario).to.not.have.property('senha');",
                   "    pm.expect(data.usuario).to.not.have.property('senhaHash');",
+                  "    pm.expect(pm.response.headers.get('Set-Cookie')).to.include('predial_sessao=');",
                   "    pm.environment.set(\"usuarioId\", data.usuario.id);",
                   "});"
                 ],
@@ -112,20 +138,16 @@
           }
         },
         {
-          "name": "Esqueci a Senha (Gerar Token)",
+          "name": "Recuperação de senha indisponível",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status deve ser 200\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const data = pm.response.json();",
-                  "if (data.token) {",
-                  "    pm.environment.set(\"resetToken\", data.token);",
-                  "}"
+                  "pm.test(\"Recuperação indisponível e sem token público\", function () {",
+                  "    pm.response.to.have.status(503);",
+                  "    pm.expect(pm.response.json()).to.not.have.property(\"token\");",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -166,9 +188,10 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "GET",
-            "header": [{ "key": "x-usuario-id", "value": "{{usuarioId}}" }],
+            "header": [{ "key": "X-Conta-Teste", "value": "ana@predial.com" }],
             "url": {
               "raw": "{{baseUrl}}/api/me",
               "host": ["{{baseUrl}}"],
@@ -203,11 +226,12 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "x-usuario-id", "value": "{{usuarioId}}" }
+              { "key": "X-Conta-Teste", "value": "ana@predial.com" }
             ],
             "body": {
               "mode": "raw",
@@ -243,9 +267,10 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "GET",
-            "header": [{ "key": "x-usuario-id", "value": "{{usuarioId}}" }],
+            "header": [{ "key": "X-Conta-Teste", "value": "ana@predial.com" }],
             "url": {
               "raw": "{{baseUrl}}/api/chamados",
               "host": ["{{baseUrl}}"],
@@ -273,11 +298,12 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "x-usuario-id", "value": "{{sindicoId}}" }
+              { "key": "X-Conta-Teste", "value": "ricardo@predial.com" }
             ],
             "body": {
               "mode": "raw",
@@ -310,11 +336,12 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "x-usuario-id", "value": "{{prestadorId}}" }
+              { "key": "X-Conta-Teste", "value": "joao@predial.com" }
             ],
             "body": {
               "mode": "raw",
@@ -346,9 +373,10 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "POST",
-            "header": [{ "key": "x-usuario-id", "value": "{{sindicoId}}" }],
+            "header": [{ "key": "X-Conta-Teste", "value": "ricardo@predial.com" }],
             "url": {
               "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/orcamentos/{{orcamentoId}}/aprovar",
               "host": ["{{baseUrl}}"],
@@ -375,9 +403,10 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "POST",
-            "header": [{ "key": "x-usuario-id", "value": "{{prestadorId}}" }],
+            "header": [{ "key": "X-Conta-Teste", "value": "joao@predial.com" }],
             "url": {
               "raw": "{{baseUrl}}/api/chamados/{{chamadoId}}/iniciar",
               "host": ["{{baseUrl}}"],
@@ -400,11 +429,12 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "x-usuario-id", "value": "{{prestadorId}}" }
+              { "key": "X-Conta-Teste", "value": "joao@predial.com" }
             ],
             "body": {
               "mode": "raw",
@@ -438,11 +468,12 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "x-usuario-id", "value": "{{prestadorId}}" }
+              { "key": "X-Conta-Teste", "value": "joao@predial.com" }
             ],
             "body": {
               "mode": "raw",
@@ -480,9 +511,10 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "GET",
-            "header": [{ "key": "x-usuario-id", "value": "{{adminId}}" }],
+            "header": [{ "key": "X-Conta-Teste", "value": "tiago@predial.com" }],
             "url": {
               "raw": "{{baseUrl}}/api/usuarios",
               "host": ["{{baseUrl}}"],
@@ -505,9 +537,10 @@
               }
             }
           ],
+          "protocolProfileBehavior": { "disableCookies": true },
           "request": {
             "method": "GET",
-            "header": [{ "key": "x-usuario-id", "value": "{{usuarioId}}" }],
+            "header": [{ "key": "X-Conta-Teste", "value": "ana@predial.com" }],
             "url": {
               "raw": "{{baseUrl}}/api/usuarios",
               "host": ["{{baseUrl}}"],
