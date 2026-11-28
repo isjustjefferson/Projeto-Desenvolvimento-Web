@@ -218,11 +218,6 @@ const okLiteral = z.literal(true);
 
 export const respostaOkSchema = z.object({ ok: okLiteral });
 
-export const respostaTokenSchema = z.object({
-  ok: okLiteral,
-  token: z.string(),
-});
-
 export const respostaUsuarioSchema = z.object({
   ok: okLiteral,
   usuario: usuarioSchema,

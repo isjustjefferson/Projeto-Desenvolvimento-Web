@@ -1,7 +1,5 @@
 import type { ZodType } from 'zod';
 
-const STORAGE_KEY = 'predial.usuarioId';
-
 // Enviado pelo backend (ValidationPipe) quando a validação falha: message pode
 // ser string (erro de regra) ou um array de mensagens (erros de validação).
 interface CorpoErro {
@@ -25,8 +23,11 @@ export function mensagemDeErro(erro: unknown, padrao: string): string {
 
 let aoPerderSessao: (() => void) | null = null;
 
-export function registrarPerdaSessao(handler: () => void): void {
+export function registrarPerdaSessao(handler: () => void): () => void {
   aoPerderSessao = handler;
+  return () => {
+    if (aoPerderSessao === handler) aoPerderSessao = null;
+  };
 }
 
 async function extrairMensagem(res: Response): Promise<string> {
@@ -52,10 +53,11 @@ async function requisicao<T>(
   if (opcoes.body !== undefined && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  const id = localStorage.getItem(STORAGE_KEY);
-  if (id) headers.set('x-usuario-id', id);
+  if (opcoes.method && !['GET', 'HEAD', 'OPTIONS'].includes(opcoes.method)) {
+    headers.set('X-Predial-Request', '1');
+  }
 
-  const res = await fetch(`/api${caminho}`, { ...opcoes, headers });
+  const res = await fetch(`/api${caminho}`, { ...opcoes, headers, credentials: 'same-origin' });
 
   if (!res.ok) {
     if (res.status === 401) aoPerderSessao?.();

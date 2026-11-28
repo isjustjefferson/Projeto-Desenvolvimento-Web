@@ -5,7 +5,6 @@ import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
-import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { Dashboard } from './pages/Dashboard';
 import { ChamadosLista } from './pages/ChamadosLista';
 import { NovoChamado } from './pages/NovoChamado';
@@ -89,7 +88,7 @@ export default function App() {
         path="/reset-password"
         element={
           <PublicOnly>
-            <ResetPasswordPage />
+            <ForgotPasswordPage />
           </PublicOnly>
         }
       />

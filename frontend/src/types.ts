@@ -72,11 +72,9 @@ export interface AuthState {
   carregando: boolean;
   login: (email: string, senha: string) => Promise<AuthResult>;
   registrar: (dados: NovoCadastro) => Promise<AuthResult>;
-  esqueciSenha: (email: string) => Promise<AuthResult>;
-  redefinirSenha: (token: string, novaSenha: string) => Promise<AuthResult>;
   atualizarConta: (dados: { nome?: string; foto?: string }) => Promise<AuthResult>;
   excluirConta: () => Promise<AuthResult>;
-  sair: () => void;
+  sair: () => Promise<AuthResult>;
 }
 
 export interface NovoCadastro {
@@ -89,5 +87,4 @@ export interface NovoCadastro {
 export interface AuthResult {
   ok: boolean;
   erro?: string;
-  token?: string;
 }

@@ -2,7 +2,6 @@ import type { NovoCadastro, Usuario } from '../types';
 import { del, get, patch, post } from './client';
 import {
   respostaOkSchema,
-  respostaTokenSchema,
   respostaUsuarioSchema,
 } from './schemas';
 
@@ -33,14 +32,6 @@ export async function excluirConta(): Promise<void> {
   await del('/me', respostaOkSchema);
 }
 
-export async function esqueciSenha(email: string): Promise<string> {
-  const res = await post('/auth/forgot-password', { email }, respostaTokenSchema);
-  return res.token;
-}
-
-export async function redefinirSenha(
-  token: string,
-  novaSenha: string,
-): Promise<void> {
-  await post('/auth/reset-password', { token, novaSenha }, respostaOkSchema);
+export async function sair(): Promise<void> {
+  await post('/auth/logout');
 }

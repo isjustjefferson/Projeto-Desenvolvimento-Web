@@ -11,7 +11,6 @@ import type { UsuarioPublico, UsuarioResumo } from '../contrato.js';
 import { StoreService } from '../dados/store.service.js';
 import { UsuarioEntity } from '../database/entities/usuario.entity.js';
 import { mapUsuarioToContrato } from '../database/mappers/usuario.mapper.js';
-import { senhaPadrao } from '../dados/seed.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import type { AlterarRoleDto, CriarUsuarioDto } from './dto/usuarios.dto.js';
 
@@ -55,6 +54,9 @@ export class UsuariosService {
   }
 
   async criar(dados: CriarUsuarioDto): Promise<{ ok: true; usuario: UsuarioPublico }> {
+    if (Buffer.byteLength(dados.senha, 'utf8') > 72) {
+      throw new BadRequestException('A senha inicial deve ter no máximo 72 bytes.');
+    }
     const email = dados.email.trim().toLowerCase();
     if (this.usaStore()) {
       if (this.store.getUsuarioPorEmail(email)) throw new ConflictException('Este e-mail já está cadastrado.');
@@ -68,7 +70,7 @@ export class UsuariosService {
         setor: role !== 'PRESTADOR' ? dados.setor?.trim() : undefined,
         ativo: true,
         criadoEm: new Date().toISOString(),
-        senhaHash: bcrypt.hashSync(dados.senha || senhaPadrao, SALT_ROUNDS),
+        senhaHash: await bcrypt.hash(dados.senha, SALT_ROUNDS),
       };
       this.store.salvarUsuario(novo);
       return { ok: true, usuario: this.paraPublico(novo) };
@@ -84,7 +86,7 @@ export class UsuariosService {
       especialidade: role === 'PRESTADOR' ? (dados.especialidade?.trim() ?? null) : null,
       setor: role !== 'PRESTADOR' ? (dados.setor?.trim() ?? null) : null,
       ativo: true,
-      senhaHash: bcrypt.hashSync(dados.senha || senhaPadrao, SALT_ROUNDS),
+      senhaHash: await bcrypt.hash(dados.senha, SALT_ROUNDS),
     });
     const salvo = await this.usuarioRepo.save(entidade);
     return { ok: true, usuario: mapUsuarioToContrato(salvo) };

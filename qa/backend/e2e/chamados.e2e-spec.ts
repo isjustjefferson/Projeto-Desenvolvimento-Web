@@ -1,7 +1,7 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { INestApplication } from "@nestjs/common";
-import { criarApp, type App } from "./helpers.js";
+import { cookieDeUsuario, criarApp, type App } from "./helpers.js";
 
 describe("Chamados (e2e)", () => {
   let app: INestApplication<App>;
@@ -21,7 +21,7 @@ describe("Chamados (e2e)", () => {
   it("GET /chamados do condômino devolve apenas os próprios", async () => {
     const res = await request(app.getHttpServer())
       .get("/api/chamados")
-      .set("x-usuario-id", "1")
+      .set('Cookie', await cookieDeUsuario(app, 1))
       .expect(200);
     expect(res.body.chamados.map((c: { id: number }) => c.id)).toEqual([
       1, 3, 5,
@@ -31,7 +31,7 @@ describe("Chamados (e2e)", () => {
   it("GET /chamados do prestador devolve REVISADO e os atribuídos", async () => {
     const res = await request(app.getHttpServer())
       .get("/api/chamados")
-      .set("x-usuario-id", "3")
+      .set('Cookie', await cookieDeUsuario(app, 3))
       .expect(200);
     expect(
       res.body.chamados
@@ -43,7 +43,7 @@ describe("Chamados (e2e)", () => {
   it("GET /chamados do síndico devolve todos", async () => {
     const res = await request(app.getHttpServer())
       .get("/api/chamados")
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .expect(200);
     expect(res.body.chamados).toHaveLength(5);
   });
@@ -51,25 +51,25 @@ describe("Chamados (e2e)", () => {
   it("GET /chamados/:id não expõe chamado alheio ao condômino", async () => {
     await request(app.getHttpServer())
       .get("/api/chamados/3")
-      .set("x-usuario-id", "1")
+      .set('Cookie', await cookieDeUsuario(app, 1))
       .expect(200);
     await request(app.getHttpServer())
       .get("/api/chamados/3")
-      .set("x-usuario-id", "2")
+      .set('Cookie', await cookieDeUsuario(app, 2))
       .expect(404);
   });
 
   it("GET /chamados/:id inexistente retorna 404", async () => {
     await request(app.getHttpServer())
       .get("/api/chamados/999")
-      .set("x-usuario-id", "6")
+      .set('Cookie', await cookieDeUsuario(app, 6))
       .expect(404);
   });
 
   it("POST /chamados cria em AGUARDANDO_APROVACAO e ignora prioridade", async () => {
     const res = await request(app.getHttpServer())
       .post("/api/chamados")
-      .set("x-usuario-id", "1")
+      .set('Cookie', await cookieDeUsuario(app, 1))
       .send({
         titulo: "Torneira pingando",
         descricao: "Cozinha do ap 204",
@@ -91,7 +91,7 @@ describe("Chamados (e2e)", () => {
     const foto = `data:image/jpeg;base64,${"A".repeat(500 * 1024)}`;
     const res = await request(app.getHttpServer())
       .post("/api/chamados")
-      .set("x-usuario-id", "1")
+      .set('Cookie', await cookieDeUsuario(app, 1))
       .send({
         titulo: "Com foto grande",
         descricao: "Foto em base64 de aproximadamente 500kb",
@@ -106,7 +106,7 @@ describe("Chamados (e2e)", () => {
   it("POST /chamados permite síndico e bloqueia prestador", async () => {
     await request(app.getHttpServer())
       .post("/api/chamados")
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .send({
         titulo: "X",
         descricao: "Y",
@@ -116,7 +116,7 @@ describe("Chamados (e2e)", () => {
       .expect(201);
     await request(app.getHttpServer())
       .post("/api/chamados")
-      .set("x-usuario-id", "3")
+      .set('Cookie', await cookieDeUsuario(app, 3))
       .send({
         titulo: "X",
         descricao: "Y",
@@ -129,7 +129,7 @@ describe("Chamados (e2e)", () => {
   it("POST /chamados valida payload", async () => {
     await request(app.getHttpServer())
       .post("/api/chamados")
-      .set("x-usuario-id", "1")
+      .set('Cookie', await cookieDeUsuario(app, 1))
       .send({
         titulo: "",
         descricao: "",
@@ -142,13 +142,13 @@ describe("Chamados (e2e)", () => {
   it("aprovar define prioridade, prestador e histórico; bloqueia condômino", async () => {
     await request(app.getHttpServer())
       .post("/api/chamados/3/aprovar")
-      .set("x-usuario-id", "1")
+      .set('Cookie', await cookieDeUsuario(app, 1))
       .send({ prioridade: "CRITICA", prestadorId: 3 })
       .expect(403);
 
     const res = await request(app.getHttpServer())
       .post("/api/chamados/3/aprovar")
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .send({ prioridade: "CRITICA", prestadorId: 3 })
       .expect(201);
     expect(res.body.chamado).toMatchObject({
@@ -166,12 +166,12 @@ describe("Chamados (e2e)", () => {
   it("aprovar com prestador não-prestador retorna 400; fora de AGUARDANDO retorna 400", async () => {
     await request(app.getHttpServer())
       .post("/api/chamados/3/aprovar")
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .send({ prioridade: "ALTA", prestadorId: 1 })
       .expect(400);
     await request(app.getHttpServer())
       .post("/api/chamados/1/aprovar")
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .send({ prioridade: "ALTA", prestadorId: 3 })
       .expect(400);
   });
@@ -179,36 +179,36 @@ describe("Chamados (e2e)", () => {
   it("iniciar: síndico inicia REVISADO; prestador não atribuído é bloqueado; fora de REVISADO 400", async () => {
     await request(app.getHttpServer())
       .post("/api/chamados/4/iniciar")
-      .set("x-usuario-id", "3")
+      .set('Cookie', await cookieDeUsuario(app, 3))
       .expect(403);
 
     const res = await request(app.getHttpServer())
       .post("/api/chamados/4/iniciar")
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .expect(201);
     expect(res.body.chamado.status).toBe("EM_ANDAMENTO");
 
     await request(app.getHttpServer())
       .post("/api/chamados/3/iniciar")
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .expect(400);
   });
 
   it("concluir: prestador atribuído conclui com solução; outrem bloqueado; sem solução 400", async () => {
     await request(app.getHttpServer())
       .post("/api/chamados/2/concluir")
-      .set("x-usuario-id", "3")
+      .set('Cookie', await cookieDeUsuario(app, 3))
       .send({ descricao: "S", materiais: "M" })
       .expect(403);
     await request(app.getHttpServer())
       .post("/api/chamados/2/concluir")
-      .set("x-usuario-id", "4")
+      .set('Cookie', await cookieDeUsuario(app, 4))
       .send({ descricao: "", materiais: "" })
       .expect(400);
 
     const res = await request(app.getHttpServer())
       .post("/api/chamados/2/concluir")
-      .set("x-usuario-id", "4")
+      .set('Cookie', await cookieDeUsuario(app, 4))
       .send({ descricao: "Vazamento resolvido", materiais: "vedante" })
       .expect(201);
     expect(res.body.chamado).toMatchObject({
@@ -220,18 +220,18 @@ describe("Chamados (e2e)", () => {
   it("fluxo completo end-to-end do prestador", async () => {
     await request(app.getHttpServer())
       .post("/api/chamados/3/aprovar")
-      .set("x-usuario-id", "6")
+      .set('Cookie', await cookieDeUsuario(app, 6))
       .send({ prioridade: "MEDIA", prestadorId: 3 })
       .expect(201);
 
     await request(app.getHttpServer())
       .post("/api/chamados/3/iniciar")
-      .set("x-usuario-id", "3")
+      .set('Cookie', await cookieDeUsuario(app, 3))
       .expect(201);
 
     const res = await request(app.getHttpServer())
       .post("/api/chamados/3/concluir")
-      .set("x-usuario-id", "3")
+      .set('Cookie', await cookieDeUsuario(app, 3))
       .send({ descricao: "Válvula trocada", materiais: "1 válvula nova" })
       .expect(201);
     expect(res.body.chamado.status).toBe("CONCLUIDO");
@@ -240,44 +240,44 @@ describe("Chamados (e2e)", () => {
   it("filtros de listagem (status, categoria, prestador, prédio, busca, período)", async () => {
     const res = await request(app.getHttpServer())
       .get("/api/chamados?status=CONCLUIDO")
-      .set("x-usuario-id", "6")
+      .set('Cookie', await cookieDeUsuario(app, 6))
       .expect(200);
     expect(res.body.chamados.map((c: { id: number }) => c.id)).toEqual([1]);
 
     const res2 = await request(app.getHttpServer())
       .get("/api/chamados?predio=Bloco%20B")
-      .set("x-usuario-id", "6")
+      .set('Cookie', await cookieDeUsuario(app, 6))
       .expect(200);
     expect(res2.body.chamados.map((c: { id: number }) => c.id)).toEqual([4]);
 
     const res3 = await request(app.getHttpServer())
       .get("/api/chamados?q=vazamento")
-      .set("x-usuario-id", "6")
+      .set('Cookie', await cookieDeUsuario(app, 6))
       .expect(200);
     expect(res3.body.chamados.map((c: { id: number }) => c.id)).toEqual([2]);
 
     await request(app.getHttpServer())
       .get("/api/chamados?status=INVALIDO")
-      .set("x-usuario-id", "6")
+      .set('Cookie', await cookieDeUsuario(app, 6))
       .expect(400);
   });
 
   it("recusar: síndico recusa AGUARDANDO_APROVACAO e condômino é bloqueado", async () => {
     await request(app.getHttpServer())
       .post("/api/chamados/5/recusar")
-      .set("x-usuario-id", "1")
+      .set('Cookie', await cookieDeUsuario(app, 1))
       .send({ motivo: "Sem permissão" })
       .expect(403);
 
     await request(app.getHttpServer())
       .post("/api/chamados/5/recusar")
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .send({ motivo: "" })
       .expect(400);
 
     const res = await request(app.getHttpServer())
       .post("/api/chamados/5/recusar")
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .send({ motivo: "Problema já atendido em outro chamado" })
       .expect(201);
 
@@ -290,31 +290,31 @@ describe("Chamados (e2e)", () => {
   it("orçamentos: prestador envia, bloqueia início enquanto pendente (RN05) e síndico aprova/rejeita", async () => {
     await request(app.getHttpServer())
       .post("/api/chamados/3/aprovar")
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .send({ prioridade: "ALTA", prestadorId: 3 })
       .expect(201);
 
     const orc = await request(app.getHttpServer())
       .post("/api/chamados/3/orcamentos")
-      .set("x-usuario-id", "3")
+      .set('Cookie', await cookieDeUsuario(app, 3))
       .send({ descricao: "Troca de peça", valorCentavos: 25000 })
       .expect(201);
     expect(orc.body.orcamento.status).toBe("PENDENTE");
 
     await request(app.getHttpServer())
       .post("/api/chamados/3/iniciar")
-      .set("x-usuario-id", "3")
+      .set('Cookie', await cookieDeUsuario(app, 3))
       .expect(400);
 
     const aprovado = await request(app.getHttpServer())
       .post(`/api/chamados/3/orcamentos/${orc.body.orcamento.id}/aprovar`)
-      .set("x-usuario-id", "5")
+      .set('Cookie', await cookieDeUsuario(app, 5))
       .expect(201);
     expect(aprovado.body.orcamento.status).toBe("APROVADO");
 
     const iniciado = await request(app.getHttpServer())
       .post("/api/chamados/3/iniciar")
-      .set("x-usuario-id", "3")
+      .set('Cookie', await cookieDeUsuario(app, 3))
       .expect(201);
     expect(iniciado.body.chamado.status).toBe("EM_ANDAMENTO");
   });
@@ -327,7 +327,7 @@ describe("Chamados (e2e)", () => {
     ]) {
       const resCriar = await request(app.getHttpServer())
         .post("/api/chamados/2/despesas")
-        .set("x-usuario-id", "4")
+        .set('Cookie', await cookieDeUsuario(app, 4))
         .send({
           categoria: "MATERIAL",
           descricao: "Tubo PVC",
@@ -339,7 +339,7 @@ describe("Chamados (e2e)", () => {
 
       const resEditar = await request(app.getHttpServer())
         .patch("/api/chamados/2/despesas/1")
-        .set("x-usuario-id", "4")
+        .set('Cookie', await cookieDeUsuario(app, 4))
         .send({ cnpj })
         .expect(400);
       expect(resEditar.body.message).toContain("CPF/CNPJ inválido.");

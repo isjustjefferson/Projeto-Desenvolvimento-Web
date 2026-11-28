@@ -187,6 +187,7 @@ export function Usuarios() {
   const excluirUsuario = useExcluirUsuario();
   const [modal, setModal] = useState(false);
   const [nome, setNome] = useState('');
+  const [senhaInicial, setSenhaInicial] = useState('');
   const [role, setRole] = useState<Role>('CONDOMINO');
   const [especialidade, setEspecialidade] = useState('');
   const [setor, setSetor] = useState('');
@@ -247,6 +248,10 @@ export function Usuarios() {
   async function adicionar(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim()) return;
+    if (new TextEncoder().encode(senhaInicial).length > 72) {
+      setErroCriar('A senha inicial deve ter no máximo 72 bytes.');
+      return;
+    }
     setErroCriar('');
     const nomeNovo = nome.trim();
     const email = `${nomeNovo.toLowerCase().replace(/\s+/g, '.')}@predial.com`;
@@ -254,7 +259,7 @@ export function Usuarios() {
       await criarUsuario.mutateAsync({
         nome: nomeNovo,
         email,
-        senha: '123456',
+        senha: senhaInicial,
         role,
         especialidade,
         setor,
@@ -266,6 +271,7 @@ export function Usuarios() {
 
     setModal(false);
     setNome('');
+    setSenhaInicial('');
     setRole('CONDOMINO');
     setEspecialidade('');
     setSetor('');
@@ -383,7 +389,14 @@ export function Usuarios() {
         />
       )}
 
-      <Modal open={modal} onClose={() => setModal(false)} title="Novo usuário">
+      <Modal
+        open={modal}
+        onClose={() => {
+          setSenhaInicial('');
+          setModal(false);
+        }}
+        title="Novo usuário"
+      >
         <form onSubmit={adicionar} className="space-y-4">
           <div>
             <label className="label">Nome</label>
@@ -428,6 +441,20 @@ export function Usuarios() {
               />
             </div>
           )}
+          <div>
+            <label className="label" htmlFor="usuario-senha-inicial">Senha inicial</label>
+            <input
+              id="usuario-senha-inicial"
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              minLength={12}
+              required
+              value={senhaInicial}
+              onChange={(e) => setSenhaInicial(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-gray-500">Use pelo menos 12 caracteres.</p>
+          </div>
           {erroCriar && (
             <div className="rounded-lg bg-red-500 px-3 py-2 text-sm text-white">
               {erroCriar}

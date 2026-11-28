@@ -6,11 +6,6 @@ import type { UsuarioInterno } from './seed.js';
 
 // Persistência em memória (sem banco). Carrega o seed do mock do front
 // e mantém os contadores de ID para os novos registros criados via API.
-interface TokenReset {
-  email: string;
-  expiraEm: number;
-}
-
 @Injectable()
 export class StoreService {
   private readonly usuarios = new Map<number, UsuarioInterno>(
@@ -24,7 +19,6 @@ export class StoreService {
   );
   private readonly despesas = new Map<number, Despesa>();
   private readonly orcamentos = new Map<number, Orcamento>();
-  private readonly tokensReset = new Map<string, TokenReset>();
 
   private proximoIdUsuario = Math.max(...this.usuarios.keys()) + 1;
   private proximoIdChamado = Math.max(...this.chamados.keys()) + 1;
@@ -73,19 +67,6 @@ export class StoreService {
 
   excluirUsuario(id: number): void {
     this.usuarios.delete(id);
-  }
-
-  // ---- Tokens de redefinição de senha ----
-  salvarTokenReset(token: string, email: string, expiraEm: number): void {
-    this.tokensReset.set(token, { email, expiraEm });
-  }
-
-  getTokenReset(token: string): TokenReset | undefined {
-    return this.tokensReset.get(token);
-  }
-
-  removerTokenReset(token: string): void {
-    this.tokensReset.delete(token);
   }
 
   getProximoIdUsuario(): number {

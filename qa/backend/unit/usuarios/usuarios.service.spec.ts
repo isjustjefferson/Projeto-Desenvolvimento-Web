@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import bcrypt from "bcrypt";
 import { StoreService } from "../../../../backend/src/dados/store.service.js";
-import { senhaPadrao } from "../../../../backend/src/dados/seed.js";
 import { UsuariosService } from "../../../../backend/src/usuarios/usuarios.service.js";
 
 describe("UsuariosService", () => {
@@ -21,10 +20,12 @@ describe("UsuariosService", () => {
     expect(res.usuarios[0]).not.toHaveProperty("senhaHash");
   });
 
-  it("cria usuário PRESTADOR com especialidade e senha padrão", async () => {
+  it("cria usuário PRESTADOR com especialidade e hash da senha inicial", async () => {
+    const senha = "fixture-Fabio-2026";
     const res = await service.criar({
       nome: "Fábio Manutenção",
       email: "fabio@predial.com",
+      senha,
       role: "PRESTADOR",
       especialidade: "Climatização",
     });
@@ -35,13 +36,14 @@ describe("UsuariosService", () => {
       ativo: true,
     });
     const interno = store.getUsuarioInternoPorId(11);
-    expect(bcrypt.compareSync(senhaPadrao, interno!.senhaHash)).toBe(true);
+    expect(bcrypt.compareSync(senha, interno!.senhaHash)).toBe(true);
   });
 
   it("cria usuário CONDOMINO por padrão e guarda setor", async () => {
     const res = await service.criar({
       nome: "Denise",
       email: "denise@predial.com",
+      senha: "fixture-Denise-2026",
       setor: "Administracao",
     });
     expect(res.usuario.role).toBe("CONDOMINO");
@@ -51,7 +53,7 @@ describe("UsuariosService", () => {
 
   it("rejeita e-mail duplicado (case-insensitive)", async () => {
     await expect(
-      service.criar({ nome: "X", email: "ANA@PREDIAL.COM" }),
+      service.criar({ nome: "X", email: "ANA@PREDIAL.COM", senha: "fixture-senha-2026" }),
     ).rejects.toThrow("Este e-mail já está cadastrado.");
   });
 
@@ -87,6 +89,7 @@ describe("UsuariosService", () => {
     const segundo = await service.criar({
       nome: "Segundo Admin",
       email: "admin2@predial.com",
+      senha: "fixture-admin-2026",
       role: "ADMINISTRADOR",
     });
     const res = await service.alterarRole(

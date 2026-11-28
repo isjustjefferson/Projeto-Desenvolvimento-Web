@@ -1,37 +1,30 @@
 import {
   ConflictException,
-  HttpException,
-  HttpStatus,
   Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import bcrypt from 'bcrypt';
-import { randomUUID } from 'node:crypto';
-import { IsNull, type Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import type { UsuarioPublico } from '../contrato.js';
 import { StoreService } from '../dados/store.service.js';
-import { TokenResetEntity } from '../database/entities/token-reset.entity.js';
 import { UsuarioEntity } from '../database/entities/usuario.entity.js';
 import { base64ToBuffer } from '../database/mappers/bytes.mapper.js';
-import { mapUsuarioToContrato, mapUsuarioToInterno } from '../database/mappers/usuario.mapper.js';
+import { mapUsuarioToContrato } from '../database/mappers/usuario.mapper.js';
 import type { UsuarioInterno } from '../dados/seed.js';
 import type {
   AtualizarContaDto,
   LoginDto,
-  RedefinirSenhaDto,
   RegistrarDto,
 } from './dto/auth.dto.js';
 
 const SALT_ROUNDS = 10;
-const TEMPO_TOKEN_HORAS = 1;
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly store: StoreService,
-    @Inject('TOKEN_RESET_REPO') private readonly tokenResetRepo: Repository<TokenResetEntity>,
     @Inject('USUARIO_REPO') private readonly usuarioRepo: Repository<UsuarioEntity>,
   ) {}
 
@@ -88,57 +81,6 @@ export class AuthService {
     });
     const salvo = await this.usuarioRepo.save(entidade);
     return { ok: true, usuario: mapUsuarioToContrato(salvo) };
-  }
-
-  async esqueciSenha(email: string): Promise<{ ok: true; token: string }> {
-    const emailNorm = email.trim().toLowerCase();
-    if (this.usaStore()) {
-      const usuario = this.store.getUsuarioPorEmail(emailNorm);
-      if (!usuario) throw new NotFoundException('E-mail não encontrado.');
-      const token = randomUUID();
-      this.store.salvarTokenReset(token, usuario.email, Date.now() + TEMPO_TOKEN_HORAS * 3_600_000);
-      return { ok: true, token };
-    }
-    const usuario = await this.usuarioRepo.findOne({ where: { email: emailNorm } });
-    if (!usuario) throw new NotFoundException('E-mail não encontrado.');
-    const token = randomUUID();
-    await this.tokenResetRepo.save(
-      this.tokenResetRepo.create({
-        usuarioId: usuario.id,
-        token,
-        expiraEm: new Date(Date.now() + TEMPO_TOKEN_HORAS * 3_600_000),
-        usadoEm: null,
-      }),
-    );
-    return { ok: true, token };
-  }
-
-  async redefinirSenha(dados: RedefinirSenhaDto): Promise<{ ok: true }> {
-    if (this.usaStore()) {
-      const registro = this.store.getTokenReset(dados.token);
-      if (!registro || registro.expiraEm < Date.now()) {
-        throw new HttpException('Token inválido ou expirado.', HttpStatus.BAD_REQUEST);
-      }
-      const usuario = this.store.getUsuarioPorEmail(registro.email);
-      if (!usuario) throw new NotFoundException('Usuário não encontrado.');
-      this.store.atualizarUsuario({ ...usuario, senhaHash: bcrypt.hashSync(dados.novaSenha, SALT_ROUNDS) });
-      this.store.removerTokenReset(dados.token);
-      return { ok: true };
-    }
-    const registro = await this.tokenResetRepo.findOne({
-      where: { token: dados.token },
-      relations: { usuario: true },
-    });
-    if (!registro || registro.usadoEm || registro.expiraEm.getTime() < Date.now()) {
-      throw new HttpException('Token inválido ou expirado.', HttpStatus.BAD_REQUEST);
-    }
-    const usuario = registro.usuario ?? (await this.usuarioRepo.findOne({ where: { id: registro.usuarioId } }));
-    if (!usuario) throw new NotFoundException('Usuário não encontrado.');
-    usuario.senhaHash = bcrypt.hashSync(dados.novaSenha, SALT_ROUNDS);
-    await this.usuarioRepo.save(usuario);
-    registro.usadoEm = new Date();
-    await this.tokenResetRepo.save(registro);
-    return { ok: true };
   }
 
   async obterMe(id: number): Promise<{ ok: true; usuario: UsuarioPublico }> {

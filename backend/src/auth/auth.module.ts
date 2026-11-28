@@ -6,11 +6,19 @@ import { DatabaseRepositoriesModule } from '../database/database-repositories.mo
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { MeController } from './me.controller.js';
+import { SessoesService } from './sessoes.service.js';
 
 @Module({
   imports: [DadosModule, DatabaseRepositoriesModule],
+  providers: [AuthGuard, RolesGuard, SessoesService],
+  exports: [AuthGuard, RolesGuard, SessoesService],
+})
+export class AuthGuardsModule {}
+
+@Module({
+  imports: [DadosModule, DatabaseRepositoriesModule, AuthGuardsModule],
   controllers: [AuthController, MeController],
-  providers: [AuthService, AuthGuard, RolesGuard],
-  exports: [AuthService, AuthGuard, RolesGuard],
+  providers: [AuthService],
+  exports: [AuthService, AuthGuardsModule],
 })
 export class AuthModule {}

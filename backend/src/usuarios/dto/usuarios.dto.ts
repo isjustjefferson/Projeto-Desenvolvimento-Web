@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   MinLength,
 } from 'class-validator';
 import type { Role } from '../../contrato.js';
@@ -19,10 +20,10 @@ export class CriarUsuarioDto {
   @IsNotEmpty({ message: 'Informe o e-mail.' })
   email!: string;
 
-  @IsOptional()
   @IsString()
-  @MinLength(6, { message: 'A senha deve ter pelo menos 6 caracteres.' })
-  senha?: string;
+  @MinLength(12, { message: 'A senha inicial deve ter pelo menos 12 caracteres.' })
+  @Matches(/\S/, { message: 'Informe uma senha inicial.' })
+  senha!: string;
 
   @IsOptional()
   @IsIn(ROLES, { message: 'Perfil inválido.' })

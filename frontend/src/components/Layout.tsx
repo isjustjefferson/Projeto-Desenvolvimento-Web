@@ -17,6 +17,7 @@ import { roleLabel, iniciais, avatarCor } from '../helpers';
 import { pode } from '../rbac';
 import { UserCard } from './UserCard';
 import { ContaModal } from './ContaModal';
+import { toast } from 'sonner';
 
 type LinkNav = {
   to: string;
@@ -100,8 +101,12 @@ export function Layout() {
     },
   ].filter((l) => l.visivel);
 
-  const sairDoSistema = () => {
-    sair();
+  const sairDoSistema = async () => {
+    const resultado = await sair();
+    if (!resultado.ok) {
+      toast.error(resultado.erro ?? 'Não foi possível encerrar a sessão.');
+      return;
+    }
     navigate('/login');
   };
 

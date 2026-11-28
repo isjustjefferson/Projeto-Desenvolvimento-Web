@@ -4,14 +4,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AuthResult, AuthState, NovoCadastro, Usuario } from '../types';
 import * as authApi from '../api/auth';
 import { ApiError, registrarPerdaSessao } from '../api/client';
-
-const STORAGE_KEY = 'predial.usuarioId';
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
@@ -24,45 +23,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [carregando, setCarregando] = useState(true);
   const queryClient = useQueryClient();
+  const usuarioId = useRef<number | null>(null);
 
   // Sessão pura: o cache do React Query é por conta, então ao sair ou trocar de
   // usuário descartamos tudo — o próximo login nunca herda dados do anterior.
   const definirSessao = useCallback(
     (proximo: Usuario | null) => {
-      const idAnterior = localStorage.getItem(STORAGE_KEY);
-      const idProximo = proximo ? String(proximo.id) : null;
-
-      if (idProximo !== idAnterior) queryClient.clear();
-
-      if (idProximo) {
-        localStorage.setItem(STORAGE_KEY, idProximo);
-      } else {
-        localStorage.removeItem(STORAGE_KEY);
-      }
+      const idProximo = proximo?.id ?? null;
+      if (usuarioId.current !== idProximo) queryClient.clear();
+      usuarioId.current = idProximo;
       setUsuario(proximo);
     },
     [queryClient],
   );
 
-  useEffect(() => {
-    registrarPerdaSessao(() => definirSessao(null));
-  }, [definirSessao]);
+  useEffect(() => registrarPerdaSessao(() => definirSessao(null)), [definirSessao]);
 
   // Revalida a sessão salva ao carregar a aplicação.
   useEffect(() => {
-    const id = localStorage.getItem(STORAGE_KEY);
-    if (!id) {
-      setCarregando(false);
-      return;
-    }
     let ativo = true;
     authApi
       .obterMe()
       .then((encontrado) => {
-        if (ativo) setUsuario(encontrado);
+        if (ativo) definirSessao(encontrado);
       })
       .catch(() => {
-        if (ativo) localStorage.removeItem(STORAGE_KEY);
+        if (ativo) definirSessao(null);
       })
       .finally(() => {
         if (ativo) setCarregando(false);
@@ -70,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [definirSessao]);
 
   const value = useMemo<AuthState>(() => {
     const executar = async (
@@ -99,23 +85,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login: (email, senha) => executar(() => authApi.login(email.trim(), senha)),
       registrar: (dados: NovoCadastro) =>
         executar(() => authApi.registrar(dados)),
-      esqueciSenha: async (email) => {
-        try {
-          const token = await authApi.esqueciSenha(email.trim());
-          return { ok: true, token };
-        } catch (erro) {
-          return { ok: false, erro: mensagemErro(erro) };
-        }
-      },
-      redefinirSenha: (token, novaSenha) =>
-        acao(() => authApi.redefinirSenha(token, novaSenha)),
       atualizarConta: (dados) => executar(() => authApi.atualizarConta(dados)),
       excluirConta: async () => {
         const res = await acao(() => authApi.excluirConta());
         if (res.ok) definirSessao(null);
         return res;
       },
-      sair: () => definirSessao(null),
+      sair: async () => {
+        const res = await acao(authApi.sair);
+        if (res.ok) definirSessao(null);
+        return res;
+      },
     };
   }, [usuario, carregando, definirSessao]);
 

@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
-import { criarApp, type App } from './helpers.js';
+import { cookieDeUsuario, criarApp, type App } from './helpers.js';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication<App>;
@@ -22,6 +22,7 @@ describe('Auth (e2e)', () => {
       .expect(200);
 
     expect(res.body.ok).toBe(true);
+    expect(res.headers['set-cookie'][0]).toMatch(/predial_sessao=.*Path=\/api.*HttpOnly.*SameSite=Strict/);
     expect(res.body.usuario).toMatchObject({
       id: 1,
       email: 'ana@predial.com',
@@ -88,52 +89,55 @@ describe('Auth (e2e)', () => {
       .expect(400);
   });
 
-  it('forgot + reset altera a senha', async () => {
-    const forgot = await request(app.getHttpServer())
-      .post('/api/auth/forgot-password')
-      .send({ email: 'carlos@predial.com' })
-      .expect(200);
-    expect(forgot.body.token).toBeTruthy();
-
+  it('recuperação pública não entrega nem aceita tokens', async () => {
+    for (const email of ['carlos@predial.com', 'nao@existe.com']) {
+      const res = await request(app.getHttpServer())
+        .post('/api/auth/forgot-password')
+        .send({ email })
+        .expect(503);
+      expect(res.body.token).toBeUndefined();
+    }
     await request(app.getHttpServer())
       .post('/api/auth/reset-password')
-      .send({ token: forgot.body.token, novaSenha: 'nova123' })
-      .expect(200);
-
-    await request(app.getHttpServer())
-      .post('/api/auth/login')
-      .send({ email: 'carlos@predial.com', senha: '123456' })
-      .expect(401);
-
-    await request(app.getHttpServer())
-      .post('/api/auth/login')
-      .send({ email: 'carlos@predial.com', senha: 'nova123' })
-      .expect(200);
+      .send({ token: 'token-antigo', novaSenha: 'nova123' })
+      .expect(503);
   });
 
-  it('reset com token inválido retorna 400', async () => {
-    await request(app.getHttpServer())
-      .post('/api/auth/reset-password')
-      .send({ token: 'token-invalido', novaSenha: 'nova123' })
-      .expect(400);
+  it('GET /me rejeita somente o identificador enviado pelo cliente', async () => {
+    await request(app.getHttpServer()).get('/api/me').set('x-usuario-id', '6').expect(401);
   });
 
-  it('GET /me sem x-usuario-id retorna 401', async () => {
-    await request(app.getHttpServer()).get('/api/me').expect(401);
-  });
-
-  it('GET /me com header retorna o usuário', async () => {
+  it('GET /me usa o cookie de sessão, mesmo com outro id no cabeçalho', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/me')
-      .set('x-usuario-id', '5')
+      .set('Cookie', await cookieDeUsuario(app, 1))
+      .set('x-usuario-id', '6')
       .expect(200);
-    expect(res.body.usuario).toMatchObject({ id: 5, role: 'SINDICO' });
+    expect(res.body.usuario).toMatchObject({ id: 1, role: 'CONDOMINO' });
+  });
+
+  it('logout revoga o cookie e impede sua reutilização', async () => {
+    const cookie = await cookieDeUsuario(app, 1);
+    const res = await request(app.getHttpServer()).post('/api/auth/logout').set('Cookie', cookie).expect(204);
+    expect(res.headers['set-cookie'][0]).toContain('predial_sessao=;');
+    await request(app.getHttpServer()).get('/api/me').set('Cookie', cookie).expect(401);
+  });
+
+  it('recusa sair por uma origem externa, mesmo com cookie', async () => {
+    const cookie = await cookieDeUsuario(app, 1);
+    await request(app.getHttpServer())
+      .post('/api/auth/logout')
+      .set('Cookie', cookie)
+      .set('Origin', 'https://outra.example')
+      .set('Sec-Fetch-Site', 'cross-site')
+      .expect(403);
+    await request(app.getHttpServer()).get('/api/me').set('Cookie', cookie).expect(200);
   });
 
   it('PATCH /me atualiza nome/foto', async () => {
     const res = await request(app.getHttpServer())
       .patch('/api/me')
-      .set('x-usuario-id', '1')
+      .set('Cookie', await cookieDeUsuario(app, 1))
       .send({ nome: 'Ana Souza Silva', foto: 'data:image/png;base64,abc' })
       .expect(200);
     expect(res.body.usuario.nome).toBe('Ana Souza Silva');
@@ -143,7 +147,7 @@ describe('Auth (e2e)', () => {
   it('DELETE /me exclui a conta do usuário', async () => {
     await request(app.getHttpServer())
       .delete('/api/me')
-      .set('x-usuario-id', '2')
+      .set('Cookie', await cookieDeUsuario(app, 2))
       .expect(200);
 
     await request(app.getHttpServer())
