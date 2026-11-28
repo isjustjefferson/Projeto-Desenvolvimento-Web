@@ -1,0 +1,52 @@
+services:
+  chamados:
+    build: ./backend
+    environment:
+      PORT: "3000"
+      AUTH_COOKIE_INSEGURO_LOCAL: "1"
+      DB_HOST: postgres-chamados
+      DB_USER: chamados_local
+      DB_PASSWORD: chamados_local
+      DB_NAME: chamados
+      OCR_WORKER_TOKEN: "${OCR_WORKER_TOKEN:-}"
+    depends_on:
+      postgres-chamados:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - aplicacao
+      - dados-chamados
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => { if (!r.ok) process.exitCode = 1 }).catch(() => { process.exitCode = 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  postgres-chamados:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: chamados_local
+      POSTGRES_PASSWORD: chamados_local
+      POSTGRES_DB: chamados
+    volumes:
+      - dados-chamados:/var/lib/postgresql/data
+      - ./db:/provisionamento:ro
+      - ./db/scripts/inicializar-compose.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - dados-chamados
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "chamados_local", "-d", "chamados"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+networks:
+  aplicacao:
+  dados-chamados:
+    internal: true
+
+volumes:
+  dados-chamados:

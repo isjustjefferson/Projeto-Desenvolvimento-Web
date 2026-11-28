@@ -2,9 +2,14 @@ node_modules/
 dist/
 *.log
 .env
-.env.test
+.env.*
+!.env.example
+!.env.*.example
 .vite/
 *.tsbuildinfo
+__pycache__/
+ocr-worker/.venv/
+ocr-worker/.modelo-cache/
 
 # Test and Coverage Artifacts
 coverage/
