@@ -1,27 +1,39 @@
--- Seed de demonstração: usuários, locais, chamados e históricos (mesmos dados do
--- seed em memória em backend/src/dados/seed.ts, com senha padrão "123456").
--- Reexecutável via ON CONFLICT DO NOTHING, preservando bancos já populados.
+-- Dados fictícios para demonstração. O Compose de desenvolvimento ativa a senha
+-- pública da fixture na própria conexão. Nos demais bancos, as contas novas
+-- começam inativas até serem provisionadas com credenciais individuais.
 -- As datas são relativas a now() para aproximar o comportamento do seed em memória.
 
+WITH credencial AS (SELECT COALESCE(current_setting('predial.seed_local', true) = 'on', false) AS modo_local),
+contas (id, nome, email, perfil, unidade, setor, especialidade) AS (
+    VALUES
+    (1, 'Ana Souza', 'ana@predial.com', 'CONDOMINO', 'Bloco A, Ap 204', 'Apartamento 204', NULL),
+    (2, 'Carlos Lima', 'carlos@predial.com', 'CONDOMINO', 'Bloco A, Ap 102', 'Apartamento 102', NULL),
+    (3, 'João Eletricista', 'joao@predial.com', 'PRESTADOR', NULL, 'Manutenção', 'Elétrica'),
+    (4, 'Marta Encanadora', 'marta@predial.com', 'PRESTADOR', NULL, 'Manutenção', 'Hidráulica'),
+    (5, 'Ricardo Síndico', 'ricardo@predial.com', 'SINDICO', NULL, 'Administração', NULL),
+    (6, 'Tiago TI', 'tiago@predial.com', 'ADMINISTRADOR', NULL, 'Tecnologia da Informação', NULL)
+)
 INSERT INTO usuarios (id, nome, email, papel, unidade, setor, especialidade, ativo, senha_hash)
 OVERRIDING SYSTEM VALUE
-VALUES
-(1, 'Ana Souza', 'ana@predial.com', 'CONDOMINO', 'Bloco A, Ap 204', 'Apartamento 204', NULL, true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
-(2, 'Carlos Lima', 'carlos@predial.com', 'CONDOMINO', 'Bloco A, Ap 102', 'Apartamento 102', NULL, true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
-(3, 'João Eletricista', 'joao@predial.com', 'PRESTADOR', NULL, 'Manutenção', 'Elétrica', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
-(4, 'Marta Encanadora', 'marta@predial.com', 'PRESTADOR', NULL, 'Manutenção', 'Hidráulica', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
-(5, 'Ricardo Síndico', 'ricardo@predial.com', 'SINDICO', NULL, 'Administração', NULL, true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
-(6, 'Tiago TI', 'tiago@predial.com', 'ADMINISTRADOR', NULL, 'Tecnologia da Informação', NULL, true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy')
+SELECT id, nome, email, perfil::papel, unidade, setor, especialidade, modo_local,
+       CASE WHEN modo_local THEN '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy' ELSE '!demo-sem-credencial' END
+FROM contas CROSS JOIN credencial
 ON CONFLICT DO NOTHING;
 
 SELECT setval('usuarios_id_seq', COALESCE((SELECT MAX(id) FROM usuarios), 1));
 
+WITH credencial AS (SELECT COALESCE(current_setting('predial.seed_local', true) = 'on', false) AS modo_local),
+contas (nome, email, perfil, setor, especialidade) AS (
+    VALUES
+    ('Paulo Climatização', 'paulo@predial.com', 'PRESTADOR', 'Manutenção', 'Climatização'),
+    ('Carla Marceneira', 'carla@predial.com', 'PRESTADOR', 'Manutenção', 'Mobiliário'),
+    ('Roberto Estrutural', 'roberto@predial.com', 'PRESTADOR', 'Manutenção', 'Estrutural'),
+    ('Fernanda Manutenção Geral', 'fernanda@predial.com', 'PRESTADOR', 'Manutenção', 'Outros')
+)
 INSERT INTO usuarios (nome, email, papel, setor, especialidade, ativo, senha_hash)
-VALUES
-('Paulo Climatização', 'paulo@predial.com', 'PRESTADOR', 'Manutenção', 'Climatização', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
-('Carla Marceneira', 'carla@predial.com', 'PRESTADOR', 'Manutenção', 'Mobiliário', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
-('Roberto Estrutural', 'roberto@predial.com', 'PRESTADOR', 'Manutenção', 'Estrutural', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy'),
-('Fernanda Manutenção Geral', 'fernanda@predial.com', 'PRESTADOR', 'Manutenção', 'Outros', true, '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy')
+SELECT nome, email, perfil::papel, setor, especialidade, modo_local,
+       CASE WHEN modo_local THEN '$2b$10$DmCrxiTKQDGTfdr4kbLSBeftMtEX76cN..OA6qH6.5Vo7DA4gJdIy' ELSE '!demo-sem-credencial' END
+FROM contas CROSS JOIN credencial
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO locais (id, predio, andar, sala)

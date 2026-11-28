@@ -10,7 +10,7 @@
         01 tipos -> 01b tipos despesas -> 02 tabelas -> 02b tabelas despesas
         -> 03 FKs -> 03b FKs despesas -> 04 CHECK -> 05 índices
         -> 05b índices despesas -> 06 migração papel -> 08 orçamentos
-        -> 09 OCR -> 10 status RECUSADO
+        -> 09 OCR -> 10 status RECUSADO -> 11 fila de OCR
 
 .EXAMPLE
     .\iniciar-banco.ps1
@@ -198,6 +198,8 @@ Invoke-ArquivoSql -Caminho (Join-Path $dirSql '06_migracao_papel.sql')       -Ba
 Invoke-ArquivoSql -Caminho (Join-Path $dirSql '08_orcamentos.sql')           -Banco $NomeBanco
 Invoke-ArquivoSql -Caminho (Join-Path $dirSql '09_nota_fiscal_ocr.sql')      -Banco $NomeBanco
 Invoke-ArquivoSql -Caminho (Join-Path $dirSql '10_migracao_status_recusado.sql') -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '11_trabalhos_ocr.sql')       -Banco $NomeBanco
+Invoke-ArquivoSql -Caminho (Join-Path $dirSql '12_sessoes_autenticacao.sql') -Banco $NomeBanco
 
 # ---------------------------------------------------------------------------
 if (-not $PularVerificacao) {
@@ -213,7 +215,7 @@ if (-not $PularVerificacao) {
     $ocrColunas = Invoke-Sql -Sql "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'anexos_despesa' AND column_name IN ('valor_total_centavos', 'texto_ocr', 'ocr_extraido_em');" -Banco $NomeBanco
 
     $esperado = @{
-        tabelas = 8; indices = 28; fks = 14; checks = 1; tipos = 11;
+        tabelas = 10; indices = 34; fks = 16; checks = 1; tipos = 11;
         recusado = 1; orcamentos = 1; ocrColunas = 3
     }
 
