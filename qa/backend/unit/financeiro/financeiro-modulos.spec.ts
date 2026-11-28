@@ -25,6 +25,7 @@ describe('módulos de execução', () => {
       expect(rotas).toContain('/api/health');
       expect(rotas.includes('/api/auth/login')).toBe(temLogin);
       expect(rotas.includes('/api/relatorios/despesas')).toBe(temFinanceiro);
+      expect(rotas.includes('/api/fiscal/trabalhos/reservar')).toBe(temFinanceiro);
     } finally {
       await app.close();
     }

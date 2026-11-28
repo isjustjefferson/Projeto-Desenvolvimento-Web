@@ -87,6 +87,16 @@ describe('encaminhamento para o Financeiro', () => {
     expect(upstream).not.toHaveBeenCalled();
   });
 
+  it('encaminha apenas a credencial do worker para a fila fiscal', async () => {
+    const upstream = vi.fn().mockResolvedValue(new globalThis.Response('{}'));
+    vi.stubGlobal('fetch', upstream);
+    const { res } = resposta();
+    await encaminhar(requisicao('/api/fiscal/trabalhos/reservar', 'POST', { cookie, 'x-ocr-worker-token': 'worker' }), res, vi.fn());
+    const config = upstream.mock.calls[0][1];
+    expect(config.headers.get('x-ocr-worker-token')).toBe('worker');
+    expect(config.headers.has('cookie')).toBe(false);
+  });
+
   it('exige a credencial interna para as rotas financeiras', () => {
     const autenticar = autenticarChamados('credencial-de-teste');
     const { mock, res } = resposta();

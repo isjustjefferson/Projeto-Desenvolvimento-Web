@@ -2,9 +2,11 @@ import type { NextFunction, Request, Response } from 'express';
 import { timingSafeEqual } from 'node:crypto';
 import { COOKIE_SESSAO, lerCookieSessao } from '../auth/sessao-cookie.js';
 
-const rotasFinanceiras = /^\/api\/(?:chamados\/[^/]+\/(?:despesas|orcamentos)|relatorios\/despesas)(?:\/|$)/i;
+const rotasFinanceiras = /^\/api\/(?:chamados\/[^/]+\/(?:despesas|orcamentos)|relatorios\/despesas|fiscal\/trabalhos)(?:\/|$)/i;
+const rotaWorker = /^\/api\/fiscal\/trabalhos(?:\/|$)/i;
 const transicaoComDependenciaFinanceira = /^\/api\/chamados\/[^/]+\/(?:iniciar|concluir)\/?$/i;
 const headerInterno = 'x-financeiro-token';
+const headerWorker = 'x-ocr-worker-token';
 
 export function autenticarChamados(token: string) {
   const esperado = Buffer.from(token);
@@ -36,9 +38,10 @@ export function encaminharFinanceiro(
 
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const financeira = rotasFinanceiras.test(req.path);
+    const worker = rotaWorker.test(req.path);
     const transicao = req.method === 'POST' && transicaoComDependenciaFinanceira.test(req.path);
     const sessao = lerCookieSessao(req.get('cookie'));
-    if ((transicao || financeira) && (!sessao || !(await validarSessao(sessao)))) {
+    if ((transicao || (financeira && !worker)) && (!sessao || !(await validarSessao(sessao)))) {
       res.status(401).json({ message: 'Sessão inválida ou expirada.' });
       return;
     }
@@ -60,7 +63,10 @@ export function encaminharFinanceiro(
     }
 
     const headers = new Headers({ [headerInterno]: token });
-    if (sessao) {
+    if (worker) {
+      const credencialWorker = req.get(headerWorker);
+      if (credencialWorker) headers.set(headerWorker, credencialWorker);
+    } else if (sessao) {
       headers.set('cookie', `${COOKIE_SESSAO}=${sessao}`);
     }
 

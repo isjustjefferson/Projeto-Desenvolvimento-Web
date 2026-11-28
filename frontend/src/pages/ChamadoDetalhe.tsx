@@ -52,6 +52,7 @@ import {
   tipoDocumentoFiscalLabel,
 } from '../helpers';
 import { PrioridadeBadge, StatusBadge } from '../components/Badge';
+import { AnaliseOcrAnexo } from '../components/AnaliseOcrAnexo';
 import { CampoMoeda } from '../components/CampoMoeda';
 import { FormularioDespesa } from '../components/FormularioDespesa';
 import { Modal } from '../components/Modal';
@@ -880,6 +881,9 @@ export function ChamadoDetalhe() {
                           >
                             Corrigir valor
                           </button>
+                        )}
+                        {podeGerenciarDespesas && ['image/jpeg', 'image/jpg', 'image/png'].includes(a.mimeType) && (
+                          <AnaliseOcrAnexo chamadoId={c.id} despesaId={d.id} anexoId={a.id} />
                         )}
                       </div>
                     ))}

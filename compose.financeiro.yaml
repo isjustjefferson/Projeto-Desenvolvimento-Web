@@ -3,6 +3,7 @@ services:
     environment:
       FINANCEIRO_URL: http://financeiro:3000
       FINANCEIRO_TOKEN: "${FINANCEIRO_TOKEN:?Defina um token local para a comunicacao entre servicos}"
+      OCR_WORKER_TOKEN: ""
 
   financeiro:
     build: ./backend
@@ -14,6 +15,7 @@ services:
       DB_USER: chamados_local
       DB_PASSWORD: chamados_local
       DB_NAME: chamados
+      OCR_WORKER_TOKEN: "${OCR_WORKER_TOKEN:-}"
     depends_on:
       postgres-chamados:
         condition: service_healthy
